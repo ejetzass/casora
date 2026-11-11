@@ -53,14 +53,15 @@ atFinish(() => page.evaluate(() => {
   delete window.__r609;
 }));
 
-const look = () => stable(page, () => {
+const readTile = () => {
   const b = window.__r609.tile;
   const st = b.shadowRoot?.querySelector('#state');
   if (!st) return null;
   return { text: (st.querySelector('.sf-f') || st).textContent.replace(/\s+/g, ' ').trim(),
     dot: !!st.querySelector('span[aria-hidden="true"]'),
     image: b.style.getPropertyValue('--casora-cam-img') };
-}, null, { max: 3000, quiet: 150 });
+};
+const look = () => stable(page, readTile, null, { max: 3000, quiet: 150 });
 await page.evaluate(async () => document.querySelector('home-assistant').hass.callService(
   'casora_mock', 'klingel_druecken', { dauer: 2, person: 2 }));
 await page.waitForFunction(() => {
@@ -70,7 +71,12 @@ await page.waitForFunction(() => {
 // Let the recorder's delayed history retry finish before the clock-only observations.
 await page.waitForTimeout(12000);
 const initial = await look();
-await need('ring text and dot with a loaded image', initial?.text === 'Hat geklingelt'
+// HA can restore the user's language after the browser's initial language choice.
+// Translate fixed expected literals; do not derive expected ages from the tile or its helpers.
+const [fresh, two, nine, ready] = await page.evaluate(() =>
+  ['Hat geklingelt', 'Geklingelt · vor 2 Min.', 'Geklingelt · vor 9 Min.', 'Bereit']
+    .map((s) => (window.casoraTr ? window.casoraTr(s) : s).replace(/\s+/g, ' ').trim()));
+await need('ring text and dot with a loaded image', initial?.text === fresh
   && initial.dot && initial.image.includes('blob:'), initial);
 await need('the actual press timestamp was observed', await page.evaluate(() =>
   Number.isFinite(window.__r609.rangAt)));
@@ -92,9 +98,9 @@ await page.evaluate(async (id) => {
 }, ID);
 
 for (const [minutes, text, dot] of [
-  [2.5, 'Geklingelt · vor 2 Min.', true],
-  [9.5, 'Geklingelt · vor 9 Min.', true],
-  [10.5, 'Bereit', false],
+  [2.5, two, true],
+  [9.5, nine, true],
+  [10.5, ready, false],
 ]) {
   armed = true;
   const deadline = Date.now() + 14000;
@@ -110,12 +116,8 @@ for (const [minutes, text, dot] of [
   pending();
   // Three seconds is deliberately shorter than the next 10 s refresh tick. A timer
   // redraw must not rescue a missing image-response redraw in the mutation check.
-  const result = await stable(page, () => {
-    const b = window.__r609.tile, st = b.shadowRoot?.querySelector('#state');
-    return st ? { text: (st.querySelector('.sf-f') || st).textContent.replace(/\s+/g, ' ').trim(),
-      dot: !!st.querySelector('span[aria-hidden="true"]'),
-      image: b.style.getPropertyValue('--casora-cam-img') } : null;
-  }, null, { max: 3000, until: (v) => v.image !== before.image && v.text === text && v.dot === dot });
+  const result = await stable(page, readTile, null,
+    { max: 3000, until: (v) => v.image !== before.image && v.text === text && v.dot === dot });
   await check(`+${minutes} min: next image redraws ring text and dot`,
     result?.image !== before.image && result?.text === text && result?.dot === dot, result);
   const unchanged = await page.evaluate((id) => {
