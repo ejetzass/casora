@@ -1567,6 +1567,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       if (e && (e.hidden || e.disabled_by || e.platform === 'workday')) return;
       var a = S[id].attributes || {};
       if (!a.message || !a.start_time) return;
+      if (window._casoraCalendar && !window._casoraCalendar.allowsTitle(a.message)) return;
       var d = new Date(String(a.start_time).replace(' ', 'T'));
       if (!isNaN(d) && (!best || d < best.d)) best = { d: d, title: a.message, allDay: !!a.all_day, on: S[id].state === 'on' };
     });
