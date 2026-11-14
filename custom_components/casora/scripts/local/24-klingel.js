@@ -287,7 +287,10 @@
       });
     return job.list;
   };
-  KL.forget = function (cam) { delete hc[cam]; delete seen[cam]; };
+  KL.forget = function (cam) {
+    if (window._casoraRing) window._casoraRing.forget(cache[cam]?.c.visitor);
+    delete hc[cam]; delete seen[cam];
+  };
 
   // ── Zustand ───────────────────────────────────────────────────────────────
   var on = function (S, id) { return !!(id && S[id] && S[id].state === 'on'); };
@@ -300,8 +303,10 @@
       audio: swState(S, c.sw.audio), live: [], ring: null, lastRing: null, motion: on(S, c.motion) };
     c.order.forEach(function (o) { if (on(S, c.det[o])) s.live.push(o); });
     var ev = KL.events(c, t);
-    for (var i = 0; i < ev.length; i++) if (ev[i].kind === 'ring') { s.lastRing = ev[i].at; break; }
-    if (on(S, c.visitor)) s.lastRing = Math.max(s.lastRing || 0, Date.parse(S[c.visitor].last_changed) || t);
+    var ring = window._casoraRing && window._casoraRing.lastRing(c, S, ev);
+    s.lastRing = ring ? ring.at : null;
+    // A press whose time cannot be read still counts as now.
+    if (on(S, c.visitor) && !isFinite(Date.parse(S[c.visitor].last_changed))) s.lastRing = Math.max(s.lastRing || 0, t);
     if (s.lastRing && t - s.lastRing < HOLD) s.ring = s.lastRing;
     var b = c.battery && S[c.battery] ? num(S[c.battery].state) : null;
     s.battery = b;
@@ -550,6 +555,8 @@
     var S = states || {}, now = Date.now();
     var s = KL.status(c, S, now);
     if (part === 'hero') {
+      // Without a doorbell tile on the page nobody else keeps the history fresh: wait for it like 'hist' does.
+      if (el) KL.history(hass, c, el);
       var main, rest = [], tone = null;
       if (s.privacy) main = 'Privatsphäre an';
       else if (s.dead) main = 'Offline';
