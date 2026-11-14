@@ -1663,7 +1663,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       if (bins.length && isWasteCalendar(hass, id, W && W.calendar)) return;
       var a = S[id].attributes || {};
       if (!a.message || !a.start_time) return;
-      if (window._casoraCalendar && !window._casoraCalendar.allowsTitle(a.message)) return;
+      if (window._casoraCalendar && !window._casoraCalendar.allowsTitle(a.message, S, id)) return;
       var d = new Date(String(a.start_time).replace(' ', 'T'));
       if (isNaN(d) || (bins.length && sameBin(a.message, d))) return;
       if (!best || d < best.d) best = { d: d, title: a.message, allDay: !!a.all_day, on: S[id].state === 'on' };

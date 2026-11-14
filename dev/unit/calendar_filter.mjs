@@ -21,6 +21,18 @@ const calendar = window._casoraCalendar;
 assert.equal(calendar.allowsTitle('Termin-bbbbbb ffffff'), false, 'the complete entry hides an identical title');
 assert.equal(calendar.allowsTitle('termin-bbbbbb ffffff (a)'), false, 'title fragments ignore case and preserve spaces');
 assert.equal(calendar.allowsTitle('Vrijdagmarkt'), true, 'a word inside an entry is not a separate filter');
+const codedStates = { 'calendar.mock_day': { attributes: { casora_filter_match: { entries: ['Termin-aaaaaa', 'Termin-bbbbbb'], events: { 'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] }, 'Termin-222222': { title: 'Termin-aaaaaa', matches: [] } } } } } };
+settings = { calendar_filter: 'Termin-aaaaaa' };
+assert.equal(calendar.allowsTitle('Termin-cccccc', codedStates, 'calendar.mock_day', 'Termin-111111'), false, 'an exported substring decision hides the coded event');
+assert.equal(calendar.allowsTitle('Termin-aaaaaa', codedStates, 'calendar.mock_day', 'Termin-222222'), true, 'a known negative overrides an accidental coded substring');
+assert.equal(calendar.allowsTitle('Termin-aaaaaa', codedStates, 'calendar.mock_day', 'new-event'), false, 'new events use normal matching');
+assert.equal(calendar.allowsTitle('Termin-aaaaaa', codedStates, 'calendar.mock_day', 'Termin-111111'), false, 'edited titles use normal matching');
+settings = { calendar_filter: '' };
+assert.equal(calendar.allowsTitle('Termin-cccccc', codedStates, 'calendar.mock_day', 'Termin-111111'), true, 'removing an exported entry stops hiding its event');
+settings = { calendar_filter: 'cccc' };
+assert.equal(calendar.allowsTitle('Termin-cccccc', codedStates, 'calendar.mock_day', 'Termin-111111'), false, 'a changed entry uses ordinary substring matching');
+settings = { calendar_filter: 'other' };
+assert.equal(calendar.allowsTitle('Termin-cccccc', codedStates, 'calendar.mock_day', 'Termin-111111'), true, 'an unrelated changed entry does not reuse an old decision');
 console.log('ok calendar filter title fragments');
 
 settings = { calendar_filter: 'a, , b' };
@@ -56,6 +68,11 @@ assert.equal(calendar.tile(states, variables), 'Morgen 09:00 · Termin-gggggg', 
   order['calendar.mock_now'].attributes.end_time = '2054-11-13 09:45:00';
   order['calendar.mock_now'].state = 'off';
   assert.equal(calendar.tile(order, orderVars), 'Heute 14:00 · Termin-gggggg', 'with no timed event running, the next timed event today comes before the all-day event');
+}
+{
+  const coded = { 'calendar.mock_coded': { state: 'on', attributes: { message: 'Termin-cccccc', start_time: '2054-11-13 09:00:00', end_time: '2054-11-13 11:00:00', casora_filter_match: { entries: ['Termin-aaaaaa'], events: {}, message: { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } } } } };
+  settings = { calendar_filter: 'Termin-aaaaaa' };
+  assert.equal(calendar.tile(coded, { calendars: [{ entity: 'calendar.mock_coded' }] }), 'Keine Termine', 'current message uses its own exported decision');
 }
 console.log('ok Agenda tile selection and Calendar filter');
 
@@ -139,6 +156,30 @@ for (const kind of ['linie', 'woche']) {
 calendar.load({ callApi: async () => [{ summary: 'Termin-bbbbbb ffffff', start: { date: '2054-11-13' }, end: { date: '2054-11-14' } }] }, { calendars: [{ entity: 'calendar.mock_day', name: 'Mock calendar' }] });
 await new Promise(resolve => setImmediate(resolve));
 assert.ok(calendar.html('day', { calendars: [{ entity: 'calendar.mock_day', name: 'Mock calendar' }] }).includes('Termin-bbbbbb ffffff'), 'the popup still shows a title hidden from Home');
+{
+  const coded = { 'calendar.mock_wire': { state: 'on', attributes: { message: 'Termin-cccccc', start_time: '2054-11-13 09:00:00', end_time: '2054-11-13 11:00:00', casora_filter_match: { entries: ['Termin-aaaaaa'], message: { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] }, events: { 'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } } } } } };
+  settings = { calendar_filter: 'Termin-aaaaaa' };
+  assert.equal(window.casoraHomeNext({ states: coded }, { casora_greeting_next: true }, new ClockDate()), '', 'greeting uses the current-message decision');
+  const codedEvents = [{ title: 'Termin-cccccc', uid: 'Termin-111111', cal: 'calendar.mock_wire', start: now, end: now + 3600000 }];
+  const codedView = saver.context({ kind: 'linie', now: new ClockDate(), hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] });
+  assert.equal(codedView.events.length, 0, 'screensaver uses the event decision');
+  const codedVars = { calendars: [{ entity: 'calendar.mock_wire' }] };
+  const codedHa = { states: coded, callApi: async () => [{ summary: 'Termin-cccccc', uid: 'Termin-111111', start: { dateTime: '2054-11-13T10:00:00' }, end: { dateTime: '2054-11-13T11:00:00' } }] };
+  context.document.querySelector = () => ({ hass: codedHa, shadowRoot: { querySelectorAll: () => [] } });
+  calendar.tile(coded, codedVars);
+  await settle();
+  assert.equal(calendar.tile(coded, codedVars), 'Keine Termine', 'API event identity reaches the Agenda');
+  calendar.load(codedHa, codedVars);
+  await settle();
+  assert.ok(calendar.html('day', codedVars).includes('Termin-cccccc'), 'the popup retains the coded event');
+  context.document.querySelector = () => null;
+  coded['calendar.mock_wire'].attributes.casora_filter_match.events['Termin-222222'] = { title: 'Termin-cccccc', matches: [] };
+  const duplicateHa = { states: coded, callApi: async () => ['Termin-111111', 'Termin-222222'].map(uid => ({ summary: 'Termin-cccccc', uid, start: { dateTime: '2054-11-13T10:00:00' }, end: { dateTime: '2054-11-13T11:00:00' } })) };
+  const options = { kind: 'linie', now: new ClockDate(), hass: duplicateHa, vars: { casora_screensaver_calendars: ['calendar.mock_wire'] }, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] };
+  saver.context(options);
+  await settle();
+  assert.equal(saver.context(options).events.length, 1, 'screensaver filters before collapsing identical event titles');
+}
 console.log('ok shared filter in greeting and screensavers, unfiltered popup');
 
 class Panel {}
