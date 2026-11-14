@@ -342,13 +342,10 @@
             var en = ev.end ? (all ? (ev.end.date ? ev.end.date + 'T00:00:00' : null) : ev.end.dateTime) : null;
             var t0 = Date.parse(st);
             if (isNaN(t0)) return;
-            out.push({ title: String(ev.summary || ''), start: t0, end: en ? Date.parse(en) : null, allDay: all, cal: ids[li] });
+            out.push({ title: String(ev.summary || ''), start: t0, end: en ? Date.parse(en) : null, allDay: all, cal: ids[li], uid: ev.uid || null });
           });
         });
         out.sort(function (x, y) { return x.start - y.start; });
-        // The same appointment in several calendars (a family calendar and one's own) counts once.
-        var seen = {};
-        out = out.filter(function (e) { var k = e.start + '|' + e.title; if (seen[k]) return false; seen[k] = 1; return true; });
         DATA.ev[key] = out;
         changed();
       });
@@ -1313,7 +1310,11 @@
   var filterAttrsForEvent = function (hass, event) {
     var state = event && event.cal && hass && hass.states && hass.states[event.cal];
     var attrs = state && state.attributes;
-    if (!attrs || !attrs.casora_filter_match || String(attrs.message || '') !== String(event.title || '')) return null;
+    if (!attrs || !attrs.casora_filter_match) return null;
+    // An exported event is identified by its uid: its own decision (or none) applies, whatever the state shows now.
+    if (event.uid && attrs.casora_filter_match.events) return { casora_filter_match: attrs.casora_filter_match };
+    // Without a uid, only the state's current message can take the recorded message decision, at the same time.
+    if (String(attrs.message || '') !== String(event.title || '')) return null;
     var stamp = function (value) { return value == null ? NaN : Date.parse(String(value).replace(' ', 'T')); };
     if (stamp(attrs.start_time) !== Number(event.start)) return null;
     if (typeof attrs.all_day === 'boolean' && attrs.all_day !== !!event.allDay) return null;
@@ -1331,8 +1332,13 @@
     // The calendar asks for its whole grid (the month, or two weeks), the others for the coming eight days.
     var grid = kind === 'kalender' ? S.calGrid(now, hass, vars) : null;
     var events = (o.events !== undefined ? o.events : !cals.length ? [] : grid ? S.events(hass, cals, grid.weeks * 7, grid.start) : S.events(hass, cals, 8)).filter(function (e) {
-      return !window.casoraCalendarAllows || window.casoraCalendarAllows(e.title, o.settings, filterAttrsForEvent(hass, e));
+      return !window.casoraCalendarAllows || window.casoraCalendarAllows(e.title, o.settings, filterAttrsForEvent(hass, e), e.uid || null);
     });
+    // Collapse duplicates only after filtering: distinct coded events can have the same title.
+    if (o.events === undefined) {
+      var seen = {};
+      events = events.filter(function (e) { var k = e.start + '|' + e.title; if (seen[k]) return false; seen[k] = 1; return true; });
+    }
     var media = o.media !== undefined ? o.media : need(['musik']) || (S.on(vars.casora_screensaver_tint) && TINT_KINDS.indexOf(kind) > -1) ? S.playing(hass) : null;
     var cams = o.cams !== undefined ? o.cams : need(['kameras']) ? S.cameras(hass, vars.casora_screensaver_cameras).map(function (c) { c.shot = S.shot(c, now); return c; }) : [];
     return { now: now, hass: hass, vars: vars, settings: o.settings, dark: dark, sun: o.sun !== undefined ? o.sun : S.sunTimes(hass, now), cals: o.cals || cals, cams: cams,
