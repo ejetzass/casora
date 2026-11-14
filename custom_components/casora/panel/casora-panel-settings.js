@@ -1504,7 +1504,7 @@
         if (!saverLoad) {
           const imp = window.casoraImportScript || ((p) => import("/casora_scripts/" + p));
           const quiet = (p) => imp(p).catch(() => {});
-          saverLoad = Promise.all([window.casoraTr ? null : quiet("casora-i18n.js"), window.casoraEnergyPrefs ? null : quiet("local/00-finder.js"), window._casoraCalendar ? null : imp("local/06-kalender.js")])
+          saverLoad = Promise.all([window.casoraTr ? null : quiet("casora-i18n.js"), window.casoraEnergyPrefs ? null : quiet("local/00-finder.js"), window.casoraCalendarAllows ? null : quiet("local/06a-kalender-filter.js")])
             .then(() => imp("local/46-screensaver.js"));
         }
         saverLoad.then(() => {

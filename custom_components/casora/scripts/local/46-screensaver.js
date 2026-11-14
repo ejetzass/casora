@@ -989,7 +989,7 @@
     // The month calendar asks for its whole grid, the others for the coming eight days.
     var grid = kind === 'kalender' ? S.monthGrid(now, hass) : null;
     var events = (o.events !== undefined ? o.events : !cals.length ? [] : grid ? S.events(hass, cals, grid.weeks * 7, grid.start) : S.events(hass, cals, 8)).filter(function (e) {
-      return !window._casoraCalendar || window._casoraCalendar.allowsTitle(e.title, hass && hass.states, e.cal, e.uid || null, o.settings);
+      return !window.casoraCalendarAllows || window.casoraCalendarAllows(e.title, hass && hass.states, e.cal, e.uid || null, o.settings);
     });
     // Collapse duplicates only after filtering: distinct coded events can have the same title.
     if (o.events === undefined) {

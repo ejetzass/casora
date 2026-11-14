@@ -77,24 +77,9 @@
   };
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
-  // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.
-  // Omit uid for the state message; pass null for a REST event without an ID. The Studio preview passes its
-  // settings draft as saved: its window.casoraSettings() returns {} on the settings page.
+  // The title predicate lives in 06a-kalender-filter.js (the Studio preview loads it alone). Without it, nothing is hidden.
   K.allowsTitle = function (title, states, entity, uid, draft) {
-    var settings = draft || (window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {}));
-    var text = String(title || '').toLowerCase();
-    var attrs = states && states[entity] && states[entity].attributes;
-    var meta = attrs && attrs.casora_filter_match;
-    var decision = meta && (uid === undefined ? meta.message : uid && meta.events && meta.events[uid]);
-    if (decision && decision.title !== title) decision = null;
-    return !String(settings.calendar_filter || '').split(',').some(function (entry) {
-      entry = entry.trim().toLowerCase();
-      if (!entry) return false;
-      if (decision && Array.isArray(meta.entries) && meta.entries.some(function (e) { return String(e).toLowerCase() === entry; })) {
-        return Array.isArray(decision.matches) && decision.matches.some(function (e) { return String(e).toLowerCase() === entry; });
-      }
-      return text.indexOf(entry) !== -1;
-    });
+    return window.casoraCalendarAllows ? window.casoraCalendarAllows(title, states, entity, uid, draft) : true;
   };
 
   // HA states expose only one event per calendar; use the shared API cache when ready.
