@@ -54,6 +54,7 @@
 
   // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.
   // The rule itself lives in 06a-kalender-filter.js, shared with the Studio's previews.
+  // Omit uid for the state message; pass null for a REST event without an ID.
   K.allowsTitle = function (title, states, entity, uid) {
     return window.casoraCalendarAllows ? window.casoraCalendarAllows(title, null, states, entity, uid) : true;
   };
