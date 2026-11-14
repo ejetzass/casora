@@ -232,6 +232,9 @@ const MODULES = [
   '22-halten',
   '23-frigate',
   '24-klingel',
+  '25-camera-popup',
+  '45-ring-popup',
+  '26-camera-triggers',
   '25-coffee',
   '26-haustier',
   '27-chart',
@@ -297,6 +300,7 @@ const until = (cond, ms) => new Promise((resolve) => {
    The integration's answer is remembered in this browser and the modules start right away on
    the remembered one (or on the defaults the very first time); the fresh answer follows and,
    only if it differs, the tiles are drawn again. The modules never wait for the WebSocket.
+   While visible, saved settings are checked every minute and immediately on return.
    The file: the integration's answer says whether there is one and its version key ("file");
    it is loaded only then, with that key in the URL, so the browser keeps it (Ladezeit stage 1.3:
    it was fetched with no-store and ?t= on every open). Only without a remembered answer that
@@ -332,30 +336,16 @@ const loadFile = (key) => {
   });
 };
 
-const wsP = (async () => {
-  const hass = await until(() => {
-    const h = document.querySelector('home-assistant');
-    return h && h.hass && h.hass.connection ? h.hass : null;
-  }, 8000);
-  if (!hass) return null;
-  const r = await hass.callWS({ type: 'casora/settings/get' });
+const sig = (x) => JSON.stringify(x ? [!!x.stored, x.stored ? x.settings || {} : null, x.price_kwh, x.price_entity, x.stored ? null : x.file || null] : null);
+let started = null;
+let settingsHass = null;
+let settingsRefreshing = false;
+const rememberSettings = (r) => {
   const keep = { stored: !!(r && r.stored), settings: (r && r.settings) || {}, price_kwh: r && r.price_kwh, price_entity: r && r.price_entity };
   if (hasStamp(r)) keep.file = r.file || null;
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(keep)); } catch (e) { /* private mode / full */ }
-  return r;
-})().catch(() => null); // Older Casora without a settings store: the file (or nothing) applies.
-// What the modules see of an answer (the part that changes tiles).
-const sig = (x) => JSON.stringify(x ? [!!x.stored, x.stored ? x.settings || {} : null, x.price_kwh, x.price_entity, x.stored ? null : x.file || null] : null);
-
-// The file is needed before the modules run only while nothing is stored (stored settings win over it).
-if (!(known && known.stored)) {
-  if (hasStamp(known)) { if (known.file) await loadFile(known.file); }
-  else await loadFile(null);
-}
-settle();
-// sig() of what the modules started with (nothing remembered: Casora's defaults, or the file that just ran).
-let started = sig(known || { stored: false });
-wsP.then(async (r) => {
+};
+const applySettingsAnswer = async (r) => {
   if (!r) return;
   best = r;
   if (!r.stored && hasStamp(r)) {
@@ -394,7 +384,55 @@ wsP.then(async (r) => {
   };
   if (window._casoraLocalLoaded) redraw();
   else window.addEventListener('casora-local-loaded', redraw, { once: true });
-});
+};
+const refreshSettings = async () => {
+  if (!settingsHass || settingsRefreshing || document.visibilityState !== 'visible') return;
+  settingsRefreshing = true;
+  try {
+    const r = await settingsHass.callWS({ type: 'casora/settings/get' });
+    if (!r) return;
+    rememberSettings(r);
+    await applySettingsAnswer(r);
+  } catch (e) {
+    // The next foreground interval or visibility return can retry.
+  } finally {
+    settingsRefreshing = false;
+  }
+};
+const startSettingsRefresh = (hass) => {
+  settingsHass = hass;
+  setInterval(refreshSettings, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshSettings();
+  });
+};
+
+const wsP = (async () => {
+  const hass = await until(() => {
+    const h = document.querySelector('home-assistant');
+    return h && h.hass && h.hass.connection ? h.hass : null;
+  }, 8000);
+  if (!hass) return null;
+  startSettingsRefresh(hass);
+  settingsRefreshing = true;
+  try {
+    const r = await hass.callWS({ type: 'casora/settings/get' });
+    rememberSettings(r);
+    return r;
+  } finally {
+    settingsRefreshing = false;
+  }
+})().catch(() => null); // Older Casora without a settings store: the file (or nothing) applies.
+
+// The file is needed before the modules run only while nothing is stored (stored settings win over it).
+if (!(known && known.stored)) {
+  if (hasStamp(known)) { if (known.file) await loadFile(known.file); }
+  else await loadFile(null);
+}
+settle();
+// sig() of what the modules started with (nothing remembered: Casora's defaults, or the file that just ran).
+started = sig(known || { stored: false });
+wsP.then(applySettingsAnswer);
 
 /* The modules build on casora-core (_casoraFilter, casoraMenuGlass, casoraPopup …).
    It is a resource of its own and can finish after this loader on the phone. */

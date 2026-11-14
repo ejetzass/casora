@@ -58,6 +58,7 @@ const frigateStreams = (phone) => (hass, id, redraw) => {
   labels[""] = phone ? (ch.sub ? `${t("Automatic")} · ${labels[ch.sub]}` : t("Same as desktop")) : t("Standard");
   return { options: phone ? ch.options : ch.options.filter((o) => o !== "standard"), labels };
 };
+window.casoraFrigateStreams = frigateStreams;
 const TITLE = { key: "room_name", label: "Popup title", type: "text", advanced: true };
 // Popups whose title is otherwise the tile name (window.casoraPopupTitle).
 // Domains a group can live in: old group.* and the group helpers; the picker keeps only real groups (accept "group").
@@ -292,11 +293,6 @@ window.CASORA_TILE_TYPES = [
   { id: "casora_camera", label: "Camera", template: "casora_camera", domains: ["camera"], icon: "camera", fields: [
       ICON,
       TITLE_NAME,
-      // "Status from: …" (1.1.1): an image via a proxy reports "ready" although the camera is gone.
-      // casora-core.js casoraCamOffline – tile, security and camera badge, popup.
-      { key: "status_entity", label: "Status from", domains: ["camera", "binary_sensor"],
-        classes: { binary_sensor: ["connectivity"] }, advanced: true, placeholder: "This camera",
-        hint: "Optional. Another camera or a connection sensor that tells whether the camera is reachable, e.g. when the picture comes through a proxy (go2rtc, Frigate, Scrypted) that stays ready although the camera is gone. Picture and popup stay with this camera." },
       // "Still image from: …" (1.2.1): the tile's image from another camera.*/image.* –
       // without an entry, automatically a snapshot entity of the same camera (casora-core.js casoraCamStill).
       { key: "still_entity", label: "Still image from", domains: ["camera", "image"], advanced: true,
@@ -307,10 +303,8 @@ window.CASORA_TILE_TYPES = [
         options: ["5", "", "30", "60"],
         optionLabels: { "5": "Every 5 seconds", "": "Every 10 seconds", "30": "Every 30 seconds", "60": "Every 60 seconds" },
         hint: "How often the tile fetches a new still image while it is visible. The tile says \"Up to date\" while the picture is fresh and shows its age in the warning color when the camera stops delivering." },
-      { key: "alert_window_minutes", label: "Recent activity (minutes)", type: "number", advanced: true, group: "Popup",
-        placeholder: "5", hint: "A dot marks a camera with activity in this window." },
-      { key: "show_stream_variants", label: "Show stream variants", type: "bool", advanced: true, group: "Popup",
-        hint: "Also list snapshot cameras and every stream of a camera (hidden by default)." },
+      { key: "camera_popup_settings", label: "Popup settings", settingsLink: "cameras",
+        hint: "The same for every tile of this camera. Set it under Home & devices → Cameras." },
     ] },
   { id: "casora_alarm", label: "Alarm", template: "casora_alarm", domains: ["alarm_control_panel"], icon: "shield_check",
     color: "var(--casora-color-red, #FF453A)", fields: [
@@ -561,9 +555,6 @@ window.CASORA_TILE_TYPES = [
       needs: "frigate", needsText: "For every camera of the Frigate integration",
       needsMissing: "Frigate integration not installed yet", darkShots: true },
     fields: [ICON, TITLE_NAME,
-      { key: "status_entity", label: "Status from", domains: ["camera", "binary_sensor"],
-        classes: { binary_sensor: ["connectivity"] }, advanced: true, placeholder: "This camera",
-        hint: "Optional. Another camera or a connection sensor that tells whether the camera is reachable, e.g. when the picture comes through a proxy (go2rtc, Frigate, Scrypted) that stays ready although the camera is gone. Picture and popup stay with this camera." },
       { key: "refresh_s", label: "Refresh image", type: "select", advanced: true, tileLevel: true,
         options: ["5", "", "30", "60"],
         optionLabels: { "5": "Every 5 seconds", "": "Every 10 seconds", "30": "Every 30 seconds", "60": "Every 60 seconds" },
@@ -580,12 +571,8 @@ window.CASORA_TILE_TYPES = [
         options: ["", "standard"], optionLabels: { "": "Automatic", standard: "Standard" }, dynOptions: frigateStreams(true),
         when: (v) => v.live_tile === true || v.live_tile === "true",
         hint: "On a phone. “Automatic” takes the camera's sub stream when Frigate has one – it needs less data – otherwise the same stream as on the desktop." },
-      { key: "stream_popup", label: "Stream in the popup (default)", type: "select", advanced: true,
-        options: [""], optionLabels: { "": "Standard" }, dynOptions: frigateStreams(false),
-        hint: "The stream the popup starts with. With more than one stream the popup shows a switch below the picture; the choice there holds until the browser is closed." },
-      { key: "stream_popup_phone", label: "Stream in the popup on the phone", type: "select", advanced: true,
-        options: ["", "standard"], optionLabels: { "": "Automatic", standard: "Standard" }, dynOptions: frigateStreams(true),
-        hint: "On a phone. “Automatic” starts with the sub stream when Frigate has one, otherwise with the desktop's stream." },
+      { key: "camera_popup_settings", label: "Popup settings", settingsLink: "cameras",
+        hint: "The same for every tile of this camera. Set it under Home & devices → Cameras." },
     ] },
   // Reolink doorbell (community card, from card request #23): camera tile for the live camera of a Reolink
   // doorbell (device with the "visitor" doorbell button), plus rings, detections, quick replies, siren and
@@ -604,13 +591,8 @@ window.CASORA_TILE_TYPES = [
         options: ["5", "", "30", "60"],
         optionLabels: { "5": "Every 5 seconds", "": "Every 10 seconds", "30": "Every 30 seconds", "60": "Every 60 seconds" },
         hint: "How often the tile fetches a new still image while it is visible. The tile says \"Ready\" while the picture is fresh and shows its age in the warning color when the doorbell stops delivering." },
-      { key: "talk", label: "Talk (experiment)", type: "bool", advanced: true, group: "Popup",
-        hint: "Adds a Talk button under the live picture: your microphone goes to the doorbell through Home Assistant's own WebRTC connection. Only works over HTTPS, with the doorbell connected in your network (RTSP), and only if the doorbell accepts it – many Reolink doorbells don't. If it doesn't, the popup says so and listening keeps working." },
-      // Second camera (#23): switcher on the live image in the popup; large image while listening/talking (tablet request).
-      { key: "camera2", label: "Second camera", domains: ["camera"], group: "Popup",
-        hint: "Optional. Another camera, for example the entrance. The popup then shows a switch on the live picture to change between the doorbell and this camera. Talking always goes to the doorbell." },
-      { key: "big_on_audio", label: "Large picture when listening/talking", type: "bool", boolDefault: true, advanced: true, group: "Popup",
-        hint: "Tapping Listen or Talk opens the live picture large over the popup. Close it with ×, Esc or by swiping down." },
+      { key: "camera_popup_settings", label: "Popup settings", settingsLink: "cameras",
+        hint: "The same for every tile of this camera. Set it under Home & devices → Cameras." },
     ] },
   // Fridge / freezer (24.10.2026): pick one entity of the appliance (a zone temperature, setpoint or door);
   // scripts/local/00-finder.js casoraFridgeFind finds the rest on the device – Liebherr (HA core), Home Connect

@@ -46,7 +46,10 @@ assert.equal(hiddenForUser(c, 'lock.tuer', 'B'), false, 'vorübergehend ausgeble
 
 // Einbau: Glocke (openTarget) und Einträge/Sammel-Popups (openViaCard) fragen erst den Wächter;
 // verborgen → kein Popup und kein HA-Dialog.
-assert.ok(/function openTarget\(what, fallbackEntity\) \{\n    userGuard\(fallbackEntity,/.test(core), 'openTarget über userGuard');
+const openTarget = core.match(/function openTarget\(what, fallbackEntity\) \{[\s\S]*?\n  \}\n  function openTargetNow/);
+assert.ok(openTarget, 'openTarget fehlt');
+assert.match(openTarget[0], /userGuard\(chosenCam,/, 'Doorbell-Pfad über userGuard');
+assert.match(openTarget[0], /userGuard\(fallbackEntity,/, 'Rückfall-Pfad über userGuard');
 const basis = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/01-basis.js', import.meta.url), 'utf8');
 assert.ok(basis.includes('if (!checked && window.casoraUserGuard)') && basis.includes('function () { done(true); }'), 'openViaCard über casoraUserGuard');
 const en = JSON.parse(fs.readFileSync(new URL('../../custom_components/casora/translations/dashboard/phrases/en.json', import.meta.url), 'utf8'));

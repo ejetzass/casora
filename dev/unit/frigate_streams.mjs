@@ -139,31 +139,35 @@ assert.equal(F.wsUrl({ hassUrl: (p) => 'https://ha.example' + p }, '/api/frigate
 assert.equal(F.mseCodecs({ isTypeSupported: (t) => /avc1\.640029|opus/.test(t) }), 'avc1.640029,opus');
 assert.equal(F.mseCodecs(null), '');
 
-// 9) Studio: the four fields of the Frigate card, choices from the camera's streams.
+// 9) Studio: the two tile fields of the Frigate card; the popup stream choices moved to the
+// Cameras section (#90), the tile offers the link instead. The choices still come from the streams.
 const tsrc = read('custom_components/casora/panel/casora-panel-types.js');
 const w = { _casoraFrigate: F, casoraI18n: { t: (s) => ({ 'Sub stream': 'Unterstream', Automatic: 'Automatisch' }[s] || s) } };
 new Function('window', tsrc.slice(0, tsrc.indexOf('\n];\n', tsrc.indexOf('window.CASORA_TILE_TYPES = [')) + 4))(w);
 const frig = w.CASORA_TILE_TYPES.find((t) => t.id === 'casora_frigate');
 const fld = Object.fromEntries(frig.fields.map((f) => [f.key, f]));
-['stream_tile', 'stream_tile_phone', 'stream_popup', 'stream_popup_phone'].forEach((k) => {
+['stream_tile', 'stream_tile_phone'].forEach((k) => {
   assert.equal(fld[k] && fld[k].type, 'select', k);
   assert.equal(typeof fld[k].dynOptions, 'function', k);
 });
+assert.equal(fld.stream_popup, undefined, 'the popup stream field moved to the Cameras section');
+assert.equal(fld.stream_popup_phone, undefined, 'the popup phone stream field moved to the Cameras section');
+assert.equal((frig.fields.find((f) => f.settingsLink) || {}).settingsLink, 'cameras', 'the tile links to the Cameras section');
 assert.equal(fld.stream_tile.when({}), false, 'tile stream only with live on the tile');
 assert.equal(fld.stream_tile.when({ live_tile: true }), true);
-assert.equal(fld.stream_popup.when, undefined, 'popup stream always');
-const dDesk = fld.stream_popup.dynOptions(hass, 'camera.gartentor', () => {});
+assert.equal(typeof w.casoraFrigateStreams, 'function', 'the Cameras section uses the same stream choices');
+const dDesk = w.casoraFrigateStreams(false)(hass, 'camera.gartentor', () => {});
 assert.deepEqual(dDesk.options, ['', 'gartentor_sub', 'gartentor-hd', 'Gartentor_low'], 'desktop: Standard = default');
 // Two sub streams (gartentor_sub, Gartentor_low): names instead of the kind word.
 assert.equal(dDesk.labels.gartentor_sub, 'gartentor_sub');
 assert.equal(dDesk.labels['gartentor-hd'], 'Main stream · gartentor-hd');
-const dPh = fld.stream_popup_phone.dynOptions(hass, 'camera.einfahrt', () => {});
+const dPh = w.casoraFrigateStreams(true)(hass, 'camera.einfahrt', () => {});
 assert.deepEqual(dPh.options, ['', 'standard', 'einfahrt_sub'], 'phone: Automatic, Standard, streams');
 assert.equal(dPh.labels[''], 'Automatisch · Unterstream · einfahrt_sub');
 assert.equal(dPh.labels.einfahrt_sub, 'Unterstream · einfahrt_sub');
-const dNone = fld.stream_popup_phone.dynOptions(hass, 'camera.carport', () => {});
+const dNone = w.casoraFrigateStreams(true)(hass, 'camera.carport', () => {});
 assert.deepEqual(dNone.options, ['', 'standard'], 'no extra streams');
 assert.equal(dNone.labels[''], 'Same as desktop');
-assert.equal(fld.stream_popup.dynOptions(hass, 'camera.unbekannt', () => {}), null, 'not a Frigate camera: fixed options');
+assert.equal(w.casoraFrigateStreams(false)(hass, 'camera.unbekannt', () => {}), null, 'not a Frigate camera: fixed options');
 
 console.log('frigate_streams: ok');

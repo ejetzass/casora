@@ -457,9 +457,39 @@ function camStatusMap(rooms) {
   }));
   return out;
 }
-// Same rule as casoraCamOffline (casora-core.js), which a freshly opened Studio has not loaded.
-const camOffline = (id, states, map) => {
-  const sid = (map || {})[id];
+function camTileStatusFor(camera, hass, rooms) {
+  const id = camera && camera.entity_id;
+  const map = camStatusMap(rooms);
+  if (!id) return null;
+  if (map[id]) return map[id];
+  const device = camera.device_id || ((hass && hass.entities && hass.entities[id]) || {}).device_id;
+  if (!device) return null;
+  const registry = (hass && hass.entities) || {};
+  const tile = Object.keys(map).find((tileId) => ((registry[tileId] || {}).device_id === device) && map[tileId]);
+  return tile ? map[tile] : null;
+}
+window.casoraCameraTileStatusFor = camTileStatusFor;
+// Keep the Studio preview on the dashboard rule: house camera, legacy tile, then that camera.
+const camStatusOf = (id, map, cameras, hass) => {
+  if (typeof id !== "string" || !id.startsWith("camera.")) return null;
+  const registry = (hass && hass.entities) || {};
+  const device = (registry[id] || {}).device_id;
+  const records = Array.isArray(cameras) ? cameras : [];
+  let camera = device ? records.find((item) => item && item.device_id === device) : null;
+  if (!camera) camera = records.find((item) => item && item.entity_id === id);
+  if (camera && typeof camera.status_entity === "string" && camera.status_entity.includes(".") && camera.status_entity !== id) {
+    return camera.status_entity;
+  }
+  let sid = (map || {})[id];
+  if (!sid && device) {
+    const tile = Object.keys(map || {}).find((tileId) => ((registry[tileId] || {}).device_id === device) && map[tileId]);
+    if (tile) sid = map[tile];
+  }
+  return typeof sid === "string" && sid.includes(".") && sid !== id ? sid : id;
+};
+// Studio is freshly loaded without casora-core.js, so keep its preview evaluator self-contained.
+const camOffline = (id, states, map, cameras, hass) => {
+  const sid = camStatusOf(id, map, cameras, hass);
   const e = sid && states && states[sid];
   if (!e) return false;
   const s = String(e.state == null ? "" : e.state).toLowerCase();
@@ -2708,6 +2738,8 @@ const SECTIONS = [
         always: true, ord: 3 },
       { key: "notify_doorbell", sub: "safety", glyph: "doorbell", tone: "var(--casora-color-teal, #00C3D0)", label: "Doorbell", type: "bool", boolDefault: true,
         always: true, ord: 4 },
+      { key: "notify_camera_detection", sub: "safety", glyph: "camera", tone: "var(--casora-color-teal, #00C3D0)", label: "Camera detections", type: "bool", boolDefault: true,
+        always: true, ord: 4.5 },
       { key: "notify_doors", sub: "safety", glyph: "door-open", tone: "var(--casora-popup-ui-warn, #FF9F0A)", label: "Doors", type: "bool", boolDefault: true,
         always: true, ord: 5 },
       { key: "notify_people", sub: "house", glyph: "person", tone: "var(--casora-popup-ui-good, #30D158)", label: "People", type: "bool", boolDefault: true,
@@ -18005,7 +18037,10 @@ class CasoraPanel extends HTMLElement {
 
   // Kamera „Status von: …“ (1.1.1) in der Vorschau: nach dem ungespeicherten Stand.
   _camOff(id) {
-    return camOffline(id, this._hass && this._hass.states, camStatusMap(this._state && this._state.compact && this._state.compact.rooms));
+    const rooms = this._state && this._state.compact && this._state.compact.rooms;
+    const cameras = this._cs && this._cs.S && Array.isArray(this._cs.S.cameras)
+      ? this._cs.S.cameras : ((window.CASORA_SETTINGS || {}).cameras || []);
+    return camOffline(id, this._hass && this._hass.states, camStatusMap(rooms), cameras, this._hass);
   }
 
   // Raumname in der Vorschau: wie das Dashboard ihn zeigt (übersetzt, siehe shownRoomName).
@@ -20892,7 +20927,7 @@ class CasoraPanel extends HTMLElement {
     }
   }
 
-  _pickSheet({ title, list, current, onPick, glyph, label, free }) {
+  _pickSheet({ title, list, current, onPick, glyph, label, free, preserveOrder }) {
     if (this._openCombo) this._openCombo();
     this._trace("before");
     const snap = this._scrollSnap();
@@ -20993,7 +21028,7 @@ class CasoraPanel extends HTMLElement {
         || (ents && meta(o) && (meta(o).ctx + " " + meta(o).name).toLowerCase().includes(needle)));
       listEl.innerHTML = "";
       const typed = q.value.trim();
-      const groups = ents ? this._entGroups(hits.slice(0, 300)) : [["", hits.slice(0, 300)]];
+      const groups = ents && !preserveOrder ? this._entGroups(hits.slice(0, 300)) : [["", hits.slice(0, 300)]];
       const items = [];
       groups.forEach(([k, ids]) => {
         if (groups.length > 1) items.push(() => {
@@ -22652,7 +22687,7 @@ class CasoraPanel extends HTMLElement {
       // Entitäten nach Raum gruppiert, wie in HAs Auswahl.
       let heads = null;
       const lead = opts && opts.lead instanceof Map && opts.lead.size ? opts.lead : null;
-      if (entityish && shown.length > 1) {
+      if (entityish && shown.length > 1 && !(opts && opts.preserveOrder)) {
         // The tile's own devices on top, each under its name (#98), then the rest by room.
         const top = lead ? shown.filter((o) => lead.has(o)) : [];
         const byDev = new Map();
@@ -22832,7 +22867,7 @@ class CasoraPanel extends HTMLElement {
           glyph: (o) => iconUrl(o === ICON_DEFAULT && iconFallback ? iconFallback : o),
           onPick: (v) => commit(v),
         } : {
-          title: rowLabel(), list, current,
+          title: rowLabel(), list, current, preserveOrder: !!(opts && opts.preserveOrder),
           // Device field: offer typed text only when it is an entity ID, as the desktop field does on blur.
           free: entityish ? asId : undefined,
           onPick: (v) => commit(v),
@@ -29884,7 +29919,7 @@ class CasoraPanel extends HTMLElement {
       }
       // A jump to a Settings group instead of a tile variable (casora-panel-personal.js, issue #31).
       if (f.settingsLink) {
-        const go = typeof this._casoraSettingsLink === "function" ? this._casoraSettingsLink(f) : null;
+        const go = typeof this._casoraSettingsLink === "function" ? this._casoraSettingsLink(f, tile) : null;
         if (go) { put(f.label, go); hintUnder(); }
         return;
       }

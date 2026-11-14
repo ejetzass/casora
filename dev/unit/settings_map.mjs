@@ -20,7 +20,7 @@ assert.ok(Array.isArray(NEU) && NEU.length === 9, 'nine tiles');
 
 // The previous settings (26.11.9): pages, their personal sections, the dashboard sections the topics linked, the topic ids.
 const pageIds = ['design', 'home', 'calendar', 'alerts', 'dashboards', 'ai', 'outdoor', 'vent', 'live', 'fuel'];
-const personal = ['waste', 'contacts', 'security', 'scenes', 'media', 'devices', 'calendars', 'notify', 'basis', 'umzug'];
+const personal = ['waste', 'contacts', 'security', 'scenes', 'media', 'devices', 'calendars', 'notify', 'basis', 'umzug', 'cameras'];
 const secs = ['Time', 'Notifications', 'Scenes', 'General', 'Weather'];
 const topics = ['look', 'msg', 'house', 'wx', 'ctl', 'ext'];
 // The previous structure is gone: no topic table, no page table, no preview switch.
@@ -97,7 +97,8 @@ const texts = new Set(['Open updates', 'Advanced', 'Search: e.g. clock, waste, p
   'Open a dashboard in the Studio to change this.', 'Show scenes on this dashboard', 'Save your changes?',
   'Some changes are not saved yet. Discard takes back everything not saved, also on this dashboard.',
   'The dashboard could not be saved. Your changes are still here.',
-  'What do you want to set up? Pick a topic or search for a word.']);
+  'What do you want to set up? Pick a topic or search for a word.',
+  'Cameras, popups and user interface']);
 NEU.forEach((tl) => { texts.add(tl.label); texts.add(tl.sub); tl.blocks.forEach((b) => { texts.add(b.title); texts.add(b.plain); }); });
 const langs = ['de', 'es', 'fr', 'it', 'nl', 'pl', 'pt', 'nb'];
 langs.forEach((l) => {
@@ -109,7 +110,13 @@ texts.forEach((s) => assert.ok(src.includes(JSON.stringify(s).slice(1, -1)) || s
 // jump from a tile or the old battery list lands in the right section.
 const house = NEU.find((tl) => tl.id === 'house');
 assert.ok(house.fold && house.blocks.every((b) => !b.adv), 'Home & devices: sections, no Advanced');
-assert.deepEqual(house.blocks.map((b) => b.k), ['security', 'contacts', 'battery', 'scenes', 'media', 'waste', 'calendars', 'devices'], 'Home & devices: order');
+assert.deepEqual(house.blocks.map((b) => b.k), ['security', 'contacts', 'battery', 'scenes', 'media', 'waste', 'cameras', 'calendars', 'devices'], 'Home & devices: order');
+const cameras = house.blocks.find((b) => b.k === 'cameras');
+assert.equal(cameras.title, 'Cameras');
+assert.equal(cameras.plain, 'Cameras, popups and user interface');
+assert.match(cameras.kw, /\bkamera\b/);
+assert.match(cameras.kw, /\bcamera\b/);
+assert.match(cameras.kw, /\bcameras\b/);
 assert.deepEqual(route('home', 'battery'), ['n-house', 'nb-battery'], 'batteries → Home & devices');
 assert.deepEqual(route('home', 'notify_exclude'), ['n-bell', 'nb-notify'], '"Do not notify" stays with the bell');
 // Side panel tabs: every kind with shared settings points at a block that exists; kinds without any have no entry.

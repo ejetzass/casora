@@ -1267,21 +1267,19 @@ window.casoraHaptic = window.casoraHaptic || function (kind) {
 // casora-greeting:end
 
 // casora-cam-status:start
-// Kamera „Status von: …“ (07.10.2026, 1.1.1): Freiwillig je Kamera-Kachel (variables.status_entity)
-// eine zweite Entität, die sagt, ob die Kamera erreichbar ist – eine andere camera.* oder ein
-// Verbindungssensor (binary_sensor, connectivity). Nötig, wenn das Bild über einen Proxy kommt
-// (go2rtc, Frigate, Scrypted, ONVIF-Proxy), der „bereit“ meldet, obwohl die Kamera dahinter weg ist.
-// Bild und Popup bleiben bei der Kachel-Kamera. Offline gilt sie, wenn die Status-Entität
-// unavailable/unknown ist, ein Verbindungssensor auch bei „off“. Ohne Einstellung: false – also
-// genau das bisherige Verhalten, nichts wird geraten.
-// Woher die Zuordnung kommt: die Kachel selbst (vars.status_entity), in der Studio-Vorschau
-// vars.casora_camera_status, sonst die Kamera-Kacheln des offenen Dashboards (alle Ansichten, Desktop und Handy) – so kennen Sicherheits- und Kamera-Badge
-// sie auch dort, wo die Kachel gerade nicht gezeichnet ist.
+// Kamera „Status von: …“ (07.10.2026, 1.1.1): house camera config, then a saved tile value,
+// then the camera itself. The extra camera / connectivity sensor is useful when a proxy reports
+// ready although the camera behind it is gone. Keep the camera entity as the picture and popup.
+// Tile values remain readable for old dashboards; badges also find them when their tile is not drawn.
 // states: in Vorlagen das states von button-card (dann zeichnet die Karte bei Änderungen neu).
 (function () {
   if (window.casoraCamOffline) return;
   var ok = function (x) { return typeof x === 'string' && x.indexOf('.') > 0; };
   var panel = null, cfgSeen = null, fromCfg = {};
+  var home = function (hass) {
+    if (hass) return hass;
+    try { var ha = document.querySelector('home-assistant'); return ha && ha.hass; } catch (e) { return null; }
+  };
   var findPanel = function () {
     if (panel && panel.isConnected) return panel;
     panel = null;
@@ -1311,20 +1309,49 @@ window.casoraHaptic = window.casoraHaptic || function (kind) {
     fromCfg = out;
     return fromCfg;
   };
-  window.casoraCamStatusOf = function (id, vars) {
+  var tileStatus = function (id, hass, values) {
+    var map = values || mapFromConfig(), found = map[id];
+    if (ok(found)) return found;
+    var registry = (hass && hass.entities) || {}, meta = registry[id] || {}, device = meta.device_id;
+    if (!device) return null;
+    var ids = Object.keys(map);
+    for (var i = 0; i < ids.length; i++) {
+      if (((registry[ids[i]] || {}).device_id) === device && ok(map[ids[i]])) return map[ids[i]];
+    }
+    return null;
+  };
+  window.casoraCamStatusOf = function (id, vars, hass) {
     if (!ok(id)) return null;
     var v = vars || {};
-    if (ok(v.status_entity) && v.status_entity !== id && id.indexOf('camera.') === 0) return v.status_entity;
+    if (id.indexOf('camera.') !== 0) return null;
+    var H = home(hass), registry = (H && H.entities) || {}, device = (registry[id] || {}).device_id;
+    var cameras = ((window.CASORA_SETTINGS || {}).cameras);
+    var record = null;
+    if (Array.isArray(cameras)) {
+      if (device) {
+        for (var i = 0; i < cameras.length; i++) {
+          if (cameras[i] && cameras[i].device_id === device) { record = cameras[i]; break; }
+        }
+      }
+      if (!record) {
+        for (var j = 0; j < cameras.length; j++) {
+          if (cameras[j] && cameras[j].entity_id === id) { record = cameras[j]; break; }
+        }
+      }
+    }
+    if (record && ok(record.status_entity) && record.status_entity !== id) return record.status_entity;
+    if (ok(v.status_entity) && v.status_entity !== id) return v.status_entity;
     // Studio-Vorschau: Zuordnung aus dem ungespeicherten Stand (casora-panel.js camStatusMap).
-    var m = v.casora_camera_status && typeof v.casora_camera_status === 'object' ? v.casora_camera_status : null;
-    var s = m ? m[id] : mapFromConfig()[id];
-    return ok(s) && s !== id ? s : null;
+    var hasPreview = v.casora_camera_status && typeof v.casora_camera_status === 'object';
+    var s = hasPreview ? tileStatus(id, H, v.casora_camera_status) : tileStatus(id, H);
+    return ok(s) && s !== id ? s : id;
   };
-  window.casoraCamOffline = function (id, states, vars) {
-    var sid = window.casoraCamStatusOf(id, vars);
+  window.casoraCamOffline = function (id, states, vars, hass) {
+    var sid = window.casoraCamStatusOf(id, vars, hass);
     if (!sid) return false;
     var S = states;
-    if (!S) { try { S = document.querySelector('home-assistant').hass.states; } catch (e) { S = null; } }
+    var H = home(hass);
+    if (!S) S = H && H.states;
     var e = S && S[sid];
     // Status-Entität gibt es (noch) nicht: nicht raten, die Kamera gilt nicht als offline.
     if (!e) return false;
@@ -15535,7 +15562,26 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   var APPLIANCE_DONE = /^(off|idle|finished|complete|completed|standby|end|ready)$/i;
   var APPLIANCE_BUSY = /^(on|run|running|active|washing|rinsing|spinning|drying|printing|busy)$/i;
 
+  // Marker of a bell row that opens its doorbell's popup (openTarget routes it).
+  var DOORBELL_OPENS = 'casora:doorbell';
+  var DETECTION_OPENS = 'casora:detection';
+
+  function listedCameraTrigger(id, kind) {
+    var cameras = (window.CASORA_SETTINGS || {}).cameras;
+    if (!Array.isArray(cameras)) return null;
+    return cameras.find(function (camera) {
+      return camera && camera.entity_id && Array.isArray(camera[kind + '_triggers'])
+        && camera[kind + '_triggers'].indexOf(id) >= 0;
+    }) || null;
+  }
+  function listedDoorbell(id) { return listedCameraTrigger(id, 'doorbell'); }
+  function listedDetection(id) { return listedCameraTrigger(id, 'detection'); }
+
+  // Before 00-finder.js has loaded, the rule of window.casoraIsDoorbell is not there yet; rows are rebuilt
+  // later, so this upstream check only has to be safe for that moment.
   function isDoorbell(id, st) {
+    if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
+    if (window.casoraIsDoorbell) return window.casoraIsDoorbell(hassOf(), id);
     if (id.indexOf('event.') === 0) return dc(st) === 'doorbell';
     if (id.indexOf('binary_sensor.') === 0) {
       return dc(st) === 'occupancy' && /doorbell|ding|chime/i.test(id);
@@ -15575,6 +15621,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       if (on('alarm') && id.indexOf('alarm_control_panel.') === 0) return void out.push(id);
       if (on('vacuum') && id.indexOf('vacuum.') === 0) return void out.push(id);
       if (on('doorbell') && isDoorbell(id, st)) return void out.push(id);
+      if (on('camera_detection') && listedDetection(id) && !isDoorbell(id, st)) return void out.push(id);
       if (on('people') && id.indexOf('person.') === 0) return void out.push(id);
       if (on('appliances') && appl.indexOf(id) !== -1) return void out.push(id);
     });
@@ -15667,9 +15714,18 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     }
 
     if (isDoorbell(id, st)) {
+      if (!on('doorbell')) return null;
+      if (id.indexOf('binary_sensor.') === 0 && s !== 'on') return null;
+      if (id.indexOf('event.') === 0 && listedDoorbell(id) && !isFinite(Date.parse(s))) return null;
       // "Front Door Ding" is the entity, "Front Door" is the thing that rang.
       var who = name.replace(/\s+(ding|doorbell|chime|button)$/i, '');
-      return { label: (who || name) + ' hat geklingelt', icon: 'doorbell', tone: 'accent' };
+      return { label: (who || name) + ' hat geklingelt', icon: 'doorbell', tone: 'accent', opens: DOORBELL_OPENS };
+    }
+    if (listedDetection(id)) {
+      if (!on('camera_detection')) return null;
+      if (id.indexOf('binary_sensor.') === 0 && s !== 'on') return null;
+      if (id.indexOf('event.') === 0 && !isFinite(Date.parse(s))) return null;
+      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS };
     }
 
     var appl = applianceFor(id);
@@ -16938,7 +16994,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     return out;
   }
 
-  function cardFromConfig(names, entityId) {
+  function cardFromConfig(names, entityId, alternatives) {
     var h = hassOf();
     if (!h || !h.callWS) return Promise.resolve(null);
     var seg = (location.pathname || '').split('/').filter(Boolean);
@@ -16948,7 +17004,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       (function walk(cards) {
         (cards || []).forEach(function (c) {
           if (found || !c || typeof c !== 'object') return;
-          if (wants(c, names, entityId)) { found = c; return; }
+          if ((alternatives || [entityId]).some(function (id) { return wants(c, names, id); })) { found = c; return; }
           walk(c.cards);
         });
       })((cfg.views || []).reduce(function (a, v) {
@@ -17040,9 +17096,53 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   };
 
   function openTarget(what, fallbackEntity) {
+    if (what === DETECTION_OPENS) {
+      var camera = listedDetection(fallbackEntity);
+      if (camera && window.casoraCameraPopup && typeof window.casoraCameraPopup.open === 'function') {
+        return userGuard(camera.entity_id, function () {
+          window.casoraCameraPopup.open(camera.entity_id, function () {});
+        });
+      }
+      return;
+    }
+    if (what === DOORBELL_OPENS) {
+      var h = hassOf();
+      var listed = listedDoorbell(fallbackEntity);
+      if (listed && window.casoraCameraPopup && typeof window.casoraCameraPopup.open === 'function') {
+        return userGuard(listed.entity_id, function () {
+          window.casoraCameraPopup.open(listed.entity_id, function () {});
+        });
+      }
+      var bell = h && window.casoraDoorbellSources && window.casoraDoorbellSources(h).find(function (c) {
+        return c.sensor === fallbackEntity;
+      });
+      if (bell) {
+        var templateName = bell.event ? 'casora_camera' : 'casora_reolink_doorbell';
+        var cams = bell.cameras.filter(function (id) { return h.states[id]; });
+        var shown = typeof window.casoraVisibleIds === 'function'
+          ? window.casoraVisibleIds(cams) : Promise.resolve(cams);
+        return shown.then(function (visible) {
+          var list = (visible || cams).filter(function (id) { return cams.indexOf(id) !== -1; });
+          // All hidden: fall back to every camera; userGuard below still blocks a hidden one.
+          if (!list.length) list = cams;
+          // Prefer the camera whose tile uses the doorbell template, else the first one with any tile.
+          var withTile = list.filter(function (id) { return tileFor(id); });
+          var chosenCam = withTile.find(function (id) { return templatesOf(tileFor(id)._config).indexOf(templateName) !== -1; })
+            || withTile[0] || list[0] || bell.cam;
+          return userGuard(chosenCam, function () {
+            openTargetNow([templateName], chosenCam, bell.cameras);
+          });
+        });
+      }
+      // Never borrow another doorbell's tile when the source has no camera.
+      userGuard(fallbackEntity, function () {
+        if (fallbackEntity && window.casoraPopup) window.casoraPopup.moreInfo(fallbackEntity);
+      });
+      return;
+    }
     userGuard(fallbackEntity, function () { openTargetNow(what, fallbackEntity); });
   }
-  function openTargetNow(what, fallbackEntity) {
+  function openTargetNow(what, fallbackEntity, alternatives) {
     // dataset stringifies an array, so a retagged row arrives comma-joined.
     var names = Array.isArray(what) ? what
       : (what ? String(what).split(',').map(function (n) { return n.trim(); })
@@ -17055,17 +17155,23 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     if (!names.length && !own) return fall();
     tapCard(own || cardWithTemplate(names, fallbackEntity), function (hit) {
       if (hit) return;
-      cardFromConfig(names, fallbackEntity).then(function (el) {
+      cardFromConfig(names, fallbackEntity, alternatives).then(function (el) {
         // No tile on the dashboard (e.g. a plant without a plant tile): a hidden tile of the
         // first template for exactly this entity - the same Casora popup instead of the HA dialog („problem“).
         if (!el) el = cardSynth(names, fallbackEntity);
         if (!el) return fall();
         // One frame for button-card to evaluate its config before the tap.
         setTimeout(function () {
-          tapCard(el, function (ok) {
-            if (!ok) fall();
-            setTimeout(function () { if (el.parentNode) el.remove(); }, 1500);
-          });
+          var discard = function () { if (el.parentNode) el.remove(); };
+          var openPopup = function () {
+            tapCard(el, function (ok) {
+              if (!ok) fall();
+              setTimeout(discard, 1500);
+            });
+          };
+          // An alternate stream may have its own dashboard visibility restriction.
+          if (alternatives && el._config.entity !== fallbackEntity) userGuard(el._config.entity, openPopup, discard);
+          else openPopup();
         }, 80);
       });
     });
@@ -17566,7 +17672,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   }
 
   // The categories a dashboard can switch off, as the panel writes them.
-  var TYPES = ['safety', 'air', 'locks', 'alarm', 'doorbell', 'doors', 'people',
+  var TYPES = ['safety', 'air', 'locks', 'alarm', 'doorbell', 'camera_detection', 'doors', 'people',
     'vacuum', 'appliances', 'plants', 'battery', 'pulse', 'updates', 'restart', 'ha'];
 
   function configureFrom(V) {
