@@ -16,12 +16,17 @@ class Element {
     this.dataset = {};
     this.children = [];
     this.listeners = {};
-    this.classList = { contains: () => false, toggle() {} };
+    this.classList = { contains: c => String(this.className || '').split(' ').includes(c), toggle() {} };
+  }
+  get nextElementSibling() {
+    const list = this.parentNode ? this.parentNode.children : [];
+    return list[list.indexOf(this) + 1] || null;
   }
   appendChild(el) { this.children.push(el); el.parentNode = this; return el; }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(el => el !== this); this.parentNode = null; }
   setAttribute() {}
   removeAttribute() {}
+  getAttribute(name) { return this.attrs?.[name] ?? null; }
   getBoundingClientRect() { return { top: 50, bottom: 100, left: 0, right: 300, height: 50 }; }
   getRootNode() { return this; }
   getClientRects() { return [1]; }
@@ -30,11 +35,31 @@ class Element {
   querySelector() { return null; }
   querySelectorAll(sel) {
     const all = this.children.flatMap(el => [el, ...el.querySelectorAll('*')]);
-    return sel === '*' ? all : all.filter(el => sel === '.hui-row' && el.className === 'hui-row');
+    return sel === '*' ? all : all.filter(el => el.className === sel.slice(1));
+  }
+  // An open stack's timeline: one element per entry, with its tap attributes (data-casora-open, data-casora-mi, data-tl).
+  insertAdjacentHTML(where, html) {
+    const box = new Element();
+    box.className = 'casora-ntl';
+    for (const m of String(html).matchAll(/<div class="casora-ntl-e[^"]*"([^>]*)>/g)) {
+      const el = new Element();
+      el.className = 'casora-ntl-e';
+      el.attrs = {};
+      for (const a of m[1].matchAll(/([\w-]+)="([^"]*)"/g)) {
+        el.attrs[a[1]] = a[2];
+        if (a[1].startsWith('data-')) el.dataset[a[1].slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = a[2];
+      }
+      box.appendChild(el);
+    }
+    const at = this.parentNode.children.indexOf(this);
+    this.parentNode.children.splice(at + 1, 0, box);
+    box.parentNode = this.parentNode;
   }
   set innerHTML(value) {
     this.children = [];
-    for (const row of value && value.startsWith('[') ? JSON.parse(value) : []) {
+    // The bell writes a <style> block before the rows; skip it, then read the rows (a JSON list in this fake).
+    const body = String(value || '').replace(/^<style>[\s\S]*?<\/style>/, '');
+    for (const row of body.startsWith('[') ? JSON.parse(body) : []) {
       const el = this.appendChild(new Element());
       el.className = 'hui-row';
       el.dataset.casoraMi = row.entity;
@@ -59,6 +84,16 @@ async function setup(kind, options = {}) {
   if (options.released) {
     entries.push({ entity_id: source, state: 'off', when: when / 1000 + 3 });
     states[source].state = 'off';
+  }
+  if (options.twoRings) {
+    // A second press later: the logbook gets a second entry for the same source (a stack of two rings).
+    if (kind === 'ring') {
+      const later = when + 30000;
+      entries.push({ entity_id: source, state: new Date(later).toISOString(), when: later / 1000 });
+      states[source].state = new Date(later).toISOString();
+    } else {
+      entries.push({ entity_id: source, state: 'off', when: when / 1000 + 3 }, { entity_id: source, state: 'on', when: when / 1000 + 30 });
+    }
   }
   if (options.lock) {
     states['lock.mock_gate'] = { state: 'locked', attributes: { friendly_name: 'Mock Gate' } };
@@ -149,11 +184,12 @@ async function setup(kind, options = {}) {
   const N = ctx._casoraNotify;
   await N.refresh();
   assert.equal(N.rows.length, options.lock ? 2 : 1, `${kind}: a press creates one doorbell row`);
+  if (options.stackOpen) N.stack(N.rows[0].stackKey, true);
   N.open(new Element());
   const menu = body.children[0], inner = menu.children[0];
   const list = inner.children.find(el => el.querySelectorAll('.hui-row').length);
-  const click = async row => {
-    const event = { composedPath: () => [row, list], preventDefault() {}, stopPropagation() {} };
+  const click = async (row, path = [row, list]) => {
+    const event = { composedPath: () => path, preventDefault() {}, stopPropagation() {} };
     for (const fn of list.listeners.click || []) fn(event);
     // Routing and visibility checks are promise-based.
     for (let i = 0; i < 12; i++) await Promise.resolve();
@@ -269,4 +305,25 @@ await realManual.click(realManual.list.querySelectorAll('.hui-row')[0]);
 assert.equal(realManual.opened[0].template, 'casora_camera', 'bell invokes the real canonical camera opener');
 assert.equal(realManual.opened[0].entity, realManual.cam);
 assert.equal(realManual.delays.includes(120000), false, 'manual bell opening never arms automatic close');
+// Doorbell stack: repeated rings of one doorbell are one row with a count; the open stack's timeline lists every ring,
+// the newest too, and each entry opens the same doorbell popup. The row itself keeps opening and closing the list.
+for (const kind of ['ring', 'reolink']) {
+  const stack = await setup(kind, { twoRings: true, stackOpen: true });
+  assert.equal(stack.N.rows.length, 1, `${kind}: repeated rings stay one stack row`);
+  assert.equal(stack.N.rows[0].count, 2, `${kind}: the stack counts both rings`);
+  const timeline = stack.N.timeline(stack.N.rows[0].stackKey);
+  assert.equal(timeline.length, 2, `${kind}: the open stack lists the newest ring too, not only the older ones`);
+  assert.equal(JSON.stringify(timeline.map(entry => entry.m.entity)), JSON.stringify([stack.source, stack.source]));
+  const entries = stack.list.querySelectorAll('.casora-ntl-e');
+  assert.equal(entries.length, 2, `${kind}: the timeline renders one tappable entry per ring`);
+  for (const entry of entries) await stack.click(entry, [entry, stack.list]);
+  assert.equal(stack.opened.length, 2, `${kind}: tapping either ring opens a popup`);
+  for (const opened of stack.opened) {
+    assert.equal(opened.template, stack.popup.template, `${kind}: each ring opens the doorbell's own popup`);
+    assert.equal(opened.src, stack.tile);
+  }
+  assert.deepEqual(stack.moreInfo, [], `${kind}: no more-info fallback for a stacked ring`);
+  assert.equal(stack.N.rows.length, 1, `${kind}: opening a ring keeps the stack in the drawer`);
+  assert.equal(stack.N.rows[0].count, 2, `${kind}: opening a ring does not consume the stack`);
+}
 console.log('ok glocke_doorbell_popup');
