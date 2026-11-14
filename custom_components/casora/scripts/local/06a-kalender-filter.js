@@ -9,7 +9,7 @@
   // A recorded decision (casora_filter_match, from the mock's replay) decides for an entry the export knew
   // (meta.entries), and only while the title is still the one recorded; any other entry uses the text match.
   window.casoraCalendarAllows = function (title, settings, attrs, uid) {
-    var words = settings || (window.casoraSettings ? window.casoraSettings() : {});
+    var words = settings || (window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {}));
     var meta = attrs && attrs.casora_filter_match;
     var decision = meta && (uid === undefined ? meta.message : uid && meta.events && meta.events[uid]);
     if (decision && decision.title !== title) decision = null;
