@@ -31,6 +31,42 @@ assert.equal(window.casoraCalendarAllows('Concert', { calendar_filter: 'a, , b' 
 assert.equal(window.casoraCalendarAllows('Ballet', { calendar_filter: 'a, , b' }), false, 'each comma entry matches on its own');
 console.log('ok calendar filter title rule');
 
+// ── Exported decisions (casora_filter_match) ──────────────────────────────────
+const decisions = { entries: ['Termin-aaaaaa', 'Termin-bbbbbb'], events: {
+  'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] },
+  'Termin-222222': { title: 'Termin-aaaaaa', matches: [] } } };
+const codedAttrs = { casora_filter_match: { ...decisions, message: { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } } };
+settings = { calendar_filter: 'Termin-aaaaaa' };
+assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Termin-111111'), false, 'an exported event decision hides the coded event');
+assert.equal(window.casoraCalendarAllows('Termin-aaaaaa', null, codedAttrs, 'Termin-222222'), true, 'a known negative overrides an accidental substring');
+assert.equal(window.casoraCalendarAllows('Termin-aaaaaa', null, codedAttrs, 'new-event'), false, 'new events use normal matching');
+assert.equal(window.casoraCalendarAllows('Termin-aaaaaa', null, codedAttrs, 'Termin-111111'), false, 'an edited title uses normal matching');
+assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs), false, 'the state message decision hides its title');
+settings = { calendar_filter: '' };
+assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Termin-111111'), true, 'removing an exported entry stops hiding its event');
+settings = { calendar_filter: 'cccc' };
+assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Termin-111111'), false, 'a changed entry uses ordinary substring matching');
+settings = { calendar_filter: 'other' };
+assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Termin-111111'), true, 'an unrelated changed entry does not reuse an old decision');
+settings = {};
+console.log('ok exported calendar filter decisions');
+
+// ── Section form (Studio: calendar_filter = { words, timed_first }) ─────────
+// The decision and the entry list come from the section's words; the plain text form still works.
+{
+  const sectionAttrs = { casora_filter_match: { entries: ['foo'], events: {
+    'Termin-333333': { title: 'Termin-dddddd', matches: ['foo'] } }, message: { title: 'Termin-eeeeee', matches: [] } } };
+  assert.equal(window.casoraCalendarAllows('Termin-dddddd', { calendar_filter: { words: 'foo', timed_first: true } }, sectionAttrs, 'Termin-333333'), false,
+    'a section with words applies the recorded uid decision');
+  assert.equal(window.casoraCalendarAllows('Termin-dddddd', { calendar_filter: 'foo' }, sectionAttrs, 'Termin-333333'), false,
+    'the plain text form still applies the recorded uid decision');
+  assert.equal(window.casoraCalendarAllows('Termin-dddddd', { calendar_filter: { words: 'bar', timed_first: true } }, sectionAttrs, 'Termin-333333'), true,
+    'a section entry the export did not know uses the text match');
+  assert.equal(window.casoraCalendarAllows('Termin-dddddd', { calendar_filter: { timed_first: true } }, sectionAttrs, 'Termin-333333'), true,
+    'a section without words hides nothing');
+  console.log('ok calendar filter section form');
+}
+
 // ── Agenda tile: Upstream's pick, the filter skips titles ─────────────────────
 const states = {
   'calendar.mock_day': { state: 'on', attributes: { message: 'Termin-bbbbbb ffffff', start_time: '2054-11-13 00:00:00', end_time: '2054-11-14 00:00:00', all_day: true } },
