@@ -9,6 +9,10 @@ DOMAIN = "casora"
 UPDATE_REPO = "SH1FT-W/casora"
 # Its GitHub id: HACS keys the repository's device and update entity by it (update.hacs_repo_id).
 UPDATE_REPO_ID = "1404244036"
+# The Fork's Fork releases ("<Upstream version>.<n>", Marketplace source of a house that follows the Fork): the store
+# keys its device and update entity by this id, so Casora must know it too, else it adds a second, non-installable entry.
+FORK_REPO = "ejetzass/casora"
+FORK_REPO_ID = "1451309897"
 
 # manifest.json is the single source of truth: HACS reads it.
 VERSION = json.loads(
