@@ -21,7 +21,7 @@ assert.equal(synth(['casora_badge_air_quality'], 'plant.beispiel'), null, 'Badge
 assert.equal(synth(['casora_plant'], 'plant.fehlt'), null, 'nur vorhandene Entitäten');
 assert.equal(synth([], 'plant.beispiel'), null);
 // Reihenfolge: echte Kachel → Kachel aus der Konfiguration → nachgebaute Kachel → HA-Dialog.
-assert.ok(/cardFromConfig\(names, fallbackEntity\)\.then\(function \(el\) \{[\s\S]{0,400}if \(!el\) el = cardSynth\(names, fallbackEntity\);\s*if \(!el\) return fall\(\);/.test(core));
+assert.ok(/cardFromConfig\(names, fallbackEntity, alternatives\)\.then\(function \(el\) \{[\s\S]{0,400}if \(!el\) el = cardSynth\(names, fallbackEntity\);\s*if \(!el\) return fall\(\);/.test(core));
 // #66: weather warnings never borrow a warning tile of other sensors („Keine Warnungen“), they get their own hidden tile.
 const own = core.match(/  var OWN_TPL = [^\n]+\n  var ownOnly = function \(names, entityId\) \{[\s\S]*?\n  \};\n/);
 assert.ok(own, 'ownOnly fehlt');
