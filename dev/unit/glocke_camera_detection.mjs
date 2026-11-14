@@ -77,5 +77,6 @@ const detections = rows.filter(row => row.entity === id);
 assert.equal(detections.length, 1, 'repeated detections of one trigger stack into one row');
 assert.equal(detections[0].count, 2, 'the stack counts each off-to-on detection');
 assert.equal(detections[0].label, 'Person erkannt');
-assert.ok(!detections[0].opens, 'the stack opens no device');
+assert.ok(!detections[0].passive, 'detection row is tappable');
+assert.equal(detections[0].opens, 'casora:detection', 'a single row opens the camera popup; the stack opens its history');
 assert.equal(rows.find(row => row.entity === event)?.label, 'Motion erkannt', 'event detection uses its own name');
