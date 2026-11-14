@@ -226,3 +226,39 @@ await panel._csDiscardAll();
 assert.equal(panel._cs.S.calendar_filter, 'Termin-bbbbbb ffffff', 'Discard restores the saved filter');
 assert.equal(panel._csOwnDirty(), false, 'Discard clears the dirty state');
 console.log('ok Calendar filter settings draft, save and discard');
+
+// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
+{
+  class PreviewPanel {}
+  const previewWindow = { casoraSettings: () => ({ calendar_filter: 'Termin-aaaaaa' }),
+    casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
+  const node = () => ({ style: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; } });
+  const previewDocument = { createElement: node, querySelector: () => null };
+  const previewContext = vm.createContext({ window: previewWindow, document: previewDocument,
+    customElements: { whenDefined: () => Promise.resolve(), get: () => PreviewPanel },
+    setTimeout: () => 0, console, Date: ClockDate });
+  previewWindow.casoraImportScript = async path => {
+    vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/' + path, import.meta.url), 'utf8'), previewContext);
+  };
+  vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel-settings.js', import.meta.url), 'utf8'), previewContext);
+  await settle();
+  new PreviewPanel()._csSaverPreview({ insertBefore() {} }, {});
+  await settle();
+  const coded = { 'calendar.mock_wire': { attributes: { casora_filter_match: {
+    entries: ['Termin-aaaaaa'], events: { 'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } }
+  } } } };
+  const codedEvents = [
+    { title: 'Termin-cccccc', uid: 'Termin-111111', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
+    { title: 'Visible', uid: 'other', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
+  ];
+  const view = previewWindow._casoraSaver.context({ kind: 'linie', now: new ClockDate(),
+    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] });
+  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies exported Calendar filter decisions');
+  const vars = { calendars: [{ entity: 'calendar.mock_wire' }] };
+  previewWindow._casoraCalendar.load({ states: coded, callApi: async () => [
+    { summary: 'Termin-cccccc', uid: 'Termin-111111', start: { dateTime: '2026-11-13T10:00:00' }, end: { dateTime: '2026-11-13T11:00:00' } }
+  ] }, vars);
+  await settle();
+  assert.ok(previewWindow._casoraCalendar.html('day', vars).includes('Termin-cccccc'), 'the calendar popup remains unfiltered after Studio loads the scripts');
+  console.log('ok Studio preview lazy-loads the Calendar filter');
+}
