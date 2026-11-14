@@ -4,9 +4,13 @@
 (function () {
   if (window.casoraCalendarAllows) return;
   // The calendar popup keeps every event. settings: the object to read the words from (the Studio passes
-  // its settings draft); omitted, the saved settings. attrs: the calendar state's attributes; a recorded
-  // decision there (casora_filter_match.message, from the mock's replay) counts only for the entries that are
-  // still in the filter: its matches name the entries that hit the title when it was recorded.
+  // its settings draft); omitted, the saved settings. attrs: the calendar state's attributes (or, from the
+  // screensaver, { casora_filter_match } for the event). uid: undefined for the state's own message; for an
+  // API event its uid, or null when it has none (then the decision is the message one, which the screensaver
+  // hands over only for the event that is the state's current message).
+  // A recorded decision (casora_filter_match, from the mock's replay) decides for an entry the export knew
+  // (meta.entries), and only while the title is still the one recorded; any other entry uses the text match.
+  // A decision without a title (the older replay format) decides for every entry it names.
   // calendar_filter is a section: { words, timed_first }. The old form (a plain text) still counts as the words.
   var filterOf = function (settings) {
     var all = settings || (window.casoraSettings ? window.casoraSettings() : {});
@@ -17,14 +21,21 @@
   window.casoraCalendarTimedFirst = function (settings) {
     return filterOf(settings).timed_first === true;
   };
-  window.casoraCalendarAllows = function (title, settings, attrs) {
-    var entries = String(filterOf(settings).words || '').split(',').map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
-    var decided = attrs && attrs.casora_filter_match && attrs.casora_filter_match.message;
-    if (decided && Array.isArray(decided.matches)) {
-      return !decided.matches.some(function (m) { return entries.indexOf(String(m).trim().toLowerCase()) !== -1; });
-    }
+  window.casoraCalendarAllows = function (title, settings, attrs, uid) {
+    var meta = attrs && attrs.casora_filter_match;
+    var decision = meta && (uid ? meta.events && meta.events[uid] : meta.message);
+    if (decision && decision.title != null && decision.title !== title) decision = null;
+    if (decision && !Array.isArray(decision.matches)) decision = null;
+    var known = decision && Array.isArray(meta.entries) ? meta.entries.map(function (e) { return String(e).trim().toLowerCase(); }) : null;
     var text = String(title || '').toLowerCase();
-    return !entries.some(function (entry) { return text.indexOf(entry) !== -1; });
+    return !String(filterOf(settings).words || '').split(',').some(function (entry) {
+      entry = entry.trim().toLowerCase();
+      if (!entry) return false;
+      if (decision && (!known || known.indexOf(entry) !== -1)) {
+        return decision.matches.some(function (m) { return String(m).trim().toLowerCase() === entry; });
+      }
+      return text.indexOf(entry) !== -1;
+    });
   };
   // The Agenda tile's pick (Upstream's rule): one event per calendar from the calendar states (message,
   // start_time, all_day). A running event wins, then the earliest start. cals: [{ entity, tile }] (tile false is
