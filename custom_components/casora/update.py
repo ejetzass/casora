@@ -4,7 +4,9 @@ Casora asks GitHub itself and anonymously (update_source.py) for new releases an
 under Settings → Updates with their release notes. Installing is HACS' job: the entity has no
 INSTALL feature and no code here writes into custom_components (HACS default-store review,
 hacs/default#12143). If HACS already manages Casora, HACS reports new versions too – then Casora
-creates no update entity of its own, otherwise the same version would show up twice.
+creates no update entity of its own, otherwise the same version would show up twice. "Manages Casora"
+means the store holds the Upstream repo or the Fork (FORK_REPO_ID): a house that follows the Fork must not get
+a second entry that offers Upstream releases it cannot install.
 
 "HACS" here means the store that downloads Casora: the custom integration HACS (domain hacs, up to
 HA 2026.10) or its successor built into HA 2026.11, the Marketplace (domain marketplace). Both key a
@@ -28,7 +30,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, UPDATE_REPO, UPDATE_REPO_ID, VERSION
+from .const import DOMAIN, FORK_REPO, FORK_REPO_ID, UPDATE_REPO, UPDATE_REPO_ID, VERSION
 from .release_notes import (
     changelog_file,
     ha_markdown,
@@ -57,6 +59,8 @@ DATA_HACS_ID = "update_hacs_repo_id"
 STORE_MARKETPLACE = "marketplace"
 STORE_HACS = "hacs"
 STORE_DOMAINS = (STORE_MARKETPLACE, STORE_HACS)
+# GitHub ids of the repositories a store may download Casora from, Upstream first.
+STORE_REPO_IDS = (UPDATE_REPO_ID, FORK_REPO_ID)
 # Leftovers of the former self-updater (last shipped in 26.10.59), both outside custom_components:
 # the staging area and the install history store. Setup deletes them once; keep this
 # for one release, then drop it (by then every install has run it).
@@ -130,8 +134,8 @@ def hacs_knows(hass: HomeAssistant, repo_id: str) -> bool:
 
 
 def hacs_repo_id(hass: HomeAssistant) -> str | None:
-    """GitHub id of UPDATE_REPO if HACS or the Marketplace manages Casora, else None."""
-    return UPDATE_REPO_ID if hacs_knows(hass, UPDATE_REPO_ID) else None
+    """GitHub id of UPDATE_REPO (or the Fork) if HACS or the Marketplace manages Casora, else None."""
+    return next((rid for rid in STORE_REPO_IDS if hacs_knows(hass, rid)), None)
 
 
 def store_url(hass: HomeAssistant, repo_id: str | None) -> str | None:
@@ -196,14 +200,14 @@ def casora_update_entity(hass: HomeAssistant, entry) -> tuple[str | None, str | 
             if eid is not None:
                 break
         if eid is None:
-            repo = "/" + UPDATE_REPO.lower() + "/"
+            repos = tuple("/" + r.lower() + "/" for r in (UPDATE_REPO, FORK_REPO))
             hits = []
             for e in list(reg.entities.values()):
                 if e.domain != "update" or e.platform == DOMAIN:
                     continue
                 st = hass.states.get(e.entity_id)
                 url = str((st.attributes.get("release_url") if st else "") or "").lower()
-                if repo in url + "/":
+                if any(r in url + "/" for r in repos):
                     hits.append((e.platform not in STORE_DOMAINS, e.entity_id))
             eid = min(hits)[1] if hits else None
         return eid, "hacs"
