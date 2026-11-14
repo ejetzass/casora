@@ -16346,14 +16346,17 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       return de || tr(rest) !== rest ? rest : l;
     });
   }
+  // The first member the timeline lists. A doorbell stack lists its newest ring too, since the row itself only opens
+  // and closes the list; other stacks list only the older messages, the newest is the row.
+  function tlFirst(head) { return head && head.opens === DOORBELL_OPENS ? 0 : 1; }
   function tlEntries(head, now) {
     now = now || Date.now();
-    var texts = tlTexts(head), today = dayStartOf(now), ms = (head.members || []);
+    var texts = tlTexts(head), today = dayStartOf(now), ms = (head.members || []), first = tlFirst(head);
     var out = [];
     ms.forEach(function (m, i) {
-      if (!i) return;
+      if (i < first) return;
       var d = dayStartOf(m.when), prev = ms[i - 1];
-      var dayLine = d !== today && dayStartOf(prev.when) !== d;
+      var dayLine = d !== today && (!prev || dayStartOf(prev.when) !== d);
       var dd = Math.round((today - d) / 86400000);
       out.push({ m: m, text: texts[i], time: hmOf(m.when),
         day: dayLine ? (dd === 1 ? 'Gestern' : new Date(m.when).toLocaleDateString(window.casoraLocale ? window.casoraLocale() : 'de-DE', { weekday: 'long' })) : '',
@@ -16799,7 +16802,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
         var tlMarkupHtml = _tlMade[list[i].stackKey];
         if (tlMarkupHtml && !(els[i].nextElementSibling && els[i].nextElementSibling.classList.contains('casora-ntl'))) {
           els[i].insertAdjacentHTML('afterend', tlMarkupHtml);
-          var box = els[i].nextElementSibling, ms = list[i].members.slice(1);
+          var box = els[i].nextElementSibling, ms = list[i].members.slice(tlFirst(list[i]));
           box.querySelectorAll('.casora-ntl-e').forEach(function (e) { e._casoraRow = ms[Number(e.getAttribute('data-tl'))]; });
           // Keyboard: Enter/Space open the entry like a tap.
           box.addEventListener('keydown', function (ev) {
