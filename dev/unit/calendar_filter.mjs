@@ -160,13 +160,19 @@ console.log('ok calendar tile tolerates a missing startup rule');
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
+// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts. The real Studio has
+// window.casoraSettings (from 00-finder.js), but it returns {}: the settings page never sets CASORA_SETTINGS on load.
+// The preview takes the filter from the settings page's draft, as the kind chips take theirs.
 {
   class PreviewPanel {}
-  const previewWindow = { CASORA_SETTINGS: { calendar_filter: 'Termin-aaaaaa' },
+  const previewWindow = { casoraSettings: () => ({}),
     casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
-  const node = () => ({ style: {}, dataset: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; },
-    classList: { add() {}, remove() {}, toggle() {}, contains: () => false }, setAttribute() {} });
+  // Any DOM call the Studio makes returns a stub; only the calls the test reads are real.
+  const node = () => new Proxy(function () {}, {
+    get: (target, key) => (key in target ? target[key] : (target[key] = key === 'isConnected' ? false : node())),
+    set: (target, key, value) => { target[key] = value; return true; },
+    apply: () => node(),
+  });
   const previewDocument = { createElement: node, querySelector: () => null };
   const previewContext = vm.createContext({ window: previewWindow, document: previewDocument,
     customElements: { whenDefined: () => Promise.resolve(), get: () => PreviewPanel },
@@ -179,6 +185,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel-settings.js', import.meta.url), 'utf8'), previewContext);
   await settle();
   const studio = new PreviewPanel();
+  studio._cs = { S: { calendar_filter: 'Termin-aaaaaa' } };
   studio._csSaverPreview({ insertBefore() {} }, {});
   await settle();
   // Once the scripts are loaded the Studio draws the preview: capture the options it hands to the module.
@@ -197,8 +204,8 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
     { title: 'Termin-cccccc', uid: 'Termin-111111', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
     { title: 'Visible', uid: 'other', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
   ];
-  const view = previewWindow._casoraSaver.context({ kind: 'linie', now: new ClockDate(),
-    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] });
-  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies exported Calendar filter decisions');
+  const view = previewWindow._casoraSaver.context(Object.assign({}, studioMount.context(), { kind: 'linie', now: new ClockDate(),
+    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] }));
+  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies the saved Calendar filter from the settings draft');
   console.log('ok Studio preview lazy-loads the Calendar filter');
 }
