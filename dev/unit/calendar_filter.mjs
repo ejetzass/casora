@@ -1,7 +1,7 @@
 // Calendar filter: one title rule for the Agenda tile, the greeting, the screensavers and the Studio preview.
 // The tile's pick is Upstream's rule (one event per calendar from the calendar states, a running event wins,
 // then the earliest start); the filter only skips titles.
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarNext
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarNext,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,custom_components/casora/panel/casora-panel-settings.js#_csSaverPreview
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -114,7 +114,9 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   const previewContext = vm.createContext({ window: previewWindow, document: previewDocument,
     customElements: { whenDefined: () => Promise.resolve(), get: () => PreviewPanel },
     setTimeout: () => 0, setInterval: () => 0, clearInterval() {}, console, Date: ClockDate });
+  const loaded = [];
   previewWindow.casoraImportScript = async path => {
+    loaded.push(path);
     vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/' + path, import.meta.url), 'utf8'), previewContext);
   };
   vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel-settings.js', import.meta.url), 'utf8'), previewContext);
@@ -129,6 +131,9 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   previewWindow._casoraSaver.mount = (host, kind, o) => { studioMount = o; return { update() {}, destroy() {} }; };
   studio._csSaverPreview({ insertBefore() {} }, {});
   assert.ok(studioMount, 'the Studio mounts the screensaver preview');
+  assert.ok(!loaded.includes('local/06-kalender.js'), 'the Studio preview does not load the whole Calendar module');
+  assert.equal(previewWindow._casoraCalendar, undefined, 'the Studio gets no calendar tile helpers from the preview');
+  assert.equal(previewWindow.casoraClimateActive, undefined, 'the Studio keeps its own thermostat words');
   const coded = { 'calendar.mock_wire': { attributes: { casora_filter_match: {
     entries: ['Termin-aaaaaa'], events: { 'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } }
   } } } };
