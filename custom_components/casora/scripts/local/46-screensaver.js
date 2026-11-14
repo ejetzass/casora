@@ -318,13 +318,10 @@
             var en = ev.end ? (all ? (ev.end.date ? ev.end.date + 'T00:00:00' : null) : ev.end.dateTime) : null;
             var t0 = Date.parse(st);
             if (isNaN(t0)) return;
-            out.push({ title: String(ev.summary || ''), start: t0, end: en ? Date.parse(en) : null, allDay: all, cal: ids[li] });
+            out.push({ title: String(ev.summary || ''), start: t0, end: en ? Date.parse(en) : null, allDay: all, cal: ids[li], uid: ev.uid || null });
           });
         });
         out.sort(function (x, y) { return x.start - y.start; });
-        // The same appointment in several calendars (a family calendar and one's own) counts once.
-        var seen = {};
-        out = out.filter(function (e) { var k = e.start + '|' + e.title; if (seen[k]) return false; seen[k] = 1; return true; });
         DATA.ev[key] = out;
         changed();
       });
@@ -991,8 +988,13 @@
     // The month calendar asks for its whole grid, the others for the coming eight days.
     var grid = kind === 'kalender' ? S.monthGrid(now, hass) : null;
     var events = (o.events !== undefined ? o.events : !cals.length ? [] : grid ? S.events(hass, cals, grid.weeks * 7, grid.start) : S.events(hass, cals, 8)).filter(function (e) {
-      return !window._casoraCalendar || window._casoraCalendar.allowsTitle(e.title);
+      return !window._casoraCalendar || window._casoraCalendar.allowsTitle(e.title, hass && hass.states, e.cal, e.uid || null);
     });
+    // Collapse duplicates only after filtering: distinct coded events can have the same title.
+    if (o.events === undefined) {
+      var seen = {};
+      events = events.filter(function (e) { var k = e.start + '|' + e.title; if (seen[k]) return false; seen[k] = 1; return true; });
+    }
     var media = o.media !== undefined ? o.media : need(['musik']) || (S.on(vars.casora_screensaver_tint) && TINT_KINDS.indexOf(kind) > -1) ? S.playing(hass) : null;
     var cams = o.cams !== undefined ? o.cams : need(['kameras']) ? S.cameras(hass, vars.casora_screensaver_cameras).map(function (c) { c.shot = S.shot(c, now); return c; }) : [];
     return { now: now, hass: hass, vars: vars, dark: dark, sun: o.sun !== undefined ? o.sun : S.sunTimes(hass, now), cals: o.cals || cals, cams: cams,
