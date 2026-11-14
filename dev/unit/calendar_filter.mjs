@@ -163,7 +163,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 // Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
 {
   class PreviewPanel {}
-  const previewWindow = { casoraSettings: () => ({ calendar_filter: 'Termin-aaaaaa' }),
+  const previewWindow = { CASORA_SETTINGS: { calendar_filter: 'Termin-aaaaaa' },
     casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
   const node = () => ({ style: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; } });
   const previewDocument = { createElement: node, querySelector: () => null };
