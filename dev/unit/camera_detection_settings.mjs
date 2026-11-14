@@ -36,6 +36,7 @@ panel._combo = (value, options, hint, onChange, opts) => {
 };
 panel._entityList = domains => Object.keys(panel._hass.states).filter(id => domains.includes(id.split('.')[0]));
 panel._prettyEntity = id => panel._hass.states[id]?.attributes?.friendly_name || id;
+panel._boolSwitch = () => element('div');
 panel._csBar = noop;
 const draft = window.casoraPersonal.normalize({});
 assert.deepEqual(draft.cameras, [], 'camera list starts empty');
@@ -44,8 +45,8 @@ const render = () => { host.children = []; panel.combos = []; panel._casoraPerso
 render();
 panel.combos.find(c => c.hint === 'Add a camera').onChange('camera.test');
 assert.equal(draft.cameras[0].entity_id, 'camera.test');
-assert.ok(panel.combos.find(c => c.opts && c.opts.entity).options.includes('event.motion'), 'event entities remain available');
-panel.combos.find(c => c.opts && c.opts.entity).onChange('binary_sensor.person');
+assert.ok(panel.combos.find(c => c.hint === 'Add sensor or event').options.includes('event.motion'), 'event entities remain available');
+panel.combos.find(c => c.hint === 'Add sensor or event').onChange('binary_sensor.person');
 assert.deepEqual(draft.cameras[0].detection_triggers, ['binary_sensor.person']);
 assert.deepEqual(window.casoraPersonal.prune(draft).cameras[0].detection_triggers, ['binary_sensor.person']);
 assert.equal(window.CASORA_SETTINGS, undefined, 'editing the list does not save the draft');
