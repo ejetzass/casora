@@ -25,7 +25,7 @@ assert.ok(!cal.fields.some((f) => f.key === 'icon'), 'no icon field: the icon sh
 // ── Wiring ─────────────────────────────────────────────────────────────────────────
 const panel = read('custom_components/casora/panel/casora-panel.js');
 assert.ok(/const HOUSE_WIDE_TILES = new Set\(\[[^\]]*"casora_calendar"/.test(panel), 'not offered as "Fits <room>"');
-assert.ok(/if \(f\.settingsLink\) \{\s*const go = [^\n]*this\._casoraSettingsLink\(f\)/.test(panel), 'inspector draws the link');
+assert.ok(/if \(f\.settingsLink\) \{\s*const go = [^\n]*this\._casoraSettingsLink\(f[,\)]/.test(panel), 'inspector draws the link');
 assert.ok(/"set-calendar": \["\w+", "var\(--casora-color-red/.test(panel), 'icon color of the Settings page');
 const settings = read('custom_components/casora/panel/casora-panel-settings.js');
 // Since 03.11.2026 a block of its own in the tile "Home & devices", right after waste (the subpages are gone).

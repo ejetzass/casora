@@ -26,7 +26,7 @@
     live: ["n-phone", "nb-live"], fuel: ["n-wx", "nb-fuel"], home: ["n-house"],
   };
   // A focus inside an earlier page (a group of casora-panel-personal.js) → its block.
-  const FOCUS_BLOCK = { waste: "waste", contacts: "contacts", security: "security", scenes: "scenes", media: "media",
+  const FOCUS_BLOCK = { waste: "waste", cameras: "cameras", contacts: "contacts", security: "security", scenes: "scenes", media: "media",
     devices: "devices", calendars: "calendars", notify: "notify", notify_exclude: "notify", battery: "battery", basis: "basis", umzug: "umzug" };
   const route = (pageId, focus) => {
     const id = String(pageId || "n-start");
@@ -137,6 +137,9 @@
         { k: "waste", personal: ["waste"], title: "Waste collection",
           plain: "Which bins are collected when, so tiles and the bell remind you.",
           kw: "abfall müll muell tonne abholung restmüll papier gelber sack bio" },
+        { k: "cameras", personal: ["cameras"], title: "Cameras",
+          plain: "Cameras, popups and user interface",
+          kw: "kamera camera cameras popup popups" },
         { k: "calendars", personal: ["calendars"], title: "Calendars",
           plain: "Which calendars the calendar tiles show, with name and color.",
           kw: "kalender termine farbe calendar ausblenden verbergen filter hide" },
