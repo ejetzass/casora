@@ -174,5 +174,15 @@ check("ha: echte CHANGELOG ohne Umbruchreste",
       all(not l.startswith("  ") or l.lstrip().startswith(("-", "*")) for l in rn.ha_markdown(v040["notes_md"]).split("\n")))
 check("summary: limit 2", rn.summarize(WRAP, limit=2) == "Updates im Studio · Kachel hinzufügen", rn.summarize(WRAP, limit=2))
 
+# ── Fork releases: four parts („26.11.26.1“ sits between 26.11.26 and 26.11.27) ──────────────────
+check("fork: vierter Teil bleibt", rn.norm_version("v26.11.26.1") == "26.11.26.1", rn.norm_version("v26.11.26.1"))
+check("fork: .2 ist neuer als .1", rn.newer("26.11.26.2", "26.11.26.1") and not rn.newer("26.11.26.1", "26.11.26.2"))
+check("fork: .1 ist neuer als sein Upstream", rn.newer("26.11.26.1", "26.11.26") and not rn.newer("26.11.26", "26.11.26.1"))
+check("fork: nach dem Fork-Release kommt das nächste Upstream", rn.newer("26.11.27", "26.11.26.1"))
+check("fork: Upstream-Release ist neuer als das Fork-Release davor", rn.newer("26.11.26", "26.11.25.2"))
+check("fork: Beta-Nummer ist kein vierter Teil",
+      rn.newer("26.10.60", "26.10.60b1") and not rn.newer("26.10.60b1", "26.10.60") and rn.newer("26.10.60b2", "26.10.60b1"))
+check("fork: ver() nimmt nur den Kern", rn.ver("26.10.60b1") == (26, 10, 60) and rn.ver("26.11.26.1") == (26, 11, 26, 1))
+
 print("\n" + ("alles ok" if not fails else f"{fails} Fehler"))
 sys.exit(1 if fails else 0)

@@ -48,7 +48,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 
-from .const import DOMAIN, UPDATE_REPO, VERSION
+from .const import DOMAIN, FORK_REPO_ID, UPDATE_REPO, VERSION
 from .release_notes import (
     KIND_CASORA,
     norm_version,
@@ -60,6 +60,7 @@ from .release_notes import (
     parse_changelog,
     render_markdown,
     summarize,
+    version_key,
 )
 from .update import (
     DATA_HACS,
@@ -136,6 +137,16 @@ async def _remote(hass: HomeAssistant, force: bool, lang: str = "en") -> tuple[l
     return from_github(body, lang), None
 
 
+def fork_visible(releases: list[dict], newest: str) -> list[dict]:
+    """Releases a Fork install may show: nothing newer than the Upstream release the running Fork build sits on.
+
+    „26.11.25.2“ is built on Upstream 26.11.25, so 26.11.26 and 26.11.27 stay out of the list: no „NEW“ tag and no
+    row button that would install Upstream's tag from the Fork. The Fork's own update is the Marketplace entry's."""
+    m = re.match(r"\D*(\d+\.\d+\.\d+)", str(newest or ""))
+    base = m.group(1) if m else str(newest or "")
+    return [r for r in releases if not newer(r.get("version"), base)]
+
+
 async def async_updates_overview(hass: HomeAssistant, force: bool = False, lang: str | None = None) -> dict[str, Any]:
     """lang: UI language (panel); without it Home Assistant's."""
     entry = _entry(hass)
@@ -156,7 +167,11 @@ async def async_updates_overview(hass: HomeAssistant, force: bool = False, lang:
     beta = beta_enabled(entry)
     top = next((r["version"] for r in releases
                 if (beta or not r.get("prerelease")) and r.get("source") == "github"), None)
-    if top and newer(top, latest):
+    # A house that follows the Fork gets its updates from the Fork's Marketplace entry only: a newer Upstream
+    # release is no update here until a Fork release is built on it.
+    rid = data.get(DATA_HACS_ID)
+    fork = bool(hacs and rid == FORK_REPO_ID)
+    if top and newer(top, latest) and not fork:
         latest = top
     # HACS already put the new version in place (installed_version), Casora still runs the old one.
     pending = None
@@ -166,8 +181,9 @@ async def async_updates_overview(hass: HomeAssistant, force: bool = False, lang:
             pending = hacs_inst
     if pending and newer(pending, latest):
         latest = pending
-    rid = data.get(DATA_HACS_ID)
 
+    if fork:
+        releases = fork_visible(releases, max(VERSION, pending or "", key=version_key))
     out = []
     for r in releases:
         item = dict(r)
@@ -188,6 +204,8 @@ async def async_updates_overview(hass: HomeAssistant, force: bool = False, lang:
         # Does Casora check itself (own update entity)? With HACS, HACS does.
         "own_check": not hacs,
         "hacs": hacs,
+        # The store entry is the Fork's: the list holds no Upstream release beyond the one the Fork builds on.
+        "fork": fork,
         # Option "Beta versions"; with HACS, betas are turned on in HACS.
         "beta": beta,
         "last_check": data.get(DATA_LAST_CHECK),

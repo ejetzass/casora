@@ -33,20 +33,22 @@ KIND_CASORA = "casora"
 
 
 def ver(v: Any) -> tuple:
-    """„v0.4.0“ → (0, 4, 0); Unlesbares zählt als (0,)."""
-    return tuple(int(x) for x in re.findall(r"\d+", str(v or ""))[:3]) or (0,)
+    """„v0.4.0“ → (0, 4, 0); Unlesbares zählt als (0,). Up to four parts: a Fork release is „26.11.26.1“."""
+    # Only the dotted core counts: the beta number of „26.10.60b1“ is no fourth part.
+    m = re.search(r"\d+(?:\.\d+){0,3}", str(v or ""))
+    return tuple(int(x) for x in m.group(0).split(".")) if m else (0,)
 
 
 def norm_version(v: Any) -> str:
     """„v0.4.0“ / „Casora 0.4.0“ → „0.4.0“ (Vorabversionen behalten ihren Zusatz)."""
     # Casora's betas carry the suffix directly (26.10.60b1, PEP 440 style), older ones with a dash (1.1.0-beta.1).
-    m = re.search(r"\d+(?:\.\d+){0,2}(?:(?:a|b|rc)\d+|[-+][0-9A-Za-z.-]+)?", str(v or ""))
+    m = re.search(r"\d+(?:\.\d+){0,3}(?:(?:a|b|rc)\d+|[-+][0-9A-Za-z.-]+)?", str(v or ""))
     return m.group(0) if m else ""
 
 
 def _split_pre(v: str) -> tuple[str, str]:
     """„26.10.60b1“ → („26.10.60“, „b.1“), „1.1.0-beta.1“ → („1.1.0“, „beta.1“); no suffix → („…“, „“)."""
-    m = re.match(r"^(\d+(?:\.\d+){0,2})(?:(a|b|rc)(\d+)|-([0-9A-Za-z.-]+))?", v)
+    m = re.match(r"^(\d+(?:\.\d+){0,3})(?:(a|b|rc)(\d+)|-([0-9A-Za-z.-]+))?", v)
     if not m:
         return v, ""
     if m.group(2):

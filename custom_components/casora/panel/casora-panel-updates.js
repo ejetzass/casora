@@ -110,12 +110,13 @@
   const esc = window.casoraEsc || ((s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])));
   // Versionen mit Vorabversions-Zusatz wie release_notes.compare_versions:
   // 1.1.0 > 1.1.0-beta.2 > 1.1.0-beta.1 > 1.0.3, 26.10.60 > 26.10.60b2 > 26.10.60b1.
-  const ver = (v) => (String(v || "").match(/\d+/g) || ["0"]).slice(0, 3).map(Number);
+  // Only the dotted core counts (the beta number of 26.10.60b1 is no fourth part); a Fork release has four: 26.11.26.1.
+  const ver = (v) => { const m = /\d+(?:\.\d+){0,3}/.exec(String(v || "")); return m ? m[0].split(".").map(Number) : [0]; };
   // Suffix with a dash (1.1.0-beta.1) or attached as Casora's betas are named (26.10.60b1 → "b.1").
-  const pre = (v) => { const m = /^\D*\d+(?:\.\d+){0,2}(?:(a|b|rc)(\d+)|-([0-9A-Za-z.-]+))/.exec(String(v || "")); return m ? (m[1] ? m[1] + "." + m[2] : m[3]) : ""; };
+  const pre = (v) => { const m = /^\D*\d+(?:\.\d+){0,3}(?:(a|b|rc)(\d+)|-([0-9A-Za-z.-]+))/.exec(String(v || "")); return m ? (m[1] ? m[1] + "." + m[2] : m[3]) : ""; };
   const cmp = (a, b) => {
     const x = ver(a), y = ver(b);
-    for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
+    for (let i = 0; i < 4; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
     const pa = pre(a), pb = pre(b);
     if (pa === pb) return 0;
     if (!pa || !pb) return pa ? -1 : 1;
