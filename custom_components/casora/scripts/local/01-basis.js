@@ -1059,23 +1059,32 @@ window._casoraColGap = window._casoraColGap || function (keys) {
     return hit || badge;
   }
 
-  function openViaCard(entityId, done, explicitCfg, noTile, checked) {
+  // o: { cfg, noTile, checked, canOpen } – canOpen: an automatic opener rechecks its route and visibility after
+  // every asynchronous wait (config, authorization, the delayed synthetic tap), not only in its poll.
+  function openViaCard(entityId, done, o) {
+    o = o || {};
+    var explicitCfg = o.cfg, noTile = o.noTile, checked = o.checked, canOpen = o.canOpen;
     var ha = document.querySelector('home-assistant');
     var h = ha && ha.hass;
     if (!h || !h.callWS || !window.casoraPopup) return done(false);
+    var mayOpen = function () { return typeof canOpen !== 'function' || canOpen() !== false; };
+    if (!mayOpen()) return done(false);
     // „Wer sieht das?“ (R-01): devices hidden for this user do not open from the bell or a
     // group popup - not even as the HA dialog (done(true), the caller does not fall back).
     if (!checked && window.casoraUserGuard) {
-      return window.casoraUserGuard(entityId, function () { openViaCard(entityId, done, explicitCfg, noTile, true); },
-        function () { done(true); });
+      return window.casoraUserGuard(entityId, function () {
+        if (!mayOpen()) return done(false);
+        openViaCard(entityId, done, { cfg: explicitCfg, noTile: noTile, checked: true, canOpen: canOpen });
+      }, function () { done(true); });
     }
     // Bell = tile (B-NOTI): if the tile is on the dashboard, tap exactly that one - same popup,
     // same ring and header. Otherwise through the config as before.
     if (!explicitCfg && !noTile && window._casoraTapTile) {
-      return window._casoraTapTile(entityId, function (ok) { if (ok) done(true); else openViaCard(entityId, done, null, true, true); });
+      return window._casoraTapTile(entityId, function (ok) { if (ok) done(true); else openViaCard(entityId, done, { noTile: true, checked: true }); });
     }
     var seg = (location.pathname || '').split('/').filter(Boolean);
     (window._casoraCfgOnce ? window._casoraCfgOnce(h, seg[0] || 'lovelace') : h.callWS({ type: 'lovelace/config', url_path: seg[0] || 'lovelace' })).then(function (cfg) {
+      if (!mayOpen()) return done(false);
       var found = explicitCfg || findCardCfg(cfg, entityId);
       var built = false;   // config built here for an entity without a tile (it used to carry the friendly_name)
       // No own card (alarm/lock often sit only as a badge in the room card): the domain's tile
@@ -1112,9 +1121,13 @@ window._casoraColGap = window._casoraColGap || function (keys) {
         var take = function (ev) {
           var c = ev.detail && ev.detail.config;
           var act = c && c.tap_action;
-          if (act && act.casora_popup) { ev.stopPropagation(); window.casoraPopup.open(Object.assign({}, act.casora_popup, { src: el })); return fin(true); }
+          if (act && act.casora_popup) {
+            if (!mayOpen()) return fin(false);
+            ev.stopPropagation(); window.casoraPopup.open(Object.assign({}, act.casora_popup, { src: el })); return fin(true);
+          }
           fin(false);
         };
+        if (!mayOpen()) return fin(false);
         el.addEventListener('hass-action', take, true);
         try { el._handleAction({ detail: { action: 'tap' } }, { isIcon: false }); } catch (e) { return fin(false); }
         setTimeout(function () { fin(false); }, 500);
@@ -1137,8 +1150,8 @@ window._casoraColGap = window._casoraColGap || function (keys) {
     window._casoraSuppressDismiss = Date.now() + 600;
     openViaCard(id, function (ok) {
       if (!ok && window.casoraPopup) window.casoraPopup.moreInfo(id);
-    }, { type: 'custom:button-card', template: 'casora_light', entity: id, variables: { icon: 'light' },
-         _title: String((st.attributes && st.attributes.friendly_name) || id) });
+    }, { cfg: { type: 'custom:button-card', template: 'casora_light', entity: id, variables: { icon: 'light' },
+         _title: String((st.attributes && st.attributes.friendly_name) || id) } });
   }, true);
 
   // ── Popup-Verlaufsdiagramme (Pflanzen, Luftreiniger, Batterien …) ─────────
@@ -1727,7 +1740,9 @@ window._casoraColGap = window._casoraColGap || function (keys) {
     };
   })();
 
-  window._casoraNotifyOpenViaCard = openViaCard;
+  // Positional form for the other modules; the ring popup uses the options object directly.
+  window._casoraNotifyOpenViaCard = function (id, done, cfg, noTile, checked) { return openViaCard(id, done, { cfg: cfg, noTile: noTile, checked: checked }); };
+  window._casoraOpenViaCard = openViaCard;
 
   // Security badge on Home without entries of its own (casoraSecContactsTap, #39): a tap opens
   // „Türen & Fenster“ of the whole house, the popup of casora_popup_contacts without an entity.
@@ -1737,7 +1752,7 @@ window._casoraColGap = window._casoraColGap || function (keys) {
       var d = (e.detail && e.detail.event_data) ? e.detail.event_data : (e.detail || {});
       if (d.casora_contacts_open !== true) return;
       e.stopPropagation();
-      openViaCard(null, function () {}, { type: 'custom:button-card', template: 'casora_popup_contacts' }, true, true);
+      openViaCard(null, function () {}, { cfg: { type: 'custom:button-card', template: 'casora_popup_contacts' }, noTile: true, checked: true });
     }, true);
   }
 
@@ -1751,7 +1766,7 @@ window._casoraColGap = window._casoraColGap || function (keys) {
       if (Date.now() - (window._casoraLastScrollTs || 0) < 400) return;
       e.stopPropagation();
       window._casoraSuppressDismiss = Date.now() + 600;
-      openViaCard(id, function (ok) { if (!ok && window.casoraPopup) window.casoraPopup.moreInfo(id); }, null, true);
+      openViaCard(id, function (ok) { if (!ok && window.casoraPopup) window.casoraPopup.moreInfo(id); }, { noTile: true });
     }, true);
   }
 

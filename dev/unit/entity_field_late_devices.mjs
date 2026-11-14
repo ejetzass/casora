@@ -92,6 +92,78 @@ const mk = (tag) => {
 globalThis.document = { createElement: mk, createTextNode: (t) => ({ textContent: t }), querySelector: () => null, addEventListener: noop, removeEventListener: noop,
   createDocumentFragment: () => Object.assign(mk('#fragment'), { fragment: true }) };
 
+// Exercise camera settings through the real combo, including its room grouping.
+customElements.whenDefined = () => Promise.resolve();
+new Function(read('custom_components/casora/panel/casora-panel-personal.js'))();
+await Promise.resolve();
+{
+  const own = 'binary_sensor.own', other = 'event.other';
+  const hass = {
+    states: {
+      'camera.example': stCamera('camera.example', 'Camera'),
+      [own]: stCamera(own, 'Zulu'),
+      [other]: stCamera(other, 'Alpha'),
+    },
+    entities: {
+      'camera.example': { device_id: 'cam' },
+      [own]: { device_id: 'cam' },
+      [other]: { device_id: 'other' },
+    },
+    devices: { cam: { name: 'Camera' }, other: { name: 'Other', area_id: 'a' } },
+    areas: { a: { name: 'Alpha' }, z: { name: 'Zulu' } }, language: 'en',
+  };
+  function stCamera(id, name) { return { entity_id: id, state: 'on', attributes: { friendly_name: name } }; }
+  const p = Object.create(P);
+  p._hass = hass;
+  p.overlay = mk('div');
+  p.$ = () => p.overlay;
+  p.shadowRoot = { getElementById: () => true, activeElement: null, querySelector: () => null };
+  p._flowGroup = (parent) => {
+    const container = mk('div'), list = mk('div');
+    container.dataset = {};
+    container.appendChild(list);
+    parent.appendChild(container);
+    return list;
+  };
+  p._flowRow = (list, options) => {
+    const row = mk('div');
+    row.dataset = { title: options.title };
+    list.appendChild(row);
+    return { row };
+  };
+  p._boolSwitch = () => mk('button');
+  p._entityList = () => [];
+  p._trace = noop;
+  p._scrollSnap = noop;
+  p._restoreScroll = noop;
+  const host = mk('div');
+  p._casoraPersonalGroups(host, { cameras: [{ device_id: 'cam', entity_id: 'camera.example' }] }, ['cameras'], noop);
+  const findRow = (node, title) => {
+    if (node.dataset?.title === title) return node;
+    for (const child of node.children) {
+      const found = findRow(child, title);
+      if (found) return found;
+    }
+    return null;
+  };
+  for (const title of ['Doorbell from', 'Detection from']) {
+    const row = findRow(host, title);
+    const input = row.querySelector('.combo').children.find((el) => el.tagName === 'INPUT');
+    input.onfocus();
+    assert.deepEqual(p.overlay.querySelectorAll('.combo-opt').map((el) => el.title), [own, other], title + ': camera device first');
+    p._openCombo();
+  }
+  globalThis.innerWidth = 390;
+  for (const title of ['Doorbell from', 'Detection from']) {
+    const input = findRow(host, title).querySelector('.combo').children.find((el) => el.tagName === 'INPUT');
+    input.onclick();
+    assert.deepEqual(p.overlay.querySelectorAll('.psheet-row').map((el) => el.querySelector('.lbl').textContent),
+      ['Zulu', 'Alpha'], title + ': phone camera device first');
+    p._openCombo();
+  }
+  globalThis.innerWidth = 1400;
+}
+
 // ── A house before and after Tractive has set up ─────────────────────────────
 const st = (id, state, attributes) => ({ entity_id: id, state, attributes });
 const A = 'device_tracker.tracker_aaaa', B = 'device_tracker.tracker_bbbb';

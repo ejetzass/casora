@@ -55,8 +55,13 @@ async function run({ cache, ws, files = {}, slim = false }) {
   const store = new Map();
   if (cache !== undefined) store.set('casora.settings.cache', JSON.stringify(cache));
   const listeners = {};
+  const docListeners = {};
+  const intervals = [];
   let resolveWs;
   const wsAnswer = new Promise((r) => { resolveWs = r; });
+  let wsValue;
+  let wsReady = false;
+  let wsCalls = 0;
   const kicks = [];
   const win = {
     _casoraFilter: {},
@@ -65,8 +70,15 @@ async function run({ cache, ws, files = {}, slim = false }) {
     dispatchEvent: (e) => { log.push('event:' + e.type); (listeners[e.type] || []).slice().forEach((f) => f(e)); return true; },
     _casoraHomeSlim: slim || undefined,
   };
-  const hass = { connection: {}, callWS: () => (ws === 'never' ? new Promise(() => {}) : wsAnswer) };
+  const hass = { connection: {}, callWS: () => {
+    wsCalls++;
+    if (ws === 'never') return new Promise(() => {});
+    return wsReady ? Promise.resolve(wsValue) : wsAnswer;
+  } };
   const doc = {
+    visibilityState: 'visible',
+    addEventListener: (t, f) => { (docListeners[t] = docListeners[t] || []).push(f); },
+    dispatchEvent: (e) => { (docListeners[e.type] || []).slice().forEach((f) => f(e)); return true; },
     querySelector: (s) => (s === 'home-assistant' ? { hass } : null),
     querySelectorAll: () => [],
     createElement: () => ({ style: {}, setAttribute() {} }),
@@ -80,6 +92,7 @@ async function run({ cache, ws, files = {}, slim = false }) {
     return {};
   };
   const ls = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) };
+  const si = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
   // A yield: one message through a channel (a task of its own).
   class FakeChannel {
     constructor() {
@@ -88,7 +101,7 @@ async function run({ cache, ws, files = {}, slim = false }) {
       this.port2 = { postMessage: () => { log.push('idle'); setTimeout(() => self.port1.onmessage && self.port1.onmessage({}), 0); } };
     }
   }
-  const fn = new AsyncFn('window', 'document', 'localStorage', 'customElements', 'performance', 'location', '__imp', '__META', 'Event', 'MutationObserver', 'setTimeout', 'MessageChannel', body);
+  const fn = new AsyncFn('window', 'document', 'localStorage', 'customElements', 'performance', 'location', '__imp', '__META', 'Event', 'MutationObserver', 'setTimeout', 'setInterval', 'clearInterval', 'MessageChannel', body);
   const ce = { get: () => true, define() {}, whenDefined: () => new Promise(() => {}) };
   const loc = { search: '' };
   const Ev = class { constructor(t) { this.type = t; } };
@@ -97,8 +110,13 @@ async function run({ cache, ws, files = {}, slim = false }) {
   globalThis.window = win;
   // The header-hide block polls a few times with timers: only short timers run here.
   const st = (f, ms) => (ms > 50 ? 0 : setTimeout(f, ms));
-  const done = fn(win, doc, ls, ce, { now: () => 0 }, loc, imp, BASE, Ev, class { observe() {} }, st, FakeChannel);
-  return { done, log, win, kicks, store, answer: (r) => resolveWs(r), listeners };
+  const done = fn(win, doc, ls, ce, { now: () => 0 }, loc, imp, BASE, Ev, class { observe() {} }, st, si, () => {}, FakeChannel);
+  return {
+    done, log, win, kicks, store, intervals, doc,
+    answer: (r) => { wsValue = r; wsReady = true; resolveWs(r); },
+    get wsCalls() { return wsCalls; },
+    setVisibility: (state) => { doc.visibilityState = state; doc.dispatchEvent(new Ev('visibilitychange')); },
+  };
 }
 
 const mods = (log) => log.filter((x) => x.startsWith('import:/casora_scripts/local/')).map((x) => x.replace(/^import:\/casora_scripts\/local\/|\.js\?v=123$/g, ''));
@@ -112,6 +130,53 @@ const fileReqs = (log) => log.filter((x) => x.includes('einstellungen.js'));
   assert.deepEqual(t.win.CASORA_SETTINGS, { scenes: { exclude: ['scene.a'] } }, 'remembered settings in force');
   assert.equal(mods(t.log).length, NMOD, 'all modules ran without the WebSocket');
   assert.ok(Array.isArray(t.win._casoraLocalLoaded), 'loader finished');
+}
+
+// 1b) Foreground pages re-read saved settings at least once per minute and publish a changed signature.
+{
+  const oldSettings = { cameras: [{ entity_id: 'camera.garden' }] };
+  const newSettings = { cameras: [{ entity_id: 'camera.porch' }, { entity_id: 'camera.garden' }] };
+  const t = await run({ cache: { stored: true, settings: oldSettings } });
+  await t.done;
+  t.answer({ stored: true, settings: oldSettings });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.intervals.length, 1, 'one refresh timer');
+  assert.ok(t.intervals[0].ms > 0 && t.intervals[0].ms <= 60000, 'foreground refresh interval is at most one minute');
+  const callsBeforeRefresh = t.wsCalls;
+  t.answer({ stored: true, settings: newSettings });
+  t.intervals[0].fn();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.wsCalls, callsBeforeRefresh + 1, 'the timer re-reads saved settings');
+  assert.deepEqual(t.win.CASORA_SETTINGS, newSettings, 'fresh saved house settings replace the dashboard copy');
+  assert.equal(t.log.filter((x) => x === 'event:casora-settings-changed').length, 1, 'changed settings dispatch the shared event once');
+  assert.equal(t.kicks.filter((x) => x === 'settings').length, 1, 'changed settings redraw dashboards through casoraKickAll');
+  t.intervals[0].fn();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.log.filter((x) => x === 'event:casora-settings-changed').length, 1, 'an unchanged refresh does not dispatch another event');
+  assert.equal(t.kicks.filter((x) => x === 'settings').length, 1, 'an unchanged refresh does not redraw again');
+}
+
+// 1c) Hidden pages skip polling and refresh immediately when visibility returns.
+{
+  const oldSettings = { cameras: [{ entity_id: 'camera.garden' }] };
+  const newSettings = { cameras: [{ entity_id: 'camera.porch' }] };
+  const t = await run({ cache: { stored: true, settings: oldSettings } });
+  await t.done;
+  t.answer({ stored: true, settings: oldSettings });
+  await new Promise((r) => setTimeout(r, 0));
+  const callsBeforeHiddenTick = t.wsCalls;
+  t.setVisibility('hidden');
+  t.answer({ stored: true, settings: newSettings });
+  t.intervals[0].fn();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.wsCalls, callsBeforeHiddenTick, 'hidden pages skip the periodic settings request');
+  assert.deepEqual(t.win.CASORA_SETTINGS, oldSettings, 'hidden pages do not publish until they return');
+  t.setVisibility('visible');
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.wsCalls, callsBeforeHiddenTick + 1, 'visibility return triggers an immediate settings request');
+  assert.deepEqual(t.win.CASORA_SETTINGS, newSettings, 'settings refresh as soon as the page is visible');
+  assert.equal(t.log.filter((x) => x === 'event:casora-settings-changed').length, 1, 'return dispatches the shared change event');
+  assert.equal(t.kicks.filter((x) => x === 'settings').length, 1, 'return redraws through casoraKickAll');
 }
 
 // 2) Remembered: a file with version key → versioned (cacheable) request, never ?t=.
