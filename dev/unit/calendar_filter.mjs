@@ -157,3 +157,35 @@ console.log('ok calendar popup remains unfiltered');
     'a missing shared rule does not throw during startup');
 }
 console.log('ok calendar tile tolerates a missing startup rule');
+
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
+{
+  class PreviewPanel {}
+  const previewWindow = { casoraSettings: () => ({ calendar_filter: 'Termin-aaaaaa' }),
+    casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
+  const node = () => ({ style: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; } });
+  const previewDocument = { createElement: node, querySelector: () => null };
+  const previewContext = vm.createContext({ window: previewWindow, document: previewDocument,
+    customElements: { whenDefined: () => Promise.resolve(), get: () => PreviewPanel },
+    setTimeout: () => 0, console, Date: ClockDate });
+  previewWindow.casoraImportScript = async path => {
+    vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/' + path, import.meta.url), 'utf8'), previewContext);
+  };
+  vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel-settings.js', import.meta.url), 'utf8'), previewContext);
+  await settle();
+  new PreviewPanel()._csSaverPreview({ insertBefore() {} }, {});
+  await settle();
+  const coded = { 'calendar.mock_wire': { attributes: { casora_filter_match: {
+    entries: ['Termin-aaaaaa'], events: { 'Termin-111111': { title: 'Termin-cccccc', matches: ['Termin-aaaaaa'] } }
+  } } } };
+  const codedEvents = [
+    { title: 'Termin-cccccc', uid: 'Termin-111111', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
+    { title: 'Visible', uid: 'other', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
+  ];
+  const view = previewWindow._casoraSaver.context({ kind: 'linie', now: new ClockDate(),
+    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] });
+  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies exported Calendar filter decisions');
+  console.log('ok Studio preview lazy-loads the Calendar filter');
+}
