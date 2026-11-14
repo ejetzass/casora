@@ -4,18 +4,25 @@
 (function () {
   if (window.casoraCalendarAllows) return;
   // The calendar popup keeps every event. settings: the object to read the words from (the Studio passes
-  // its settings draft); omitted, the saved settings. attrs: the calendar state's attributes; a recorded
-  // decision there (casora_filter_match.message, from the mock's replay) counts only for the entries that are
-  // still in the filter: its matches name the entries that hit the title when it was recorded.
-  window.casoraCalendarAllows = function (title, settings, attrs) {
+  // its settings draft); omitted, the saved settings. attrs: the calendar state's attributes. uid: undefined
+  // for the state's own message, the API event's uid (null when it has none) for a screensaver or popup event.
+  // A recorded decision (casora_filter_match, from the mock's replay) decides for an entry the export knew
+  // (meta.entries), and only while the title is still the one recorded; any other entry uses the text match.
+  window.casoraCalendarAllows = function (title, settings, attrs, uid) {
     var words = settings || (window.casoraSettings ? window.casoraSettings() : {});
-    var entries = String(words.calendar_filter || '').split(',').map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
-    var decided = attrs && attrs.casora_filter_match && attrs.casora_filter_match.message;
-    if (decided && Array.isArray(decided.matches)) {
-      return !decided.matches.some(function (m) { return entries.indexOf(String(m).trim().toLowerCase()) !== -1; });
-    }
+    var meta = attrs && attrs.casora_filter_match;
+    var decision = meta && (uid === undefined ? meta.message : uid && meta.events && meta.events[uid]);
+    if (decision && decision.title !== title) decision = null;
+    var known = decision && Array.isArray(meta.entries) ? meta.entries.map(function (e) { return String(e).trim().toLowerCase(); }) : null;
     var text = String(title || '').toLowerCase();
-    return !entries.some(function (entry) { return text.indexOf(entry) !== -1; });
+    return !String(words.calendar_filter || '').split(',').some(function (entry) {
+      entry = entry.trim().toLowerCase();
+      if (!entry) return false;
+      if (known && known.indexOf(entry) !== -1) {
+        return Array.isArray(decision.matches) && decision.matches.some(function (m) { return String(m).trim().toLowerCase() === entry; });
+      }
+      return text.indexOf(entry) !== -1;
+    });
   };
   // The Agenda tile's pick (Upstream's rule): one event per calendar from the calendar states (message,
   // start_time, all_day). A running event wins, then the earliest start. cals: [{ entity, tile }] (tile false is
