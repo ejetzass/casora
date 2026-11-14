@@ -78,9 +78,10 @@
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
   // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.
-  // Omit uid for the state message; pass null for a REST event without an ID.
-  K.allowsTitle = function (title, states, entity, uid) {
-    var settings = window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {});
+  // Omit uid for the state message; pass null for a REST event without an ID. The Studio preview passes its
+  // settings draft as saved: its window.casoraSettings() returns {} on the settings page.
+  K.allowsTitle = function (title, states, entity, uid, draft) {
+    var settings = draft || (window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {}));
     var text = String(title || '').toLowerCase();
     var attrs = states && states[entity] && states[entity].attributes;
     var meta = attrs && attrs.casora_filter_match;

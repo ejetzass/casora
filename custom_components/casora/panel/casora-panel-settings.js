@@ -1538,7 +1538,8 @@
         return typeof window.casoraPhotoUrl === "function" ? window.casoraPhotoUrl(ref, this._hass) : "";
       };
       const live = SV.mount(stage, null, { kind: () => show, every: 30000, sample: true,
-        context: () => ({ config: draft(), photoUrl, vars: typeof SV.vars === "function" ? SV.vars(draft()) : {} }) });
+        // The Calendar filter follows the settings draft, like the kind above.
+        context: () => ({ config: draft(), photoUrl, vars: typeof SV.vars === "function" ? SV.vars(draft()) : {}, settings: this._cs ? this._cs.S : null }) });
       if (typeof this._images === "function") this._images().then(() => { if (stage.isConnected) { live.update(); extra(); } }, () => {});
       this._csSaverLive = live;
       const chips = el("div", "cs-saver-chips");
