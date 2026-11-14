@@ -7,7 +7,7 @@
   // its settings draft); omitted, the saved settings. states, entity, uid: the HA calendar states and the
   // event; an exported decision (casora_filter_match) decides for that event when it is still the same title.
   window.casoraCalendarAllows = function (title, settings, states, entity, uid) {
-    var words = settings || (window.casoraSettings ? window.casoraSettings() : {});
+    var words = settings || (window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {}));
     var text = String(title || '').toLowerCase();
     var attrs = states && entity && states[entity] && states[entity].attributes;
     var meta = attrs && attrs.casora_filter_match;
