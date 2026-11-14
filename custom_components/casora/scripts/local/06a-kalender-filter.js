@@ -13,7 +13,7 @@
   // A decision without a title (the older replay format) decides for every entry it names.
   // calendar_filter is a section: { words, timed_first }. The old form (a plain text) still counts as the words.
   var filterOf = function (settings) {
-    var all = settings || (window.casoraSettings ? window.casoraSettings() : {});
+    var all = settings || (window.casoraSettings ? window.casoraSettings() : (window.CASORA_SETTINGS || {}));
     var f = all && all.calendar_filter;
     return f && typeof f === 'object' ? f : { words: f };
   };
