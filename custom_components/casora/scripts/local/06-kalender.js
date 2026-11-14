@@ -78,6 +78,7 @@
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
   // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.
+  // Omit uid for the state message; pass null for a REST event without an ID.
   K.allowsTitle = function (title, states, entity, uid) {
     var settings = window.casoraSettings ? window.casoraSettings() : {};
     var text = String(title || '').toLowerCase();

@@ -299,6 +299,7 @@
   };
   // Events of the coming days from Home Assistant's calendar API: [{ title, start, end, allDay }] sorted by start.
   // from: the first day asked for (the month calendar starts with the week of the 1st); default today.
+  // Returns raw candidates; context filters identities before collapsing duplicates.
   S.events = function (hass, ids, days, from) {
     var a = from ? new Date(+from) : new Date(); a.setHours(0, 0, 0, 0);
     var key = ids.join(',') + '|' + days + (from ? '|' + a.getTime() : '');
