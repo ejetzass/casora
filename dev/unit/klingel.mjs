@@ -2,6 +2,7 @@
 // Klingelknopf), Finder über translation_key, Verlauf aus history_during_period (erster Eintrag kein Ereignis),
 // „Hat geklingelt“ halten (und nicht nach einem Neustart), Kachel-Text, Popup-Bereiche, Halten-Einträge,
 // Antwort-SDP fürs Sprechen. Geräte, Namen und Nachrichten erfunden.   node dev/unit/klingel.mjs
+// @deckt: custom_components/casora/scripts/local/24-klingel.js custom_components/casora/scripts/local/26-camera-triggers.js
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
@@ -21,12 +22,62 @@ const src = (p) => fs.readFileSync(new URL('../../custom_components/casora/scrip
 // Unref timers with a delay, so a timer the code starts (re-asks, warm-up) cannot keep the process alive after the last check.
 // Zero-delay timers stay ref'd: the test's own awaits use them.
 const realST = setTimeout; globalThis.setTimeout = (f, ms, ...a) => { const t = realST(f, ms, ...a); if (ms > 0) t.unref(); return t; };
+new Function(src('00-finder.js'))();
+new Function(src('26-camera-triggers.js'))();
 new Function(src('24-klingel.js'))();
 const KL = window._casoraKlingel;
 const n = (x) => (x == null ? x : String(x).replace(/\u00a0/g, ' '));
 assert.ok(KL && KL.find && KL.status && KL.tileText && KL.hold && KL.sec, 'Modul geladen');
 
 const NOW = Date.now();
+// The tile shows exactly what it showed before the shared ring module (expected values taken from the
+// 24-klingel.js of that time): no new window drop for old events, and a press with an unreadable time still counts as now.
+{
+  const c = { cam: 'camera.legacy_old', visitor: 'binary_sensor.legacy_old', order: [], det: {}, sw: {} };
+  const old = new Date(NOW - 4 * 86400000).toISOString();
+  const s = KL.status(c, { [c.cam]: { state: 'idle' }, [c.visitor]: { state: 'on', last_changed: old } }, NOW);
+  assert.equal(KL.events(c, NOW).length, 1, 'a press seen "on" stays in the popup history, however old');
+  assert.equal(s.lastRing, NOW - 4 * 86400000);
+  assert.equal(s.ring, null, 'but it is no longer "just rang"');
+  KL.forget(c.cam);
+}
+{
+  const c = { cam: 'camera.legacy_time', visitor: 'binary_sensor.legacy_time', order: [], det: {}, sw: {} };
+  const s = KL.status(c, { [c.cam]: { state: 'idle' }, [c.visitor]: { state: 'on', last_changed: 'unknown' } }, NOW);
+  assert.equal(s.lastRing, NOW, 'an unparsable last_changed falls back to now');
+  assert.equal(s.ring, NOW);
+  assert.equal(KL.events(c, NOW).length, 0, 'and adds nothing to the history list');
+  KL.forget(c.cam);
+}
+{
+  const press = new Date(NOW - 180000).toISOString();
+  let calls = 0;
+  const h = { entities: {
+    'camera.mock_history': { device_id: 'mock_history', platform: 'reolink', translation_key: 'sub' },
+    'binary_sensor.mock_history': { device_id: 'mock_history', platform: 'reolink', translation_key: 'visitor' },
+  }, states: {
+    'camera.mock_history': { state: 'idle' },
+    'binary_sensor.mock_history': { state: 'off', last_changed: new Date(NOW - 179000).toISOString() },
+  }, callWS: async () => {
+    calls++;
+    return { 'binary_sensor.mock_history': [
+      { s: 'off', lu: (NOW - 86400000) / 1000 }, { s: 'on', lc: Date.parse(press) / 1000 },
+      { s: 'off', lc: (NOW - 179000) / 1000 },
+    ] };
+  } };
+  window._casoraRing.scan(h);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(window._casoraRing.scan(h)[0].lastRing?.id, press, 'global discovery recovers an earlier press from history without a tile');
+  assert.equal(calls, 1, 'global scans reuse history until the press sensor changes');
+}
+{
+  const c = { cam: 'camera.mock_shared', visitor: 'binary_sensor.mock_shared', order: [], det: {}, sw: {} };
+  window._casoraRing.lastRing(c, { [c.visitor]: { state: 'on', last_changed: new Date(NOW - 2000).toISOString() } });
+  const s = KL.status(c, { [c.cam]: { state: 'idle' }, [c.visitor]: { state: 'off', last_changed: new Date(NOW - 1000).toISOString() } }, NOW);
+  assert.equal(KL.tileText(s, NOW), 'Hat geklingelt', 'tile uses a ring observed globally without its tile');
+  assert.equal(KL.hot(s), true, 'shared press keeps the red dot');
+  KL.forget(c.cam);
+}
 const iso = (minAgo) => new Date(NOW - minAgo * 60000).toISOString();
 const entities = {}, states = {};
 const devices = { d_bell: { id: 'd_bell', name: 'Gartenpforte' }, d_cam: { id: 'd_cam', name: 'Carport' } };
@@ -194,6 +245,31 @@ window._casoraUI = {
   segments: (items, label) => '<seg ' + label + '>' + items.map((i) => i.label + (i.active ? '*' : '')).join(',') + '</seg>',
   more: (id, html, o) => '<more ' + o.label + ' ' + o.count + ' ' + o.less + ' ' + o.hint + '>' + html + '</more>',
 };
+// A popup opened by itself after the press was released (page hidden at the press, no doorbell tile on the page):
+// its header asks for the history itself and is drawn again when the newer press arrives, not left on the old one.
+{
+  const cam = 'camera.mock_hero', vis = 'binary_sensor.mock_hero';
+  const press = NOW - 90000;
+  const h = { entities: {
+    [cam]: { device_id: 'mock_hero', platform: 'reolink', translation_key: 'sub' },
+    [vis]: { device_id: 'mock_hero', platform: 'reolink', translation_key: 'visitor' },
+  }, states: {
+    [cam]: { state: 'idle' },
+    [vis]: { state: 'off', last_changed: new Date(press + 5000).toISOString() },
+  }, callWS: async () => ({ [vis]: [
+    { s: 'off', lu: (NOW - 86400000) / 1000 }, { s: 'on', lc: press / 1000 }, { s: 'off', lc: (press + 5000) / 1000 },
+  ] }) };
+  const c = KL.find(h, cam);
+  const el = { isConnected: true }, kicked = [];
+  const oldKick = window.casoraKick;
+  window.casoraKick = (w) => { kicked.push(w); };
+  KL.sec('hero', c, h.states, h, el);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  window.casoraKick = oldKick;
+  assert.ok(kicked.includes(el), 'the header is drawn again when the history it waited for arrives');
+  assert.match(n(KL.sec('hero', c, h.states, h, el)), /Hat geklingelt/, 'and then shows the newer press');
+  KL.forget(c.cam);
+}
 let h = n(KL.sec('hero', c, states, hass));
 assert.ok(/^<line>Bereit\|Akku 15 %!warn<\/line>$/.test(h), h);
 states['switch.pforte_ton'].state = 'off';

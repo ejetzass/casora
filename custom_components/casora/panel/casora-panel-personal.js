@@ -61,11 +61,34 @@
     + ":host(.is-light) .frow.casora-pmore .rtext b{color:var(--casora-studio-link, #0071e3)}"
 
     + ":host(.is-light) .casora-chip{background:var(--casora-studio-chip, rgba(118,118,128,.12))}:host(.is-light) .casora-chip.on{background:var(--casora-studio-link, #0071e3)}"
-    + ":host(.is-light) .fgroup.casora-pfocus .flist{box-shadow:0 0 0 2px var(--casora-studio-link, #0071e3)}";
+    + ":host(.is-light) .fgroup.casora-pfocus .flist{box-shadow:0 0 0 2px var(--casora-studio-link, #0071e3)}"
+    + ".camera-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:8px}"
+    + ".camera-head::after{display:none}"
+    + ".camera-name{all:unset;box-sizing:border-box;flex:1 1 auto;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:space-between;"
+    + "overflow-wrap:anywhere;cursor:pointer;font:inherit;font-weight:600;text-align:left}"
+    + ".camera-name::after{content:'›';flex:none;margin-left:8px;color:var(--ink-3);font-size:20px}"
+    + ".camera-name[aria-expanded=true]::after{transform:rotate(90deg)}"
+    + ".camera-name:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-s)}"
+    + ".camera-actions{display:flex;align-items:center;gap:4px;flex:0 0 auto}"
+    + ".camera-actions button{min-width:44px;min-height:44px;padding:0 8px;border:0;border-radius:var(--r-s);"
+    + "background:var(--casora-studio-chip, rgba(118,118,128,.18));color:var(--ink);font:inherit;font-size:var(--t-foot);cursor:pointer}"
+    + ".camera-actions button:disabled{opacity:.45;cursor:default}"
+    + ".camera-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    + ".camera-actions button:active:not(:disabled){transform:scale(var(--casora-press-scale, .97))}"
+    + "@media (hover:hover){.camera-actions button:hover:not(:disabled){background:var(--casora-studio-chip-hi, rgba(118,118,128,.24))}}"
+    + ".camera-trigger-row{display:flex;align-items:center;gap:8px}"
+    + ".camera-trigger-row>.rtext{flex:1;min-width:0}"
+    + ".camera-trigger-row>.casora-x{flex:0 0 auto}"
+    + ".camera-gone{padding:8px 10px;color:var(--ink-2);font-size:var(--t-foot)}";
 
   const clone = (x) => JSON.parse(JSON.stringify(x || {}));
   // New calendars: Casora blue as in the color menu (formerly fixed #0A84FF, which stays readable).
   const CAL_DEFAULT = "var(--casora-color-blue, #0088FF)";
+  const CAMERA_STATUS_FIELD = {
+    key: "status_entity", label: "Status from", domains: ["camera", "binary_sensor"],
+    classes: { binary_sensor: ["connectivity"] }, placeholder: "This camera",
+    hint: "Optional. Another camera or a connection sensor that tells whether the camera is reachable, e.g. when the picture comes through a proxy (go2rtc, Frigate, Scrypted) that stays ready although the camera is gone. Picture and popup stay with this camera.",
+  };
   const ICONS = ["", "tv", "apple_tv", "homepod", "playstation", "speaker"];
   const ICON_LABELS = { "": "Icon: Automatic", tv: "TV", apple_tv: "Apple TV", homepod: "HomePod",
     playstation: "PlayStation", speaker: "Speaker" };
@@ -94,6 +117,7 @@
     s.media = s.media || {};
     s.media.players = s.media.players || {};
     s.media.hidden = Array.isArray(s.media.hidden) ? s.media.hidden : [];
+    s.cameras = Array.isArray(s.cameras) ? s.cameras : [];
     s.ebike = s.ebike || {};
     s.basis = s.basis || {};
     return s;
@@ -112,6 +136,50 @@
       return Object.keys(out).length ? out : undefined;
     }
     return x === "" || x === null || x === undefined ? undefined : x;
+  }
+
+  // Match the camera tile's existing stream/snapshot filter: device_id groups streams, not their NVR parent.
+  function cameraCandidates(hass) {
+    const H = hass || {}, R = H.entities || {}, S = H.states || {}, D = H.devices || {};
+    const ids = Object.keys(S).filter((id) => {
+      if (!id.startsWith("camera.")) return false;
+      const e = R[id] || {};
+      return !(e.hidden || e.hidden_by || e.disabled || e.disabled_by || e.entity_category);
+    });
+    const name = (id) => String((S[id] && S[id].attributes && S[id].attributes.friendly_name) || "");
+    // The camera tile's own filter (07-weich-spezial.js) hides snapshot cameras and keeps one stream per device.
+    // It is not copied here: the Cameras section loads that script and draws again.
+    const soft = window._casoraCamSoft;
+    const filtered = soft && typeof soft.filter === "function" ? soft.filter(ids, H) : ids;
+    return filtered.map((entity_id) => {
+      const e = R[entity_id] || {};
+      const device_id = e.device_id || null;
+      const device = device_id && D[device_id];
+      const friendly = name(entity_id);
+      return {
+        device_id,
+        entity_id,
+        name: String((device && (device.name_by_user || device.name)) || friendly || entity_id).trim(),
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // Triggers are selected by the user; the camera's device only ranks suggestions.
+  function triggerCandidates(hass, cameraDeviceId) {
+    const H = hass || {}, R = H.entities || {}, S = H.states || {};
+    const name = (id) => String((S[id] && S[id].attributes && S[id].attributes.friendly_name) || id);
+    return Object.keys(S).filter((id) => /^(binary_sensor|event)\./.test(id))
+      .sort((a, b) => {
+        const ownA = !!cameraDeviceId && (R[a] || {}).device_id === cameraDeviceId;
+        const ownB = !!cameraDeviceId && (R[b] || {}).device_id === cameraDeviceId;
+        return Number(ownB) - Number(ownA) || name(a).localeCompare(name(b)) || a.localeCompare(b);
+      });
+  }
+
+  function effectiveOpen(houseValue, dashboardChoice) {
+    if (dashboardChoice === "always") return true;
+    if (dashboardChoice === "never") return false;
+    return houseValue === true;
   }
 
   async function fileSettings() {
@@ -168,7 +236,32 @@
   }
 
   // For the Settings page (casora-panel-settings.js): loading and saving stay the same.
-  window.casoraPersonal = { normalize, prune, fileSettings, CSS };
+  function cameraPopupValues(camera, hass, rooms, popup, family) {
+    const entities = (hass && hass.entities) || {};
+    const device = camera.device_id || (entities[camera.entity_id] || {}).device_id;
+    let legacy = {};
+    outer: for (const room of rooms || []) {
+      for (const tile of room.tiles || []) {
+        const card = tile.type === "conditional" && tile.card ? tile.card : tile;
+        const id = card.entity;
+        if (id === camera.entity_id || (device && (entities[id] || {}).device_id === device)) {
+          legacy = card.variables || {};
+          break outer;
+        }
+      }
+    }
+    const result = {};
+    // The family decides which fields a camera has; the caller may pass it, otherwise ask the runtime.
+    const fam = family || (window.casoraCameraPopup && window.casoraCameraPopup.kind(hass, camera.entity_id)) || "camera";
+    const fields = window.casoraCameraPopup.fields(fam);
+    for (const [key, fallback] of fields) {
+      result[key] = Object.prototype.hasOwnProperty.call(popup || {}, key) ? popup[key]
+        : Object.prototype.hasOwnProperty.call(legacy, key) ? legacy[key] : fallback;
+    }
+    return result;
+  }
+
+  window.casoraPersonal = { normalize, prune, cameraCandidates, triggerCandidates, effectiveOpen, cameraPopupValues, fileSettings, CSS };
 
   customElements.whenDefined("casora-panel").then(() => {
     const P = customElements.get("casora-panel").prototype;
@@ -369,6 +462,355 @@
             (v) => { S.waste.duty_entity = v; })], "Instead of fixed months");
           // No "Reminder automation" row: the popup's "Push the evening before" switch is gone (popup v3 is clean).
         }, ["Advanced", "Advanced"]);
+      }
+
+      if (want("cameras")) {
+        if ((!window.casoraCameraPopup || !window._casoraKlingel || !window._casoraFrigate)
+            && window.casoraImportScript && !window._casoraCameraSettingsModules) {
+          window._casoraCameraSettingsModules = Promise.all([
+            "local/23-frigate.js", "local/24-klingel.js", "local/25-camera-popup.js",
+          ].map((path) => window.casoraImportScript(path))).then(() => render()).catch(() => {});
+        }
+        // The "Add a camera" list needs the tile's stream filter, which only a dashboard script defines
+        // (07-weich-spezial.js): load it once, then draw again so stream variants never stay in the list.
+        if (!window._casoraCamSoft && window.casoraImportScript && !window._casoraCamSoftLoading) {
+          window._casoraCamSoftLoading = window.casoraImportScript("local/07-weich-spezial.js")
+            .then(() => render(), () => {})
+            .then(() => { window._casoraCamSoftLoading = null; });
+        }
+        g = group("cameras", { header: "Cameras" });
+        const cameras = S.cameras = Array.isArray(S.cameras) ? S.cameras : [];
+        const candidates = cameraCandidates(hass);
+        const cameraId = (camera) => camera && (camera.device_id || camera.entity_id);
+        const dashboardCameraSettings = (camera, create) => {
+          const rooms = (self._state && self._state.compact && self._state.compact.rooms) || [];
+          if (!rooms.length) return null;
+          const home = Math.max(0, rooms.findIndex((room) => I().isHomeRoom
+            ? I().isHomeRoom(room, rooms) : room.path === "home"));
+          const room = rooms[home];
+          if (!room) return null;
+          if (!room.variables) {
+            if (!create) return null;
+            room.variables = {};
+          }
+          const variables = room.variables;
+          let all = variables.casora_camera_settings;
+          if (!all || typeof all !== "object" || Array.isArray(all)) {
+            if (!create) return null;
+            all = variables.casora_camera_settings = {};
+          }
+          const id = cameraId(camera);
+          if (!all[id] || typeof all[id] !== "object" || Array.isArray(all[id])) {
+            if (!create) return null;
+            all[id] = {};
+          }
+          return all[id];
+        };
+        const present = new Map(candidates.map((camera) => [cameraId(camera), camera]));
+        const added = new Set(cameras.map(cameraId));
+        const choices = candidates.filter((camera) => !added.has(cameraId(camera)));
+        const folds = [];
+        const tr = (text) => window.casoraI18n ? window.casoraI18n.t(text) : text;
+        const changed = () => {
+          if (typeof self._csBar === "function") self._csBar();
+          render();
+        };
+        if (!cameras.length) self._flowRow(g, { title: "No Cameras", sub: "Add a camera to change its popup settings." });
+        cameras.forEach((camera, index) => {
+          const key = cameraId(camera);
+          const current = present.get(key);
+          const name = String((current && current.name) || camera.name || camera.entity_id || camera.device_id || "");
+          const fold = document.createElement("div");
+          fold.className = "cn-fold camera-fold";
+          const head = document.createElement("div");
+          head.className = "cn-bhead camera-head";
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "camera-name";
+          toggle.id = "casora-camera-name-" + index;
+          toggle.textContent = name;
+          toggle.setAttribute("data-no-i18n", "");
+          const open = self._csCameraOpen === key;
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          const body = document.createElement("div");
+          body.className = "camera-body";
+          body.id = "casora-camera-settings-" + index;
+          toggle.setAttribute("aria-controls", body.id);
+          const actions = document.createElement("div");
+          actions.className = "camera-actions";
+          head.appendChild(toggle);
+          head.appendChild(actions);
+          fold.appendChild(head);
+          const action = (label, disabled, onTap) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = tr(label);
+            button.title = tr(label);
+            button.setAttribute("aria-label", tr(label));
+            button.setAttribute("aria-describedby", toggle.id);
+            button.disabled = disabled;
+            button.onclick = onTap;
+            actions.appendChild(button);
+            return button;
+          };
+          action("Move up", index === 0, () => {
+            [cameras[index - 1], cameras[index]] = [cameras[index], cameras[index - 1]];
+            self._csCameraOpen = key;
+            changed();
+          });
+          action("Move down", index === cameras.length - 1, () => {
+            [cameras[index], cameras[index + 1]] = [cameras[index + 1], cameras[index]];
+            self._csCameraOpen = key;
+            changed();
+          });
+          action("Remove", false, () => {
+            cameras.splice(index, 1);
+            if (self._csCameraOpen === key) self._csCameraOpen = null;
+            changed();
+          });
+          fold.appendChild(body);
+          g.appendChild(fold);
+          folds.push({ fold, toggle, key });
+          if (!current) {
+            const gone = document.createElement("div");
+            gone.className = "camera-gone";
+            gone.textContent = tr("Not found in Home Assistant");
+            body.appendChild(gone);
+          }
+          const all = self._flowGroup(body, { header: "All dashboards" });
+          const triggerList = (field, title, hint) => {
+            const values = () => Array.isArray(camera[field]) ? camera[field] : [];
+            const choices = () => triggerCandidates(self._hass || hass, camera.device_id)
+              .filter((entity_id) => !values().includes(entity_id));
+            const picker = self._combo("", choices(), tr("Add device …"), (entity_id) => {
+              const current = self._hass || hass;
+              if (!triggerCandidates(current, camera.device_id).includes(entity_id) || values().includes(entity_id)) {
+                render();
+                return;
+              }
+              if (!Array.isArray(camera[field])) camera[field] = [];
+              camera[field].push(entity_id);
+              changed();
+            }, { entity: true, source: choices, preserveOrder: true });
+            row(all, title, [picker.wrap], hint);
+            values().forEach((entity_id, triggerIndex) => {
+              const state = (self._hass || hass).states[entity_id];
+              const missing = !state;
+              const name = state && state.attributes && state.attributes.friendly_name;
+              const item = self._flowRow(all, {
+                title: missing ? tr("Not found in Home Assistant") : String(name || entity_id),
+                raw: !missing,
+                detail: missing ? entity_id : undefined,
+              });
+              item.row.classList.add("camera-trigger-row");
+              if (item.detail) item.detail.setAttribute("data-no-i18n", "");
+              const remove = del(() => {
+                const current = values();
+                const at = current.indexOf(entity_id);
+                if (at >= 0) current.splice(at, 1);
+                if (!current.length) delete camera[field];
+                if (typeof self._csBar === "function") self._csBar();
+              });
+              remove.setAttribute("aria-describedby", "casora-camera-trigger-" + index + "-" + field + "-" + triggerIndex);
+              item.row.id = "casora-camera-trigger-" + index + "-" + field + "-" + triggerIndex;
+              item.row.appendChild(remove);
+            });
+          };
+          triggerList("doorbell_triggers", "Doorbell from",
+            "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.");
+          triggerList("detection_triggers", "Detection from",
+            "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.");
+          const openSwitch = (title, field) => {
+            const item = self._flowRow(all, { title });
+            item.row.appendChild(self._boolSwitch(camera[field] === true, false, (value) => {
+              if (value === true) camera[field] = true; else delete camera[field];
+              changed();
+            }, tr(title)));
+          };
+          openSwitch("Open popup on a ring", "open_on_ring");
+          openSwitch("Open popup on a detection", "open_on_detection");
+          const switchHint = document.createElement("div");
+          switchHint.className = "ffoot";
+          switchHint.textContent = tr("Applies to all dashboards");
+          all.appendChild(switchHint);
+
+          const inherited = !camera[CAMERA_STATUS_FIELD.key] && window.casoraCameraTileStatusFor
+            ? window.casoraCameraTileStatusFor(camera, hass, (self._state && self._state.compact && self._state.compact.rooms) || []) : null;
+          const inheritedName = inherited && self._prettyEntity ? self._prettyEntity(inherited) : inherited;
+          const placeholder = inherited ? inheritedName || inherited : CAMERA_STATUS_FIELD.placeholder;
+          row(all, CAMERA_STATUS_FIELD.label, [
+            ent(camera[CAMERA_STATUS_FIELD.key], CAMERA_STATUS_FIELD.domains, (value) => {
+              camera[CAMERA_STATUS_FIELD.key] = value || "";
+              changed();
+            }, placeholder, CAMERA_STATUS_FIELD.classes),
+          ], CAMERA_STATUS_FIELD.hint);
+
+          const only = self._flowGroup(body, { header: "Only this dashboard" });
+          const rooms = (self._state && self._state.compact && self._state.compact.rooms) || [];
+          // Desktop view order first, then the paired phone layout's section order.
+          const phoneRooms = self._pair && self._pair.mobile && self._pair.mobile.compact
+            && self._pair.mobile.compact.rooms || [];
+          const tileRooms = rooms.concat(phoneRooms);
+          if (!rooms.length) {
+            const note = document.createElement("div");
+            note.className = "ffoot";
+            note.textContent = tr("Open a dashboard in the Studio to change this.");
+            only.parentElement.appendChild(note);
+          } else {
+            const choice = (title, kind, houseField) => {
+              const saved = dashboardCameraSettings(camera, false);
+              const open = saved && saved.open;
+              const value = open && open[kind];
+              const selected = value === "always" || value === "never" ? value : "inherit";
+              const inherited = effectiveOpen(camera[houseField] === true, "inherit")
+                ? "As all dashboards (on)" : "As all dashboards (off)";
+              const labels = { inherit: inherited, always: "Always", never: "Never" };
+              row(only, title, [pick(selected, ["inherit", "always", "never"], labels, (next) => {
+                const settings = dashboardCameraSettings(camera, true);
+                if (!settings) return;
+                if (!settings.open || typeof settings.open !== "object" || Array.isArray(settings.open)) settings.open = {};
+                settings.open[kind] = next;
+                if (typeof self._markDirty === "function") self._markDirty();
+                if (typeof self._csBar === "function") self._csBar();
+                render();
+              })]);
+            };
+            choice("Open popup on a ring", "ring", "open_on_ring");
+            choice("Open popup on a detection", "detection", "open_on_detection");
+            const family = window.casoraCameraPopup && window.casoraCameraPopup.kind(hass, camera.entity_id);
+            if (window.casoraCameraPopup && typeof window.casoraCameraPopup.fields === "function"
+                && (!family || family === "camera" || family === "frigate" || family === "doorbell")) {
+              const popupHint = document.createElement("div");
+              popupHint.className = "ffoot";
+              popupHint.textContent = tr("Every tile of this camera opens this popup on this dashboard, also when it opens by itself.");
+              body.appendChild(popupHint);
+              const popupGroup = self._flowGroup(body, { header: "Camera popup" });
+              const saved = dashboardCameraSettings(camera, false);
+              const values = cameraPopupValues(camera, hass, tileRooms, saved && saved.popup, family);
+              const updatePopup = (field, value) => {
+                const settings = dashboardCameraSettings(camera, true);
+                if (!settings) return;
+                if (!settings.popup || typeof settings.popup !== "object" || Array.isArray(settings.popup)) settings.popup = {};
+                if (value === undefined) delete settings.popup[field]; else settings.popup[field] = value;
+                if (typeof self._markDirty === "function") self._markDirty();
+                if (typeof self._csBar === "function") self._csBar();
+                render();
+              };
+              const conflict = (field) => {
+                if (Object.prototype.hasOwnProperty.call((saved && saved.popup) || {}, field)) return;
+                const entities = (hass && hass.entities) || {};
+                const device = camera.device_id || (entities[camera.entity_id] || {}).device_id;
+                const choices = [];
+                for (const room of tileRooms) for (const tile of room.tiles || []) {
+                  const card = tile.type === "conditional" && tile.card ? tile.card : tile;
+                  if (card.entity !== camera.entity_id && !(device && (entities[card.entity] || {}).device_id === device)) continue;
+                  if (!Object.prototype.hasOwnProperty.call(card.variables || {}, field)) continue;
+                  choices.push({ value: card.variables[field], name: card.name || camera.name || card.entity,
+                    room: room.title || room.name || room.path || "" });
+                }
+                if (new Set(choices.map((choice) => JSON.stringify(choice.value))).size < 2) return;
+                const line = document.createElement("button");
+                line.type = "button";
+                line.className = "fin";
+                line.textContent = tr("Press here to resolve a conflict between different camera tiles");
+                line.setAttribute("aria-expanded", "false");
+                const list = document.createElement("div");
+                list.hidden = true;
+                line.onclick = () => {
+                  list.hidden = !list.hidden;
+                  line.setAttribute("aria-expanded", String(!list.hidden));
+                };
+                choices.forEach((choice) => {
+                  const button = document.createElement("button");
+                  button.type = "button";
+                  button.className = "fin";
+                  // The approved text names the tile; the value it carries comes with it.
+                  button.textContent = tr("“{name}” in {room}").replace("{name}", choice.name).replace("{room}", choice.room);
+                  button.onclick = () => updatePopup(field, choice.value);
+                  list.appendChild(button);
+                });
+                popupGroup.appendChild(line);
+                popupGroup.appendChild(list);
+              };
+              if (family === "frigate") {
+                // The stream list comes from Frigate itself (go2rtc), so the options are dynamic.
+                const streamField = (field, phone, title, hint) => {
+                  const dynamic = window.casoraFrigateStreams && window.casoraFrigateStreams(phone)(hass, camera.entity_id, render);
+                  const options = dynamic ? dynamic.options : phone ? ["", "standard"] : [""];
+                  const labels = dynamic ? dynamic.labels : { "": phone ? "Automatic" : "Standard", standard: "Standard" };
+                  row(popupGroup, title, [pick(values[field], options, labels, (value) => updatePopup(field, value))], hint);
+                  conflict(field);
+                };
+                streamField("stream_popup", false, "Camera popup: Stream in the popup (default)",
+                  "Camera popup: The stream the popup starts with. With more than one stream the popup shows a switch below the picture; the choice there holds until the browser is closed.");
+                streamField("stream_popup_phone", true, "Camera popup: Stream in the popup on the phone",
+                  "On a phone. \u201cAutomatic\u201d starts with the sub stream when Frigate has one, otherwise with the desktop's stream.");
+              } else if (family === "doorbell") {
+                const talk = self._flowRow(popupGroup, {
+                  title: "Talk (experiment)",
+                  sub: "Adds a Talk button under the live picture: your microphone goes to the doorbell through Home Assistant's own WebRTC connection. Only works over HTTPS, with the doorbell connected in your network (RTSP), and only if the doorbell accepts it \u2013 many Reolink doorbells don't. If it doesn't, the popup says so and listening keeps working.",
+                });
+                talk.row.appendChild(self._boolSwitch(values.talk === true, false,
+                  (value) => updatePopup("talk", value === true), tr("Talk (experiment)")));
+                conflict("talk");
+                row(popupGroup, "Second camera", [ent(values.camera2, ["camera"],
+                  (value) => updatePopup("camera2", value || ""), "Automatic")],
+                  "Optional. Another camera, for example the entrance. The popup then shows a switch on the live picture to change between the doorbell and this camera. Talking always goes to the doorbell.");
+                conflict("camera2");
+                const large = self._flowRow(popupGroup, {
+                  title: "Large picture when listening/talking",
+                  sub: "Tapping Listen or Talk opens the live picture large over the popup. Close it with \u00d7, Esc or by swiping down.",
+                });
+                large.row.appendChild(self._boolSwitch(values.big_on_audio !== false, true,
+                  (value) => updatePopup("big_on_audio", value !== false), tr("Large picture when listening/talking")));
+                conflict("big_on_audio");
+              } else {
+                const minutes = document.createElement("input");
+                minutes.type = "number";
+                minutes.className = "fin casora-short";
+                minutes.placeholder = "5";
+                minutes.value = String(values.alert_window_minutes);
+                minutes.setAttribute("aria-label", tr("Recent activity (minutes)"));
+                minutes.onchange = () => updatePopup("alert_window_minutes",
+                  minutes.value.trim() === "" ? undefined : Number(minutes.value));
+                row(popupGroup, "Recent activity (minutes)", [minutes], "A dot marks a camera with activity in this window.");
+                conflict("alert_window_minutes");
+                const stream = self._flowRow(popupGroup, {
+                  title: "Show stream variants",
+                  sub: "Also list snapshot cameras and every stream of a camera (hidden by default).",
+                });
+                stream.row.appendChild(self._boolSwitch(values.show_stream_variants === true, false,
+                  (value) => updatePopup("show_stream_variants", value === true), tr("Show stream variants")));
+                conflict("show_stream_variants");
+              }
+            }
+          }
+          if (open) fold.classList.add("open");
+          toggle.onclick = () => {
+            const next = !fold.classList.contains("open");
+            folds.forEach((item) => {
+              item.fold.classList.toggle("open", next && item.fold === fold);
+              item.toggle.setAttribute("aria-expanded", next && item.fold === fold ? "true" : "false");
+            });
+            self._csCameraOpen = next ? key : null;
+          };
+        });
+        if (choices.length) {
+          row(g, "Add a camera", [self._combo("", choices.map((camera) => camera.entity_id), "Add a camera",
+            (entity_id) => {
+              const camera = choices.find((candidate) => candidate.entity_id === entity_id);
+              if (!camera) return;
+              cameras.push({ device_id: camera.device_id, entity_id: camera.entity_id, name: camera.name });
+              self._csCameraOpen = cameraId(camera);
+              changed();
+            }).wrap]);
+        } else if (candidates.length) {
+          self._flowRow(g, { title: "All cameras are already added." });
+        }
+        const priority = document.createElement("div");
+        priority.className = "ffoot";
+        priority.textContent = tr("When two cameras want to open at the same time, a ring goes first, otherwise the order of this list.");
+        g.parentElement.appendChild(priority);
       }
 
       if (want("calendars")) {
@@ -854,8 +1296,22 @@
         return n ? [n === 1 ? "1 calendar" : "{n} calendars", n] : ["All calendars", 0];
       },
     };
-    P._casoraSettingsLink = function (f) {
+    P._casoraSettingsLink = function (f, tile) {
       const focus = f && f.settingsLink;
+      if (focus === "cameras") {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "casora-plink";
+        b.textContent = (window.casoraI18n ? window.casoraI18n.t("Popup settings ›") : "Popup settings ›");
+        b.setAttribute("data-no-i18n", "");
+        b.onclick = () => {
+          const id = tile && tile.entity;
+          const meta = (this._hass && this._hass.entities && this._hass.entities[id]) || {};
+          this._csCameraOpen = meta.device_id || id;
+          this._casoraPersonal({ focus });
+        };
+        return b;
+      }
       if (!LINK_TEXT[focus]) return null;
       readSettings(this);
       const b = document.createElement("button");
@@ -917,4 +1373,3 @@
     };
   });
 })();
-
