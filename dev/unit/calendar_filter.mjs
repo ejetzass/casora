@@ -227,7 +227,7 @@ console.log('ok Calendar filter settings draft, save and discard');
 // Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
 {
   class PreviewPanel {}
-  const previewWindow = { casoraSettings: () => ({ calendar_filter: 'Naam-aaaaaa' }),
+  const previewWindow = { CASORA_SETTINGS: { calendar_filter: 'Naam-aaaaaa' },
     casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
   const node = () => ({ style: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; } });
   const previewDocument = { createElement: node, querySelector: () => null };
