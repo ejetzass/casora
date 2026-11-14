@@ -224,23 +224,38 @@ assert.equal(panel._cs.S.calendar_filter, 'Naam vrij', 'Discard restores the sav
 assert.equal(panel._csOwnDirty(), false, 'Discard clears the dirty state');
 console.log('ok Calendar filter settings draft, save and discard');
 
-// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts.
+// Exercise the Studio's real lazy loader in a fresh window, without dashboard scripts. The real Studio has
+// window.casoraSettings (from 00-finder.js), but it returns {}: the settings page never sets CASORA_SETTINGS on load.
+// The preview takes the filter from the settings page's draft, as the kind chips take theirs.
 {
   class PreviewPanel {}
-  const previewWindow = { CASORA_SETTINGS: { calendar_filter: 'Naam-aaaaaa' },
+  const previewWindow = { casoraSettings: () => ({}),
     casoraTr: () => '', casoraEnergyPrefs: {}, addEventListener() {} };
-  const node = () => ({ style: {}, isConnected: false, appendChild(child) { this.firstChild ||= child; } });
+  // Any DOM call the Studio makes returns a stub; only the calls the test reads are real.
+  const node = () => new Proxy(function () {}, {
+    get: (target, key) => (key in target ? target[key] : (target[key] = key === 'isConnected' ? false : node())),
+    set: (target, key, value) => { target[key] = value; return true; },
+    apply: () => node(),
+  });
   const previewDocument = { createElement: node, querySelector: () => null };
   const previewContext = vm.createContext({ window: previewWindow, document: previewDocument,
     customElements: { whenDefined: () => Promise.resolve(), get: () => PreviewPanel },
-    setTimeout: () => 0, console, Date: ClockDate });
+    setTimeout: () => 0, setInterval: () => 0, clearInterval() {}, console, Date: ClockDate });
   previewWindow.casoraImportScript = async path => {
     vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/' + path, import.meta.url), 'utf8'), previewContext);
   };
   vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel-settings.js', import.meta.url), 'utf8'), previewContext);
   await settle();
-  new PreviewPanel()._csSaverPreview({ insertBefore() {} }, {});
+  const studio = new PreviewPanel();
+  studio._cs = { S: { calendar_filter: 'Naam-aaaaaa' } };
+  studio._csSaverPreview({ insertBefore() {} }, {});
   await settle();
+  // Once the scripts are loaded the Studio draws the preview: capture the options it hands to the module.
+  let studioMount = null;
+  previewWindow._casoraSaver.KINDS = [];
+  previewWindow._casoraSaver.mount = (host, kind, o) => { studioMount = o; return { update() {}, destroy() {} }; };
+  studio._csSaverPreview({ insertBefore() {} }, {});
+  assert.ok(studioMount, 'the Studio mounts the screensaver preview');
   const coded = { 'calendar.mock_wire': { attributes: { casora_filter_match: {
     entries: ['Naam-aaaaaa'], events: { 'Naam-111111': { title: 'Naam-cccccc', matches: ['Naam-aaaaaa'] } }
   } } } };
@@ -248,9 +263,9 @@ console.log('ok Calendar filter settings draft, save and discard');
     { title: 'Naam-cccccc', uid: 'Naam-111111', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
     { title: 'Visible', uid: 'other', cal: 'calendar.mock_wire', start: now, end: now + 3600000 },
   ];
-  const view = previewWindow._casoraSaver.context({ kind: 'linie', now: new ClockDate(),
-    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] });
-  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies exported Calendar filter decisions');
+  const view = previewWindow._casoraSaver.context(Object.assign({}, studioMount.context(), { kind: 'linie', now: new ClockDate(),
+    hass: { states: coded }, events: codedEvents, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [] }));
+  assert.deepEqual(Array.from(view.events, event => event.title), ['Visible'], 'Studio preview applies the saved Calendar filter from the settings draft');
   const vars = { calendars: [{ entity: 'calendar.mock_wire' }] };
   previewWindow._casoraCalendar.load({ states: coded, callApi: async () => [
     { summary: 'Naam-cccccc', uid: 'Naam-111111', start: { dateTime: '2026-11-13T10:00:00' }, end: { dateTime: '2026-11-13T11:00:00' } }
