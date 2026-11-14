@@ -1587,7 +1587,7 @@
         stage.appendChild(el("p", "cs-lede", t("The preview appears once the dashboard's scripts have loaded.")));
         stage.firstChild.style.cssText = "position:absolute;inset:0;display:grid;place-items:center;color:#fff;margin:0;padding:16px;text-align:center;";
         // The Studio does not load the dashboard's modules: fetch what the screensavers need (their texts, the
-        // energy and waste helpers, the module itself) once, then draw the preview in place of this note.
+        // energy and waste helpers, the Calendar filter, the module itself) once, then draw the preview in place of this note.
         if (!saverLoad) {
           const imp = window.casoraImportScript || ((p) => import("/casora_scripts/" + p));
           const quiet = (p) => imp(p).catch(() => {});
