@@ -172,6 +172,30 @@ async def runtime_checks() -> None:
     check("with HACS: no own update entity", added == [] and hh.data["casora"][update.DATA_HACS] is True)
     check("with HACS: repo id kept for the HACS page", hh.data["casora"][update.DATA_HACS_ID] == update.UPDATE_REPO_ID)
 
+    # Following the Fork: the store holds the Fork's repo id, not Upstream's. Casora still adds no own entity,
+    # else the Updates page lists a second, non-installable Casora that offers Upstream releases.
+    HACS_DEVICES.clear()
+    check("fork: not managed before the store holds it", update.hacs_repo_id(Hass(tempfile.mkdtemp())) is None)
+    HACS_DEVICES.add(("marketplace", update.FORK_REPO_ID))
+    hf = Hass(tempfile.mkdtemp())
+    added.clear()
+    await update.async_setup_entry(hf, SimpleNamespace(entry_id="e3", options={}), lambda ents, **k: added.append(ents))
+    check("fork: no own update entity", added == [] and hf.data["casora"][update.DATA_HACS] is True, added)
+    check("fork: repo id kept for the store page", hf.data["casora"][update.DATA_HACS_ID] == update.FORK_REPO_ID)
+    check("fork: store page route", update.store_url(hf, update.FORK_REPO_ID) == f"/marketplace/repository/{update.FORK_REPO_ID}")
+    HACS_DEVICES.clear()
+    HACS_DEVICES.update({("hacs", update.UPDATE_REPO_ID), ("marketplace", update.FORK_REPO_ID)})
+    check("fork: Upstream's entry wins when both exist", update.hacs_repo_id(hf) == update.UPDATE_REPO_ID)
+    HACS_DEVICES.clear()
+
+    # Studio list of a Fork install: nothing newer than the Upstream release the running build sits on.
+    from custom_components.casora import updates  # noqa: PLC0415
+    rels = [{"version": v} for v in ("26.11.27", "26.11.26", "26.11.25", "26.11.24")]
+    check("fork list: 26.11.25.2 hides 26.11.26 and 26.11.27",
+          [r["version"] for r in updates.fork_visible(rels, "26.11.25.2")] == ["26.11.25", "26.11.24"])
+    check("fork list: 26.11.26.1 shows its Upstream base",
+          [r["version"] for r in updates.fork_visible(rels, "26.11.26.1")][:2] == ["26.11.26", "26.11.25"])
+
 
 static_checks()
 asyncio.run(runtime_checks())
