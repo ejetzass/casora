@@ -14,7 +14,7 @@
   // Meldungsart je Quelle (Schlüssel aus casoraNotifySources).
   const KIND = {
     window: "Window open", door: "Door open", garage: "Garage open", battery: "Low battery",
-    lock: "Lock", alarm: "Alarm", doorbell: "Doorbell", person: "Arrivals and departures",
+    lock: "Lock", alarm: "Alarm", doorbell: "Doorbell", detection: "Detection", person: "Arrivals and departures",
     vacuum: "Vacuum", appliance: "Appliance done", update: "Update", water: "Water detected",
     smoke: "Smoke detected", gas: "Gas detected", co: "Carbon monoxide", safety: "Safety warning",
     co2: "High carbon dioxide", plant: "Plant care", mail: "Mailbox", warning: "Weather warning",
@@ -64,7 +64,7 @@
     const hass = panel._hass || {};
     if (typeof W.casoraNotifySources !== "function") return [];
     const ex = (S.notify && S.notify.exclude) || [];
-    return W.casoraNotifySources(hass, { appliances: dashAppliances(panel), notify: S.notify || {} })
+    return W.casoraNotifySources(hass, { appliances: dashAppliances(panel), notify: S.notify || {}, cameras: S.cameras || [] })
       .filter((x) => !ex.includes(x.entity))
       .map((x) => ({ ...x, name: nameOf(hass, x.entity), room: areaName(hass, x.entity), what: kinds(x) }));
   };

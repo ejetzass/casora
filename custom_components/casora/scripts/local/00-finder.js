@@ -1506,7 +1506,28 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     if (id.indexOf('binary_sensor.') !== 0) return false;
     return isReolinkVisitor(hass, id) || (a.device_class === 'occupancy' && /doorbell|ding|chime/i.test(id));
   };
-
+  // Doorbells with a camera we can pair: Ring (event + live_view camera) and Reolink (visitor + sub/main camera).
+  // Registry-only pairing; whether it IS a doorbell is casoraIsDoorbell. Test: dev/unit/glocke_doorbell_popup.mjs.
+  window.casoraDoorbellSources = function (hass) {
+    var R = reg(hass), out = [];
+    Object.keys(R).forEach(function (id) {
+      var e = R[id];
+      if (!e || !e.device_id || e.disabled_by || e.hidden || e.hidden_by) return;
+      if (!window.casoraIsDoorbell(hass, id)) return;
+      var event = id.indexOf('event.') === 0;
+      if (event ? !((e.platform === 'ring' || e.platform === 'casora_mock') && (e.translation_key === 'ding' || !e.translation_key))
+        : !isReolinkVisitor(hass, id)) return;
+      var cams = window.casoraDeviceEntities(R, e.device_id).filter(function (cid) {
+        var r = R[cid];
+        return cid.indexOf('camera.') === 0 && r.platform === e.platform
+          && !r.disabled_by && !r.hidden && !r.hidden_by
+          && (event ? (!r.translation_key || r.translation_key === 'live_view') : /^(sub|main)$/.test(r.translation_key));
+      });
+      cams.sort(function (a, b) { return (/^(sub|live_view)$/.test(R[a].translation_key) ? 0 : 1) - (/^(sub|live_view)$/.test(R[b].translation_key) ? 0 : 1); });
+      if (cams.length) out.push({ cam: cams[0], cameras: cams, sensor: id, event: event });
+    });
+    return out;
+  };
   // ── Bell: which entities can create an entry at all (1.1.2) ────
   // For the exception list „Nicht melden“ in the Studio (casora-panel-glocke.js). The same sources
   // the bell checks (casora-core.js watched/standing, 01-basis.js extension) – without the
@@ -1545,6 +1566,10 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       if (window.casoraIsDoorbell(hass, id)) {
         add(id, 'doorbell', false);
       }
+      var cameras = o.cameras || (window.CASORA_SETTINGS || {}).cameras || [];
+      if ((dom === 'binary_sensor' || dom === 'event') && cameras.some(function (camera) {
+        return camera && Array.isArray(camera.detection_triggers) && camera.detection_triggers.indexOf(id) >= 0;
+      })) add(id, 'detection', false);
       if (dc === 'battery' && (dom === 'sensor' || dom === 'binary_sensor')) {
         var pct = parseFloat(s);
         add(id, 'battery', dom === 'sensor'
