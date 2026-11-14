@@ -78,12 +78,20 @@
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
   // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.
-  K.allowsTitle = function (title) {
+  K.allowsTitle = function (title, states, entity, uid) {
     var settings = window.casoraSettings ? window.casoraSettings() : {};
     var text = String(title || '').toLowerCase();
+    var attrs = states && states[entity] && states[entity].attributes;
+    var meta = attrs && attrs.casora_filter_match;
+    var decision = meta && (uid === undefined ? meta.message : uid && meta.events && meta.events[uid]);
+    if (decision && decision.title !== title) decision = null;
     return !String(settings.calendar_filter || '').split(',').some(function (entry) {
       entry = entry.trim().toLowerCase();
-      return entry && text.indexOf(entry) !== -1;
+      if (!entry) return false;
+      if (decision && Array.isArray(meta.entries) && meta.entries.some(function (e) { return String(e).toLowerCase() === entry; })) {
+        return Array.isArray(decision.matches) && decision.matches.some(function (e) { return String(e).toLowerCase() === entry; });
+      }
+      return text.indexOf(entry) !== -1;
     });
   };
 
@@ -103,7 +111,7 @@
     K.cals(variables).forEach(function (c) {
       if (c.tile === false) return;
       var consider = function (ev) {
-        if (!K.allowsTitle(ev.name) || isNaN(ev.start) || ev.end <= now) return;
+        if (!K.allowsTitle(ev.name, states, c.entity, ev.uid) || isNaN(ev.start) || ev.end <= now) return;
         var r = rank(ev);
         if (!best || r < bestRank || (r === bestRank && ev.start < best.start)) { best = ev; bestRank = r; }
       };
@@ -115,7 +123,7 @@
         });
       }
       var s = states[c.entity], a = s && s.attributes;
-      if (!a || !a.message || !a.start_time || !K.allowsTitle(a.message)) return;
+      if (!a || !a.message || !a.start_time || !K.allowsTitle(a.message, states, c.entity)) return;
       var st = new Date(String(a.start_time).replace(' ', 'T')), en = new Date(String(a.end_time || a.start_time).replace(' ', 'T'));
       if (isNaN(st)) return;
       // The API is authoritative only within its fetched interval, not for distant next events.
@@ -217,7 +225,7 @@
           var all = !(ev.start && ev.start.dateTime);
           var st = all ? parseYmd(sd) : new Date(sd), en = all ? parseYmd(ed || sd) : new Date(ed || sd);
           if (all && en <= st) en = addD(st, 1);
-          return { name: ev.summary || '', loc: ev.location || '', start: st, end: en, allDay: all, cal: c.entity };
+          return { name: ev.summary || '', loc: ev.location || '', start: st, end: en, allDay: all, cal: c.entity, uid: ev.uid || null };
         });
       }).catch(function () { failed[c.entity] = true; return []; });
     })).then(function (lists) {
