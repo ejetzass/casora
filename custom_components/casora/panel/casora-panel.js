@@ -2717,7 +2717,7 @@ const SECTIONS = [
       // #179: weekday and date in small type under the time.
       { key: "show_date", label: "Show date", type: "bool", boolDefault: false, always: true,
         hint: "Weekday and date in small type under the time." },
-      // Always visible: without an entry the clock takes sensor.time, and that should show.
+      // Always visible: without an entry the clock is automatic (the device's own time), and that should show.
       { ...E("time_entity", "Time sensor", ["sensor"]), always: true, placeholder: "Automatic" },
       { key: "use_12h", label: "12-hour clock", type: "bool", boolDefault: clock12, always: true },
       { ...T("time_suffix", "Suffix"),
