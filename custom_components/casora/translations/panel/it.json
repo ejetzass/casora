@@ -4,7 +4,7 @@
     "Hide when the title contains": "Nascondi se il titolo contiene",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Separa le voci con virgole; una voce può contenere più parole. La finestra del calendario continua a mostrarle.",
     "Add sensor or event": "Aggiungi sensore o evento",
-    "Camera detections": "Rilevamenti della videocamera",
+    "Camera detections": "Rilevamenti della telecamera",
     "Detection from": "Rilevamento da",
     "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Sensori o eventi che contano come un rilevamento per questa telecamera. Il nome proviene da Home Assistant.",
     "Copy diagnostics…": "Copia diagnostica…",
