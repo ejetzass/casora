@@ -33,28 +33,28 @@ await page.evaluate(async (id) => {
   const helpers = await window.loadCardHelpers();
   const tile = helpers.createCardElement({ type: 'custom:button-card',
     template: 'casora_reolink_doorbell', entity: id, name: 'Testklingel' });
-  tile.classList.add('qa-r620');
+  tile.classList.add('qa-r642');
   tile.style.cssText = 'position:fixed;left:400px;top:300px;width:360px;height:220px;z-index:99990;';
   tile.hass = ha.hass;
   ha.shadowRoot.appendChild(tile);
-  window.__r620 = { tile, forward: setInterval(() => {
+  window.__r642 = { tile, forward: setInterval(() => {
     const visitor = ha.hass.states['binary_sensor.testklingel_visitor'];
-    if (visitor?.state === 'on') window.__r620.rangAt = Date.parse(visitor.last_changed);
+    if (visitor?.state === 'on') window.__r642.rangAt = Date.parse(visitor.last_changed);
     tile.hass = ha.hass;
   }, 200) };
 }, ID);
 atFinish(() => page.evaluate(() => {
-  const q = window.__r620;
+  const q = window.__r642;
   if (!q) return;
   if (q.realNow) Date.now = q.realNow;
   clearInterval(q.forward);
   q.unsubscribe?.();
   q.tile.remove();
-  delete window.__r620;
+  delete window.__r642;
 }));
 
 const readTile = () => {
-  const b = window.__r620.tile;
+  const b = window.__r642.tile;
   const st = b.shadowRoot?.querySelector('#state');
   if (!st) return null;
   return { text: (st.querySelector('.sf-f') || st).textContent.replace(/\s+/g, ' ').trim(),
@@ -79,10 +79,10 @@ const [fresh, two, nine, ready] = await page.evaluate(() =>
 await need('ring text and dot with a loaded image', initial?.text === fresh
   && initial.dot && initial.image.includes('blob:'), initial);
 await need('the actual press timestamp was observed', await page.evaluate(() =>
-  Number.isFinite(window.__r620.rangAt)));
+  Number.isFinite(window.__r642.rangAt)));
 
 await page.evaluate(async (id) => {
-  const ha = document.querySelector('home-assistant'), q = window.__r620;
+  const ha = document.querySelector('home-assistant'), q = window.__r642;
   clearInterval(q.forward);
   // Retain the actual post-release states, not fakeStates: unrelated house updates must
   // not redraw our tile. Still watch the live camera for ANY state_changed event.
@@ -107,10 +107,10 @@ for (const [minutes, text, dot] of [
   while (!pending && Date.now() < deadline) await page.waitForTimeout(50);
   await need('the next scheduled image request', pending !== null);
   // Flush the timer's pre-jump render before releasing the held image.
-  await page.evaluate(async () => { await window.__r620.tile.updateComplete; });
+  await page.evaluate(async () => { await window.__r642.tile.updateComplete; });
   const before = await look();
   await page.evaluate((m) => {
-    const q = window.__r620;
+    const q = window.__r642;
     q.offset = q.rangAt + m * 60000 - q.realNow();
   }, minutes);
   pending();
@@ -121,7 +121,7 @@ for (const [minutes, text, dot] of [
   await check(`+${minutes} min: next image redraws ring text and dot`,
     result?.image !== before.image && result?.text === text && result?.dot === dot, result);
   const unchanged = await page.evaluate((id) => {
-    const q = window.__r620;
+    const q = window.__r642;
     return q.changes === 0 && JSON.stringify(document.querySelector('home-assistant').hass.states[id]) === q.camera;
   }, ID);
   await check(`+${minutes} min: live camera entity did not change`, unchanged);
