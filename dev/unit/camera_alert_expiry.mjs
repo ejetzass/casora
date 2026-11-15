@@ -73,6 +73,8 @@ for (const [copy, source] of Object.entries(helperCopies)) {
 }
 
 // Two alerts at once: each keeps its own window (the doorbell first, then the detection).
+// The helper returns one string, so the doorbell keeps priority and hides a detection until its window ends.
+// This priority is kept until #169 decides how overlapping alerts are shown; do not change it before that.
 {
   delete window.casoraCameraAlert;
   pending.clear();
@@ -94,6 +96,34 @@ for (const [copy, source] of Object.entries(helperCopies)) {
   fire();
   assert.match(both.output, /Ruhig/, 'the detection window is over too');
   assert.equal(pending.size, 0, 'no timer remains');
+}
+
+// One dead camera of two: the badge shows the count, and the live camera's alert keeps its own expiry timer (F4).
+{
+  delete window.casoraCameraAlert;
+  pending.clear();
+  now = Date.parse('2026-01-01T12:00:00Z');
+  const yard = 'camera.testring_yard';
+  hass.entities[yard] = { device_id: 'ring' };
+  hass.states[yard] = { entity_id: yard, state: 'idle', attributes: {} };
+  hass.states[camera].state = 'unavailable';
+  hass.states[ding].state = '2026-01-01T12:00:00Z';
+  hass.states[motion].state = 'unknown';
+  delete hass.states['sensor.time'];
+  const twoCams = { cameras: [camera, yard], label: 'Camera' };
+  const partly = { isConnected: true, addController(controller) { this.controller = controller; },
+    requestUpdate() { this.output = run(templates.casora_badge_camera_group.name, this, hass, hass.states[yard], twoCams); } };
+  run(helperCopies.casora_badge_base, partly, hass, hass.states[yard], twoCams);
+  partly.requestUpdate();
+  assert.match(partly.output, /1 offline/, 'one dead camera of two: the count shows');
+  assert.equal(pending.size, 1, 'a dead camera does not cancel the live camera\'s alert timer');
+  now += 301000;
+  fire();
+  assert.match(partly.output, /1 offline/, 'after the window: the count still shows');
+  assert.equal(pending.size, 0, 'no timer remains after the alert expired');
+  hass.states[camera].state = 'idle';
+  delete hass.states[yard];
+  delete hass.entities[yard];
 }
 
 // The timer belongs to the card: it goes with the card and comes back with it.
