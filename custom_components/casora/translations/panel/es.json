@@ -3,6 +3,10 @@
   "exact": {
     "Hide when the title contains": "Ocultar si el título contiene",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Separa las entradas con comas; una entrada puede tener varias palabras. La ventana del calendario sigue mostrándolas.",
+    "Add sensor or event": "Añadir sensor o evento",
+    "Camera detections": "Detecciones de cámara",
+    "Detection from": "Detección de",
+    "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Sensores o eventos que cuentan como una detección en esta cámara. El nombre procede de Home Assistant.",
     "Copy diagnostics…": "Copiar diagnóstico…",
     "Diagnostics": "Diagnóstico",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Pégalo en tu issue de GitHub. Solo contiene recuentos, versiones e integraciones – ningún nombre de dispositivos, habitaciones ni personas, ninguna dirección.",
