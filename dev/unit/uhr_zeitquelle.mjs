@@ -5,14 +5,30 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
+// A fixed clock and a fixed device zone: the expected times below are literals, never a second read of the clock.
+// 2026-11-11 13:05 UTC is 14:05 in Berlin (the device) and 22:05 in Tokyo (the Home Assistant server zone).
+process.env.TZ = 'Europe/Berlin';
+const RealDate = Date;
+const FIXED = RealDate.UTC(2026, 10, 11, 13, 5);
+globalThis.Date = class extends RealDate {
+  constructor(...args) {
+    if (args.length) super(...args);
+    else super(FIXED);
+  }
+  static now() { return FIXED; }
+};
+
 const read = (f) => fs.readFileSync(new URL('../../' + f, import.meta.url), 'utf8');
 const core = read('custom_components/casora/scripts/casora-core.js');
 const a = core.indexOf('    window.casoraClockText = function');
 const b = core.indexOf('    if (!customElements.get(\'casora-clock\'))', a);
 assert.ok(a > 0 && b > a, 'clock helpers in casora-core.js');
 const window = {};
-const hassRoot = { locale: { time_zone: 'server' }, config: { time_zone: 'Europe/Berlin' } };
-const document = { querySelector: () => ({ hass: hassRoot }) };
+const SERVER = { locale: { time_zone: 'server' }, config: { time_zone: 'Asia/Tokyo' } };
+const LOCAL = { locale: { time_zone: 'local' }, config: { time_zone: 'Asia/Tokyo' } };
+// The Home Assistant root the clock reads its profile from; switched per case below.
+const root = { hass: SERVER };
+const document = { querySelector: () => root };
 new Function('window', 'document', core.slice(a, b))(window, document);
 
 const T = JSON.parse(read('dashboards/casora/button_card_templates.json'));
@@ -21,7 +37,7 @@ const js = (s) => s.trim().replace(/^\[\[\[/, '').replace(/\]\]\]$/, '');
 const roomTimeEntity = (roomVars) =>
   new Function('hass', 'states', 'variables', js(T.casora_room.custom_fields.time.card.variables.time_entity))({}, {}, roomVars);
 const name = (states, variables) =>
-  new Function('window', 'states', 'hass', 'variables', js(T.casora_time.name))(window, states, hassRoot, variables);
+  new Function('window', 'states', 'hass', 'variables', js(T.casora_time.name))(window, states, root.hass, variables);
 const CLOCK = /^<casora-clock /;
 const withState = (state) => (state === undefined ? {} : { 'sensor.time': { state } });
 
@@ -29,16 +45,24 @@ const withState = (state) => (state === undefined ? {} : { 'sensor.time': { stat
 assert.equal(roomTimeEntity({}), '', 'no entry in the Studio: Automatic');
 assert.equal(roomTimeEntity({ time_entity: 'sensor.time' }), 'sensor.time', 'a chosen sensor is passed on');
 
-// Automatic: the device's clock, whatever sensor.time holds.
+// Automatic, profile "server": the device's clock in Home Assistant's zone, whatever sensor.time holds.
 for (const state of [undefined, '08:13', 'unavailable', 'unknown', '']) {
   const shown = name(withState(state), { use_12h: false });
   assert.match(shown, CLOCK, `Automatic with sensor.time "${state}": the device clock`);
-  assert.ok(shown.includes(window.casoraClockText(hassRoot, false)),
-    `Automatic with sensor.time "${state}": the device's time, not the sensor's state`);
+  assert.equal(shown, '<casora-clock data-h12="" data-suffix="">22:05</casora-clock>',
+    `Automatic with sensor.time "${state}": the time in Home Assistant's zone, not the sensor's state`);
 }
 assert.match(name({}, { use_12h: true }), /data-h12="1"/, 'Automatic: the 12-hour setting reaches the device clock');
 assert.match(name({}, { show_date: true }), /data-date="1"/, 'Automatic: the date line too');
 assert.match(name({}, { time_suffix: 'Uhr' }), /data-suffix="Uhr"/, 'Automatic: the suffix reaches the device clock');
+
+// Automatic, profile "local": the device's zone (Berlin, 14:05), through the tile and the 12-hour option.
+root.hass = LOCAL;
+assert.equal(name({ 'sensor.time': { state: '08:13' } }, { use_12h: false }),
+  '<casora-clock data-h12="" data-suffix="">14:05</casora-clock>', 'profile "local": the device zone, sensor.time ignored');
+assert.equal(name({}, { use_12h: true }),
+  '<casora-clock data-h12="1" data-suffix="">2:05 PM</casora-clock>', 'profile "local": 12-hour clock in the device zone');
+root.hass = SERVER;
 
 // A sensor chosen in the Studio: its state is the clock.
 assert.equal(name({ 'sensor.time': { state: '08:13' } }, { time_entity: 'sensor.time', use_12h: false }), '08:13', 'sensor.time');
