@@ -1874,6 +1874,7 @@
       }
       this._csDashTouched = false;
       this._csRepaint();
+      if (this._rebuildPreview) this._rebuildPreview();
     };
     // Ask, then act. true = go on, false = stay.
     P._csLeaveOk = async function () {
