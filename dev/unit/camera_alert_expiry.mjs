@@ -1,6 +1,6 @@
-// @deckt: dashboards/casora/button_card_templates.json#global custom_components/casora/scripts/casora-core.js#casoraTimeUnusable
-// A Ring-style camera alert must expire even when sensor.time is absent,
-// and also when sensor.time exists but has no usable value (unavailable, unknown, empty).
+// @deckt: dashboards/casora/button_card_templates.json#global
+// A camera alert expires on its own timer, whatever sensor.time holds (#168): both helper copies (badge and
+// camera popup), both alert kinds (doorbell and detection), every sensor.time state and the timer cleanup.
 import assert from 'node:assert/strict';
 import './_detection_rule.mjs';
 import fs from 'node:fs';
@@ -47,109 +47,135 @@ const vars = { cameras: [camera], label: 'Camera' };
 const freshCard = (name, field) => ({ isConnected: true, addController(controller) { this.controller = controller; },
   requestUpdate() { this.output = run(templates[name][field], this, hass, hass.states[camera], vars); } });
 const card = { isConnected: true, requestUpdate() { this.output = render(); }, addController(controller) { this.controller = controller; } };
-run(templates.casora_badge_base.variables.casora_camera_alert_helper.value, card, hass, hass.states[camera], vars);
 const render = () => run(templates.casora_badge_camera_group.name, card, hass, hass.states[camera], vars);
+// The timers that are due run now; a timer that schedules the next one waits for the next round.
+const fire = () => {
+  for (const [id, task] of [...pending]) {
+    if (task.at <= now) { pending.delete(id); task.fn(); }
+  }
+};
+// sensor.time in every state it can be in (the alert must not care).
+const CLOCK_STATES = [undefined, '12:00', 'unavailable', 'unknown', ''];
+const helperCopies = {
+  casora_badge_base: templates.casora_badge_base.variables.casora_camera_alert_helper.value,
+  casora_popup_camera: templates.casora_popup_camera.variables.casora_camera_alert_helper.value,
+};
 
-assert.match(render(), /klingel/i, 'ring is visible during the window');
-assert.equal(pending.size, 1, 'an expiry redraw is scheduled without sensor.time');
-for (let i = 0; i < 1000; i++) {
-  render();
-  assert.equal(pending.size, 1, 'repeated renders leave only one waiting timer');
+for (const [copy, source] of Object.entries(helperCopies)) {
+  for (const clockState of CLOCK_STATES) {
+    const label = `${copy} with sensor.time '${clockState === undefined ? 'missing' : clockState}'`;
+    for (const [kind, eventId, word] of [['doorbell', ding, /klingel/i], ['detection', motion, /Bewegung erkannt/]]) {
+      delete window.casoraCameraAlert;
+      pending.clear();
+      now = Date.parse('2026-01-01T12:00:00Z');
+      hass.states[ding].state = kind === 'doorbell' ? '2026-01-01T12:00:00Z' : 'unknown';
+      hass.states[motion].state = kind === 'detection' ? '2026-01-01T12:00:00Z' : 'unknown';
+      if (clockState === undefined) delete hass.states['sensor.time'];
+      else hass.states['sensor.time'] = { state: clockState };
+      const fresh = { isConnected: true, addController(controller) { this.controller = controller; },
+        requestUpdate() { this.output = run(templates.casora_badge_camera_group.name, this, hass, hass.states[camera], vars); } };
+      run(source, fresh, hass, hass.states[camera], vars);
+      assert.match(run(templates.casora_badge_camera_group.name, fresh, hass, hass.states[camera], vars), word,
+        `${label}: the ${kind} alert shows while its window is open`);
+      assert.equal(pending.size, 1, `${label}: the ${kind} alert schedules its own expiry timer`);
+      for (let i = 0; i < 1000; i++) {
+        run(templates.casora_badge_camera_group.name, fresh, hass, hass.states[camera], vars);
+        assert.equal(pending.size, 1, `${label}: repeated renders leave one waiting timer`);
+      }
+      now += 301000;
+      fire();
+      assert.match(fresh.output, /Ruhig/, `${label}: the ${kind} alert is gone after its window`);
+      assert.equal(pending.size, 0, `${label}: no timer remains after the ${kind} alert expired`);
+    }
+  }
 }
-advance(301000);
-assert.match(card.output, /Ruhig/, 'badge returns to idle after the alert window');
-assert.equal(pending.size, 0, 'no timer remains after expiry');
-now = Date.parse('2026-01-01T12:00:00Z');
-render();
-assert.equal(pending.size, 1);
-card.controller.hostDisconnected();
-assert.equal(pending.size, 0, 'removing the card clears its timer');
-card.controller.hostConnected();
-assert.equal(pending.size, 1, 'reconnecting the card resumes expiry checks');
-card.controller.hostDisconnected();
+
+// Two alerts at once: each keeps its own window (the doorbell first, then the detection).
+{
+  delete window.casoraCameraAlert;
+  pending.clear();
+  now = Date.parse('2026-01-01T12:00:00Z');
+  hass.states[ding].state = '2026-01-01T12:00:00Z';
+  hass.states[motion].state = '2026-01-01T12:01:00Z';
+  delete hass.states['sensor.time'];
+  const both = { isConnected: true, addController(controller) { this.controller = controller; },
+    requestUpdate() { this.output = run(templates.casora_badge_camera_group.name, this, hass, hass.states[camera], vars); } };
+  run(helperCopies.casora_badge_base, both, hass, hass.states[camera], vars);
+  assert.match(run(templates.casora_badge_camera_group.name, both, hass, hass.states[camera], vars), /klingel/i,
+    'both alerts: the doorbell shows');
+  assert.equal(pending.size, 1, 'both alerts: one timer for the card');
+  now += 301000;
+  fire();
+  assert.match(both.output, /Bewegung erkannt/, 'the doorbell window is over, the detection still runs');
+  assert.equal(pending.size, 1, 'the detection schedules the next expiry');
+  now += 61000;
+  fire();
+  assert.match(both.output, /Ruhig/, 'the detection window is over too');
+  assert.equal(pending.size, 0, 'no timer remains');
+}
+
+// The timer belongs to the card: it goes with the card and comes back with it.
+{
+  delete window.casoraCameraAlert;
+  pending.clear();
+  now = Date.parse('2026-01-01T12:00:00Z');
+  hass.states[ding].state = '2026-01-01T12:00:00Z';
+  hass.states[motion].state = 'unknown';
+  hass.states['sensor.time'] = { state: '12:00' };
+  const live = { isConnected: true, addController(controller) { this.controller = controller; },
+    requestUpdate() { this.output = run(templates.casora_badge_camera_group.name, this, hass, hass.states[camera], vars); } };
+  run(helperCopies.casora_badge_base, live, hass, hass.states[camera], vars);
+  live.requestUpdate();
+  assert.match(live.output, /klingel/i, 'a usable sensor.time does not replace the alert');
+  assert.equal(pending.size, 1, 'a usable sensor.time does not suppress the timer');
+  live.controller.hostDisconnected();
+  assert.equal(pending.size, 0, 'removing the card clears its timer');
+  live.requestUpdate();
+  assert.equal(pending.size, 0, 'a render while disconnected does not restart the timer');
+  live.controller.hostConnected();
+  assert.equal(pending.size, 1, 'reconnecting the card resumes expiry checks');
+  hass.states[camera].state = 'unavailable';
+  live.requestUpdate();
+  assert.equal(pending.size, 0, 'an offline camera clears its hidden alert timer');
+  hass.states[camera].state = 'idle';
+  live.controller.hostDisconnected();
+  assert.equal(pending.size, 0, 'the timer is gone with the card');
+
+  // No alert, no timer.
+  pending.clear();
+  hass.states[ding].state = 'unknown';
+  const idle = { isConnected: true, addController(controller) { this.controller = controller; },
+    requestUpdate() { this.output = run(templates.casora_badge_camera_group.name, this, hass, hass.states[camera], vars); } };
+  run(helperCopies.casora_badge_base, idle, hass, hass.states[camera], vars);
+  idle.requestUpdate();
+  assert.match(idle.output, /Ruhig/, 'no alert: the badge is idle');
+  assert.equal(pending.size, 0, 'no alert: no timer');
+  delete hass.states['sensor.time'];
+}
+
+// Every card that shows the alert expires on its own.
 for (const [name, field] of [
   ['casora_cameras', 'state_display'],
   ['casora_badge_camera_group', 'name'],
   ['casora_badge_security', 'name'],
   ['casora_badge_contact_group', 'name'],
 ]) {
-  const fresh = freshCard(name, field);
-  hass.states[ding].state = '2026-01-01T12:00:00Z';
-  now = Date.parse('2026-01-01T12:00:00Z');
-  assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, name);
-  advance(301000);
-  assert.match(fresh.output, /Ruhig/, `${name} expires without a clock sensor`);
-  assert.equal(pending.size, 0);
-  hass.states[ding].state = 'unknown';
-  hass.states[motion].state = '2026-01-01T12:00:00Z';
-  now = Date.parse('2026-01-01T12:00:00Z');
-  assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /Bewegung erkannt/, name);
-  advance(301000);
-  assert.match(fresh.output, /Ruhig/, `${name} motion expires without a clock sensor`);
-  assert.equal(pending.size, 0);
-  hass.states[motion].state = 'unknown';
-}
-now = Date.parse('2026-01-01T12:00:00Z');
-hass.states[ding].state = '2026-01-01T12:00:00Z';
-hass.states['sensor.time'] = { state: '12:00' };
-assert.match(render(), /klingel/i);
-assert.equal(pending.size, 0, 'an existing clock sensor remains the redraw source');
-advance(301000);
-hass.states['sensor.time'].state = '12:05';
-assert.match(render(), /Ruhig/, 'the minute tick redraws the expired alert');
-assert.equal(pending.size, 0, 'the minute tick needs no expiry timer');
-delete hass.states['sensor.time'];
-// A sensor.time without a usable value never changes, so the minute tick never comes: the timer has to end the alert.
-for (const helper of ['casora_badge_base', 'casora_popup_camera']) {
-  for (const clockState of ['unavailable', 'unknown', '']) {
-    for (const [name, field] of [
-      ['casora_badge_camera_group', 'name'],
-      ['casora_cameras', 'state_display'],
-    ]) {
-      delete window.casoraCameraAlert;
-      pending.clear();
-      now = Date.parse('2026-01-01T12:00:00Z');
-      hass.states[ding].state = '2026-01-01T12:00:00Z';
-      hass.states[motion].state = 'unknown';
-      hass.states['sensor.time'] = { state: clockState };
-      const fresh = freshCard(name, field);
-      run(templates[helper].variables.casora_camera_alert_helper.value, fresh, hass, hass.states[camera], vars);
-      const what = `${helper} in ${name} with sensor.time "${clockState}"`;
-      assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, `${what}: the alert shows`);
-      assert.equal(pending.size, 1, `${what}: an expiry timer is scheduled`);
-      advance(301000);
-      assert.match(fresh.output, /Ruhig/i, `${what}: the alert expires`);
-      assert.equal(pending.size, 0, `${what}: no timer remains after expiry`);
-    }
-  }
-}
-// Without the module, preserve the original missing-sensor-only timer.
-{
-  const helper = window.casoraTimeUnusable;
-  delete window.casoraTimeUnusable;
-  try {
-    delete window.casoraCameraAlert;
+  const fresh = { isConnected: true, addController(controller) { this.controller = controller; },
+    requestUpdate() { this.output = run(templates[name][field], this, hass, hass.states[camera], vars); } };
+  for (const [kind, eventId, word] of [['doorbell', ding, /klingel/i], ['detection', motion, /Bewegung erkannt/]]) {
     pending.clear();
     now = Date.parse('2026-01-01T12:00:00Z');
-    hass.states[ding].state = '2026-01-01T12:00:00Z';
-    hass.states[motion].state = 'unknown';
-    const fresh = freshCard('casora_badge_camera_group', 'name');
-    run(templates.casora_badge_base.variables.casora_camera_alert_helper.value, fresh, hass, hass.states[camera], vars);
-    for (const state of ['12:00', 'unavailable', 'unknown', '']) {
-      hass.states['sensor.time'] = { state };
-      assert.match(run(templates.casora_badge_camera_group.name, fresh, hass, hass.states[camera], vars), /klingel/i);
-      assert.equal(pending.size, 0, `without the module: no timer for present sensor.time "${state}"`);
-    }
-    delete hass.states['sensor.time'];
-    assert.match(run(templates.casora_badge_camera_group.name, fresh, hass, hass.states[camera], vars), /klingel/i);
-    assert.equal(pending.size, 1, 'without the module: a missing sensor schedules a timer');
-    advance(301000);
-    assert.match(fresh.output, /Ruhig/i, 'without the module: the alert expires');
-    assert.equal(pending.size, 0, 'without the module: no timer remains after expiry');
-  } finally {
-    window.casoraTimeUnusable = helper;
+    hass.states[ding].state = kind === 'doorbell' ? '2026-01-01T12:00:00Z' : 'unknown';
+    hass.states[motion].state = kind === 'detection' ? '2026-01-01T12:00:00Z' : 'unknown';
+    assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), word, `${name}: the ${kind} alert`);
+    assert.equal(pending.size, 1, `${name}: the ${kind} alert schedules its own expiry timer`);
+    now += 301000;
+    fire();
+    assert.match(fresh.output, /Ruhig/, `${name}: the ${kind} alert is gone after its window`);
+    assert.equal(pending.size, 0, `${name}: no timer remains`);
   }
 }
-delete hass.states['sensor.time'];
+hass.states[ding].state = 'unknown';
+hass.states[motion].state = 'unknown';
 Date.now = realNow;
 console.log('camera_alert_expiry: ok');
