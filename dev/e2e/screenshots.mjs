@@ -190,8 +190,7 @@ async function settle(page, max = 30000) {
   }
 }
 
-// Die Dashboard-Uhr liest sensor.time aus HA, nicht die Browser-Uhr: den Wert nur im Browser
-// überschreiben (HA selbst bleibt unberührt), passend zu Tag-/Nachtfoto.
+// A dashboard may explicitly choose sensor.time: set that sensor in the browser too.
 async function fakeClock(page, mode) {
   if (process.env.CASORA_SHOTS_CLOCK === '0') return;
   await page.evaluate((t) => {
@@ -445,8 +444,8 @@ for (const mode of MODES) {
         localStorage.setItem('dockedSidebar', JSON.stringify('always_hidden'));
         localStorage.setItem('casora.aiCost.skip', '1');
       });
-      // Feste Browser-Uhr nur fürs Studio (Vorschau-Uhr); das Dashboard liest sensor.time (fakeClock).
-      if (kind === 'studio' && process.env.CASORA_SHOTS_CLOCK !== '0') {
+      // The Studio preview and the automatic dashboard clock both use the browser clock.
+      if (process.env.CASORA_SHOTS_CLOCK !== '0') {
         const t = new Date(); t.setHours(mode === 'dark' ? 21 : 9, 41, 0, 0);
         try { await context.clock.install({ time: t }); await context.clock.resume(); } catch (e) { /* ohne feste Uhr */ }
       }
