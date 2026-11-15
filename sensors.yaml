@@ -2,18 +2,16 @@
 # ============================================================================
 # Loaded by `template: !include sensors.yaml` in configuration.yaml.
 #
-# Nothing in Casora requires these. They exist as a no-integration fallback for
-# the clock on each room's hero card, which `casora_time` reads from
-# `sensor.time` by default. That sensor comes from Home Assistant's
-# Date & Time integration, which is NOT part of default_config. If you'd rather
-# not add that integration, point casora_time at the sensor below instead:
+# Nothing in Casora requires these. The automatic clock uses the browser's
+# time. To use an explicitly selected sensor instead, point casora_time at
+# the sensor below:
 #
 #   casora_time:
 #     variables:
 #       time_entity: sensor.current_time
 #
 # `Current Time` emits "%H:%M" (e.g. "14:30"), the same format casora_time
-# expects from sensor.time, so it's a drop-in. Templates using now() are
+# accepts from a time sensor. Templates using now() are
 # re-evaluated by HA at the start of every minute, so it ticks like a clock.
 #
 # `Current Date` is unused by Casora and included purely as a convenience.
