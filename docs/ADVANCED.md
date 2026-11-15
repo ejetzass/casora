@@ -612,6 +612,10 @@ Casora also keeps an inline copy of every icon inside `casora-icons.js` (`window
 
 You can switch from 12hr to 24hr time with the variables of the card that uses the `casora_time` template, example below:
 
+Without `time_entity` the clock is automatic: it shows the device's own time, in Home Assistant's time
+zone when your profile says "server", otherwise in the device's zone. A `time_entity` you name yourself is
+the clock then; without a usable state it shows nothing.
+
 ```yaml
 type: custom:button-card
 template: casora_time
