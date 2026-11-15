@@ -6762,7 +6762,7 @@ const tileStateWord = (kind, tile, ent, states, hass, settings) => {
     const ids = configured ? list.filter((c) => c && c.entity && c.tile !== false).map((c) => c.entity)
       : Object.keys(S).filter((id) => !(entities[id] && (entities[id].hidden || entities[id].hidden_by)));
     const cal = ids.sort().find((id) => id !== waste && id.startsWith("calendar.") && S[id]
-      && S[id].attributes && S[id].attributes.message && allows(S[id].attributes.message, settings));
+      && S[id].attributes && S[id].attributes.message && allows(S[id].attributes.message, settings, S, id));
     if (cal) return String(S[cal].attributes.message);
     return window.casoraI18n && window.casoraI18n.t ? window.casoraI18n.t("No events") : "No events";
   }
