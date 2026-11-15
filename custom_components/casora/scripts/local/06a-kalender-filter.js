@@ -1,6 +1,6 @@
 // Calendar filter: the title predicate for Home, the greeting, the screensavers and the Agenda tile.
-// Loaded before 06-kalender.js on the dashboard. The Studio screensaver preview loads only this file,
-// so the Studio gets no calendar tile helpers from it.
+// Loaded before 06-kalender.js on the dashboard. The Studio screensaver and Agenda tile previews load
+// only this file, so the Studio gets no calendar tile helpers from it.
 (function () {
   if (window.casoraCalendarAllows) return;
   // The calendar popup keeps every event; Home, the screensavers and the Agenda tile use this filter.

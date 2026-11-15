@@ -77,7 +77,7 @@
   };
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
-  // The title predicate lives in 06a-kalender-filter.js (the Studio preview loads it alone). Without it, nothing is hidden.
+  // The title predicate lives in 06a-kalender-filter.js (the Studio previews load it alone). Without it, nothing is hidden.
   K.allowsTitle = function (title, states, entity, uid, draft) {
     return window.casoraCalendarAllows ? window.casoraCalendarAllows(title, states, entity, uid, draft) : true;
   };
