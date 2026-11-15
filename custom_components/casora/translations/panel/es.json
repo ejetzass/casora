@@ -3,6 +3,10 @@
   "exact": {
     "Hide when the title contains": "Ocultar si el título contiene",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Separa las entradas con comas; una entrada puede tener varias palabras. La ventana del calendario sigue mostrándolas.",
+    "Add sensor or event": "Añadir sensor o evento",
+    "Camera detections": "Detecciones de cámara",
+    "Detection from": "Detección de",
+    "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Sensores o eventos que cuentan como una detección en esta cámara. El nombre procede de Home Assistant.",
     "Agenda tile: timed events today first": "Tarjeta de la agenda: primero las citas con hora de hoy",
     "Shows a timed event later today before an all-day event that is running.": "Muestra una cita con hora de hoy que empieza más tarde antes que un evento de día completo en curso.",
     "Copy diagnostics…": "Copiar diagnóstico…",

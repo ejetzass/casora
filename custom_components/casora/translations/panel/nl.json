@@ -3,6 +3,10 @@
   "exact": {
     "Hide when the title contains": "Verbergen als de titel bevat",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Scheid items met een komma; een item mag uit meerdere woorden bestaan. Het agendavenster toont ze nog steeds.",
+    "Add sensor or event": "Sensor of gebeurtenis toevoegen",
+    "Camera detections": "Cameradetecties",
+    "Detection from": "Detectie van",
+    "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Sensoren of gebeurtenissen die gelden als detectie bij deze camera. De naam komt uit Home Assistant.",
     "Agenda tile: timed events today first": "Agendategel: eerst afspraken met tijd van vandaag",
     "Shows a timed event later today before an all-day event that is running.": "Toont een afspraak met tijd die later vandaag begint, vóór een lopende hele-dagafspraak.",
     "Copy diagnostics…": "Diagnose kopiëren…",
