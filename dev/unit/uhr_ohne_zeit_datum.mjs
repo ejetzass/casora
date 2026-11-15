@@ -28,8 +28,8 @@ assert.match(window.casoraClockHtml(false, 'Uhr'), /^<casora-clock data-h12="" d
 const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json')).casora_time;
 const js = (s) => s.trim().replace(/^\[\[\[/, '').replace(/\]\]\]$/, '');
 const name = (states, variables) => new Function('window', 'states', 'hass', 'variables', js(tpl.name))(window, states, {}, variables);
-assert.match(name({}, { time_entity: 'sensor.time', use_12h: false }), /^<casora-clock /, 'no sensor.time: the device clock');
-assert.match(name({}, { use_12h: false }), /^<casora-clock /, 'no entry at all: the same');
+assert.match(name({}, { use_12h: false }), /^<casora-clock /, 'nothing chosen: the device clock');
+assert.match(name({ 'sensor.time': { state: '08:13' } }, { use_12h: false }), /^<casora-clock /, 'Automatic ignores sensor.time (#167)');
 assert.equal(name({}, { time_entity: 'sensor.gone_clock' }), '', 'a chosen sensor that is gone: empty as before');
-assert.equal(name({ 'sensor.time': { state: '08:13' } }, { time_entity: 'sensor.time', use_12h: false }), '08:13', 'with the sensor: unchanged');
+assert.equal(name({ 'sensor.time': { state: '08:13' } }, { time_entity: 'sensor.time', use_12h: false }), '08:13', 'a chosen sensor stays the clock');
 console.log('uhr_ohne_zeit_datum: ok');
