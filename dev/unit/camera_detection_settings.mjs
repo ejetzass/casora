@@ -45,8 +45,10 @@ const render = () => { host.children = []; panel.combos = []; panel._casoraPerso
 render();
 panel.combos.find(c => c.hint === 'Add a camera').onChange('camera.test');
 assert.equal(draft.cameras[0].entity_id, 'camera.test');
-assert.ok(panel.combos.find(c => c.hint === 'Add sensor or event').options.includes('event.motion'), 'event entities remain available');
-panel.combos.find(c => c.hint === 'Add sensor or event').onChange('binary_sensor.person');
+// The doorbell list shares this picker text and comes first on the page; the detection picker is the last one.
+const detectionPicker = () => panel.combos.filter(c => c.hint === 'Add sensor or event').at(-1);
+assert.ok(detectionPicker().options.includes('event.motion'), 'event entities remain available');
+detectionPicker().onChange('binary_sensor.person');
 assert.deepEqual(draft.cameras[0].detection_triggers, ['binary_sensor.person']);
 assert.deepEqual(window.casoraPersonal.prune(draft).cameras[0].detection_triggers, ['binary_sensor.person']);
 assert.equal(window.CASORA_SETTINGS, undefined, 'editing the list does not save the draft');
