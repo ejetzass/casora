@@ -36,6 +36,12 @@ desk = {"views": [{"cards": [{"type": "custom:button-card", "template": "casora_
                               "variables": {"notify_battery": False, "notification_appliances": ["sensor.a"], "image": "x"}}, {}, {"cards": []}]}]}
 assert pb.notify_of(desk) == {"notify_battery": False, "notification_appliances": ["sensor.a"]}, pb.notify_of(desk)
 assert pb.notify_of({"views": []}) == {}
+# Flights for the phone twin: the hero card's values (first view that has one), a switch as 'true'/'false', no empty values.
+fl = {"views": [{"cards": [{"variables": {"casora_flights_source": "sensor.fr24_b", "casora_flights_timezones": False, "casora_flights_source_x": 1}}]},
+                {"cards": [{"variables": {"casora_flights_source": "sensor.other", "casora_flights_altitude_unit": "m", "casora_flights_speed_unit": ""}}]}]}
+assert pb.flights_of(fl) == {"casora_flights_source": "sensor.fr24_b", "casora_flights_timezones": "false", "casora_flights_altitude_unit": "m"}, pb.flights_of(fl)
+assert pb.flights_of({"views": []}) == {}
+assert pb.flights_of({"views": [{"cards": []}, {"cards": [{"variables": {"casora_flights_timezones": True}}]}]}) == {"casora_flights_timezones": "true"}
 # Startseiten-Variablen haben Vorrang
 cfg2 = json.loads(json.dumps(cfg)); cfg2["views"][0]["cards"].insert(0, {"variables": {"scenes": ["scene.z"]}})
 assert pb.scenes_of(cfg2)["scenes"] == ["scene.z"]
