@@ -1,0 +1,28 @@
+{
+  "_comment": "Made-up tracked flights per instance (index 0 = first instance). Neutral identifiers only.",
+  "instances": [
+    {
+      "name": "Flight tracker one",
+      "flights": [
+        {"id": "s1", "flight_number": "XY123", "callsign": "TST123", "aircraft_registration": "T-AAAA", "tracked_by": "flight", "tracked_type": "live",
+         "latitude": 10.0, "longitude": 20.0, "altitude": 31000, "ground_speed": 450, "vertical_speed": 0, "heading": 90, "on_ground": 0,
+         "airline_short": "Testair", "airport_origin_code_iata": "AAA", "airport_destination_code_iata": "BBB"},
+        {"id": "s2", "flight_number": "XY456", "callsign": "", "aircraft_registration": "T-BBBB", "tracked_by": "flight", "tracked_type": "schedule",
+         "latitude": 10.0, "longitude": 20.0, "on_ground": 0, "airline_short": "Testair",
+         "airport_origin_code_iata": "BBB", "airport_destination_code_iata": "CCC"},
+        {"id": "s3", "flight_number": "XY789", "callsign": "TST789", "aircraft_registration": "T-CCCC", "tracked_by": "flight", "tracked_type": "live",
+         "latitude": 11.0, "longitude": 21.0, "altitude": 0, "ground_speed": 0, "vertical_speed": 0, "heading": 180, "on_ground": 1,
+         "airline_short": "Testair", "airport_origin_code_iata": "CCC", "airport_destination_code_iata": "AAA"}
+      ]
+    },
+    {
+      "name": "Flight tracker two",
+      "flights": []
+    }
+  ],
+  "catalog": [
+    {"id": "c1", "flight_number": "XY900", "callsign": "TST900", "aircraft_registration": "T-DDDD", "tracked_type": "live",
+     "latitude": 12.0, "longitude": 22.0, "altitude": 20000, "ground_speed": 400, "vertical_speed": 500, "heading": 45, "on_ground": 0,
+     "airline_short": "Testair", "airport_origin_code_iata": "AAA", "airport_destination_code_iata": "CCC"}
+  ]
+}
