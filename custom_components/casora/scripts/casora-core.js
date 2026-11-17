@@ -16697,15 +16697,10 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   // Hemma round #11a: repeats of one source are one card with a count instead of three rows and a cut. The key is the
   // entity; the same text from another source within DEDUPE_MS joins that stack (two sensors of one doorbell).
   // events: newest first. Returns the cards: the newest message, members (all, newest first), count, stackKey.
-  // A passive or noStack row (a detection: one row per ring) is never stacked.
   function stackUp(events) {
     var heads = [], byKey = {};
     (events || []).forEach(function (e) {
       if (!e) return;
-      if (e.passive || e.noStack) {
-        heads.push(Object.assign({}, e, { members: [e], count: 1, stackKey: e.id }));
-        return;
-      }
       var k = e.entity ? 'e:' + e.entity : 'l:' + e.label;
       var h = byKey[k];
       if (!h) {
@@ -16945,8 +16940,6 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
           opens: d.opens || null,
           once: d.once || null,
           done: !!d.done,
-          passive: !!d.passive,
-          noStack: !!d.noStack,
         });
       });
 
@@ -17207,10 +17200,10 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
         // mit führendem „·“ in eine eigene Zeile.
         sub: r.ongoing ? r.sub : (r.sub ? (toned ? [r.sub, ago(r.when)].filter(Boolean).join(' · ') : [r.sub, ago(r.when)]) : ago(r.when)),
         value: r.value || null,
-        entity: r.passive ? null : (r.entity || null),
+        entity: r.entity || null,
         image: r.image,
         imageFit: r.imageFit,
-        tappable: !r.passive && !!(r.entity || r.opens || many),
+        tappable: !!(r.entity || r.opens || many),
         // A stack: how many, and a chevron that points down (closed) or up (open). Tapping opens it.
         endHtml: many ? '<span class="casora-nst-n">' + Number(r.count) + '</span>' : null,
         noChev: many,
@@ -17272,10 +17265,6 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
             if (e && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); e.click(); }
           });
         }
-        continue;
-      }
-      if (list[i].passive) {
-        els[i].removeAttribute('data-casora-mi');
         continue;
       }
       if (!list[i].opens) continue;

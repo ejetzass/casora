@@ -66,6 +66,5 @@ const detections = rows.filter(row => row.entity === id);
 assert.equal(detections.length, 1, 'repeated detections of one sensor join one stacked row');
 assert.equal(detections[0].count, 2, 'the stack counts both off-to-on detections');
 assert.equal(detections[0].label, 'Person erkannt');
-assert.ok(!detections[0].passive, 'detection row is tappable');
 assert.equal(detections[0].opens, 'casora:detection', 'the row opens the camera popup');
 assert.equal(rows.find(row => row.entity === event)?.label, 'Motion erkannt', 'event detection uses its own name');
