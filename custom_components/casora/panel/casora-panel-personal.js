@@ -594,27 +594,30 @@
             body.appendChild(gone);
           }
           const all = self._flowGroup(body, { header: "All dashboards" });
-          const triggerList = (field, title, hint) => {
+          // One picker and one row list for both trigger lists. Only the field, the texts and the candidate
+          // order differ: "device" puts the camera's own entities first, "name" sorts by name.
+          const nameOf = (id) => self._prettyEntity(id) || id;
+          const triggerList = (field, title, hint, order) => {
             const values = () => Array.isArray(camera[field]) ? camera[field] : [];
-            const choices = () => triggerCandidates(self._hass || hass, camera.device_id)
-              .filter((entity_id) => !values().includes(entity_id));
-            const picker = self._combo("", choices(), tr("Add device …"), (entity_id) => {
-              const current = self._hass || hass;
-              if (!triggerCandidates(current, camera.device_id).includes(entity_id) || values().includes(entity_id)) {
+            const candidates = () => order === "device"
+              ? triggerCandidates(self._hass || hass, camera.device_id)
+              : self._entityList(["binary_sensor", "event"], null).slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+            const choices = () => candidates().filter((id) => !values().includes(id));
+            const picker = self._combo("", choices(), tr("Add sensor or event"), (id) => {
+              if (!choices().includes(id)) {
                 render();
                 return;
               }
               if (!Array.isArray(camera[field])) camera[field] = [];
-              camera[field].push(entity_id);
+              camera[field].push(id);
               changed();
-            }, { entity: true, source: choices, preserveOrder: true });
+            }, { entity: true, source: choices, preserveOrder: order === "device" });
             row(all, title, [picker.wrap], hint);
             values().forEach((entity_id, triggerIndex) => {
               const state = (self._hass || hass).states[entity_id];
               const missing = !state;
-              const name = state && state.attributes && state.attributes.friendly_name;
               const item = self._flowRow(all, {
-                title: missing ? tr("Not found in Home Assistant") : String(name || entity_id),
+                title: missing ? tr("Not found in Home Assistant") : nameOf(entity_id),
                 raw: !missing,
                 detail: missing ? entity_id : undefined,
               });
@@ -625,7 +628,7 @@
                 const at = current.indexOf(entity_id);
                 if (at >= 0) current.splice(at, 1);
                 if (!current.length) delete camera[field];
-                if (typeof self._csBar === "function") self._csBar();
+                changed();
               });
               remove.setAttribute("aria-describedby", "casora-camera-trigger-" + index + "-" + field + "-" + triggerIndex);
               item.row.id = "casora-camera-trigger-" + index + "-" + field + "-" + triggerIndex;
@@ -633,28 +636,9 @@
             });
           };
           triggerList("doorbell_triggers", "Doorbell from",
-            "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.");
-          // Detection list: the House copy of #188 (its picker, its rows), not the generic list above.
-          const nameOf = (id) => self._prettyEntity(id) || id;
-          const detections = () => Array.isArray(camera.detection_triggers) ? camera.detection_triggers : [];
-          const detectionChoices = () => self._entityList(["binary_sensor", "event"], null)
-            .filter((id) => !detections().includes(id))
-            .sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
-          const detectionPicker = self._combo("", detectionChoices(), tr("Add sensor or event"), (id) => {
-            if (!detectionChoices().includes(id)) return;
-            if (!Array.isArray(camera.detection_triggers)) camera.detection_triggers = [];
-            camera.detection_triggers.push(id);
-            changed();
-          }, { entity: true, source: detectionChoices });
-          row(all, "Detection from", [detectionPicker.wrap],
-            "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.");
-          detections().forEach((id, triggerIndex) => {
-            row(all, nameOf(id), [del(() => {
-              camera.detection_triggers.splice(triggerIndex, 1);
-              if (!camera.detection_triggers.length) delete camera.detection_triggers;
-              changed();
-            })]).setAttribute("data-no-i18n", "");
-          });
+            "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.", "device");
+          triggerList("detection_triggers", "Detection from",
+            "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.", "name");
           const openSwitch = (title, field) => {
             const item = self._flowRow(all, { title });
             item.row.appendChild(self._boolSwitch(camera[field] === true, false, (value) => {
