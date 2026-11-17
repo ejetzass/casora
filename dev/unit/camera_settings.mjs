@@ -1,4 +1,5 @@
 // Camera settings: candidate grouping uses HA registry identity, never an NVR parent.
+// @deckt: custom_components/casora/scripts/local/25-camera-popup.js#casoraCameraPopup custom_components/casora/panel/casora-panel-personal.js#casoraPersonal custom_components/casora/panel/casora-panel-settings.js custom_components/casora/panel/casora-panel.js#casoraCameraTileStatusFor custom_components/casora/scripts/local/07-weich-spezial.js
 // node dev/unit/camera_settings.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
