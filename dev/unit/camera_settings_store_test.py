@@ -1,4 +1,4 @@
-"""The house-wide camera detection list survives the settings store.
+"""The house-wide camera list survives the settings store: triggers, popup switches and the status sensor.
 
   uv run --python 3.14 --with homeassistant python dev/unit/camera_settings_store_test.py
 """
@@ -176,6 +176,61 @@ class CameraSettingsStoreTest(unittest.IsolatedAsyncioTestCase):
             ],
         }
         self.assertEqual(store.saved, expected)
+
+
+    async def test_camera_status_is_saved_with_the_house_camera_record(self):
+        store = FakeStore()
+        connection = Connection()
+        hass = SimpleNamespace(data={})
+        settings_store = settings._store
+        settings._store = lambda _hass: store
+        try:
+            message = {
+                "id": 1,
+                "type": "casora/settings/set",
+                "settings": {
+                    "scenes": {"exclude": ["scene.olive"]},
+                    "cameras": [{
+                        "device_id": "garden",
+                        "entity_id": "camera.garden",
+                        "name": "Garden",
+                        "status_entity": "binary_sensor.garden_connected",
+                    }],
+                    "unknown": {"ignored": True},
+                },
+            }
+            await inspect.unwrap(settings.ws_set)(hass, connection, message)
+        finally:
+            settings._store = settings_store
+
+        expected = {
+            "scenes": {"exclude": ["scene.olive"]},
+            "cameras": [{
+                "device_id": "garden",
+                "entity_id": "camera.garden",
+                "name": "Garden",
+                "status_entity": "binary_sensor.garden_connected",
+            }],
+        }
+        self.assertEqual(store.saved, expected)
+        self.assertEqual(connection.results, [(1, {"settings": expected, "stored": True})])
+
+    def test_popup_camera_record_from_the_old_popup_is_kept_unchanged(self):
+        # Records the popup Studio saved before the rebuild: they must load and save as they are.
+        records = [
+            {
+                "device_id": "garden",
+                "entity_id": "camera.garden",
+                "name": "Garden",
+                "doorbell_triggers": ["event.garden_bell"],
+                "detection_triggers": ["binary_sensor.garden_motion"],
+                "open_on_ring": True,
+                "open_on_detection": True,
+                "status_entity": "binary_sensor.garden_connected",
+            },
+            {"device_id": None, "entity_id": "camera.porch", "name": "Porch"},
+        ]
+        self.assertEqual(settings.camera_records(records), records)
 
 
 if __name__ == "__main__":
