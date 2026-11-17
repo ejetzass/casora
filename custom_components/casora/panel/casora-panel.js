@@ -823,6 +823,7 @@ const FILTER_CATEGORIES = {
   casora_pet: "unfiltered",
   casora_shopping: "unfiltered",
   casora_tasks: "unfiltered",
+  casora_flights: "unfiltered",
   casora_kettle: "unfiltered",
   casora_co: "security",
   casora_smart_meter: "energy",
@@ -2729,6 +2730,30 @@ const SECTIONS = [
       { key: "casora_screensaver_wake_screen", sub: "chrome", label: "Turn the screen on", type: "bool", boolDefault: true, auto: true, scope: "dashboard",
         when: (v) => !!v.casora_screensaver_wake,
         hint: "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all." },
+      // Tracked flights (FlightRadar24): the one source every flight surface reads (scripts/local/49-flights.js). Empty =
+      // Automatic, allowed while exactly one source exists; several need a pick; a pick that is gone stays (never replaced).
+      // Shown where FlightRadar24 is there, or a pick is saved (then it says the source is unavailable).
+      { key: "casora_flights_source", sub: "chrome", label: "Tracked flights", type: "select", auto: true, scope: "dashboard",
+        options: [""], optionLabels: { "": "Automatic" },
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(v && v.casora_flights_source) || !!(F && F.present(hass)); },
+        dynOptions: (hass, cur) => {
+          const F = window.casoraFlightsMod && window.casoraFlightsMod();
+          if (!F) return null;
+          const c = F.choices(hass, cur);
+          const labels = { "": c.empty === "choose" ? "Select a tracked-flights source" : "Automatic" };
+          c.options.forEach((id) => { if (id) labels[id] = c.labels[id] == null ? "Source unavailable" : c.labels[id]; });
+          return { options: c.options, labels };
+        },
+        note: (hass, cur) => {
+          const F = window.casoraFlightsMod && window.casoraFlightsMod();
+          if (!F) return null;
+          const c = F.choices(hass, cur);
+          if (c.note === "missing") return { key: "Source unavailable" };
+          if (c.note === "choose") return { key: "Select a tracked-flights source" };
+          if (c.note === "parts") return { key: "FlightRadar24 is missing a part Casora needs: {name}", name: "source sensor" };
+          if (c.unavailable) return { key: "Source unavailable" };
+          return null;
+        } },
       // Halten auf Kacheln (22-halten.js): leer = Schnellmenü. casora-core.js setzt daraus window._casoraHoldMode,
       // ans Handy geht es über casora_mobile_bg. Je Kachel überstimmbar (variables.hold_mode, Kachel-Inspektor).
       { key: "hold_mode", sub: "hold", label: "Hold on tiles", type: "select", auto: true, scope: "dashboard",
@@ -4270,7 +4295,7 @@ const autoRoomGlyph = (name) => {
 // Tile types about the whole home: a room's own device (a dishwasher's plug in the
 // kitchen) is no reason to offer them as "Fits <room>".
 const HOUSE_WIDE_TILES = new Set(["energy_tile", "network", "battery", "updates", "casora_alarm",
-  "casora_weather_warning", "casora_solar_tip", "casora_trash", "casora_recipe", "casora_pulse", "casora_calendar", "casora_tasks",
+  "casora_weather_warning", "casora_solar_tip", "casora_trash", "casora_recipe", "casora_pulse", "casora_calendar", "casora_tasks", "casora_flights",
   "casora_entity_list", "casora_more", "casora_map"]);
 
 // The automatic icon follows the name. A new name it doesn't know ("Küche" →
@@ -6963,6 +6988,7 @@ const tileStateWord = (kind, tile, ent, states, hass, settings) => {
     return window.casoraI18n && window.casoraI18n.t ? window.casoraI18n.t("No events") : "No events";
   }
   if (kind === "casora_map") return "";
+  if (kind === "casora_flights") return "";
   if (kind === "casora_tasks") {
     const T = typeof window !== "undefined" && window._casoraTasks;
     return T && T.tile ? T.tile(states || {}, V) : "Tasks";
@@ -19205,7 +19231,7 @@ class CasoraPanel extends HTMLElement {
         .filter((u) => unitLive(u) || ghosts.has(u.id) || (on && autoUnit(u)))
         .map((u) => u.id));
       return sectionFields(sec)
-        .filter((f) => live.has(unitOf(f)) && modAvail(f) && (!f.when || f.when(room.variables || {})))
+        .filter((f) => live.has(unitOf(f)) && modAvail(f) && (!f.when || f.when(room.variables || {}, this._hass)))
         .filter((f) => !f.phoneName || this._favSection(room))
         .filter((f) => !f.homeOnly || isHomeRoom(room, this._state.compact.rooms))
         .filter((f) => !f.roomOnly || !isHomeRoom(room, this._state.compact.rooms))
@@ -19969,13 +19995,37 @@ class CasoraPanel extends HTMLElement {
           return;
         }
         if (f.type === "select") {
-          const c = this._combo(String(cur), f.options, "",
-            (v) => { setVar(f.key, v, f); filled(f); if (f.reveals) this._renderForm(); },
-            { fixed: true, labels: { "": "Default", ...(f.optionLabels || {}) } });
+          // Choices that depend on the house (tracked flights source): dynOptions(hass, value) → {options, labels}; a stored
+          // value stays selectable. note(hass, value) → {key, name?} is a status line under the row (role "status"); both are
+          // drawn again after a change.
+          let opts = f.options, dynLabels = null;
+          if (typeof f.dynOptions === "function") {
+            let dyn = null;
+            try { dyn = f.dynOptions(this._hass, String(cur)); } catch (e) { dyn = null; }
+            if (dyn && Array.isArray(dyn.options)) { opts = dyn.options; dynLabels = dyn.labels || null; }
+          }
+          const c = this._combo(String(cur), opts, "",
+            (v) => {
+              setVar(f.key, v, f); filled(f);
+              if (f.reveals) this._renderForm();
+              else if (f.dynOptions) { if (this._csOpen) this._csRender(); else this._renderForm(); }
+            },
+            { fixed: true, labels: { "": "Default", ...(f.optionLabels || {}), ...(dynLabels || {}) } });
           row.appendChild(c.wrap);
           addDrop(row, f);
           fs.appendChild(row);
           addHint();
+          if (typeof f.note === "function") {
+            let nt = null;
+            try { nt = f.note(this._hass, String(cur)); } catch (e) { nt = null; }
+            if (nt && nt.key) {
+              const n = document.createElement("div");
+              n.className = "hint";
+              n.setAttribute("role", "status");
+              n.textContent = trLabel(nt.key).replace("{name}", nt.name ? trLabel(nt.name) : "");
+              fs.appendChild(n);
+            }
+          }
           addFault(cur);
           return;
         }
