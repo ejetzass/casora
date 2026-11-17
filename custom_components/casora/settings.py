@@ -148,19 +148,26 @@ async def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 
 
 def camera_records(value: Any) -> list[dict[str, Any]]:
-    """Cameras of the Studio: identity (entity, device, name) and detection triggers, nothing else.
+    """Cameras of the Studio: identity, trigger lists, popup switches and the status sensor. Other keys are dropped.
 
-    A camera without a string entity_id is dropped; the trigger list keeps only non-empty strings.
+    A camera without a string entity_id is dropped. Trigger lists keep only non-empty strings; a popup switch
+    is kept only when it is true.
     """
     out: list[dict[str, Any]] = []
     for camera in value if isinstance(value, list) else []:
         if not isinstance(camera, dict) or not isinstance(camera.get("entity_id"), str):
             continue
-        clean: dict[str, Any] = {k: camera[k] for k in ("entity_id", "device_id", "name") if isinstance(camera.get(k), str)}
-        triggers = camera.get("detection_triggers")
-        kept = [t for t in triggers if isinstance(t, str) and t] if isinstance(triggers, list) else []
-        if kept:
-            clean["detection_triggers"] = kept
+        clean: dict[str, Any] = {k: camera[k] for k in ("entity_id", "name", "status_entity") if isinstance(camera.get(k), str)}
+        if "device_id" in camera and isinstance(camera["device_id"], (str, type(None))):
+            clean["device_id"] = camera["device_id"]
+        for key in ("doorbell_triggers", "detection_triggers"):
+            triggers = camera.get(key)
+            kept = [t for t in triggers if isinstance(t, str) and t] if isinstance(triggers, list) else []
+            if kept:
+                clean[key] = kept
+        for key in ("open_on_ring", "open_on_detection"):
+            if camera.get(key) is True:
+                clean[key] = True
         out.append(clean)
     return out
 
