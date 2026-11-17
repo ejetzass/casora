@@ -1,4 +1,5 @@
 // Frigate popup choices are shared by all tiles and work without a tile.
+// @deckt: custom_components/casora/scripts/local/25-camera-popup.js#casoraCameraPopup custom_components/casora/panel/casora-panel-personal.js#casoraPersonal custom_components/casora/panel/casora-panel-types.js
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
