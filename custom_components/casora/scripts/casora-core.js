@@ -16168,7 +16168,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       if (!on('camera_detection')) return null;
       if (id.indexOf('binary_sensor.') === 0 && (prev !== 'off' || s !== 'on')) return null;
       if (id.indexOf('event.') === 0 && !isFinite(Date.parse(s))) return null;
-      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS };
+      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS, noStack: true };
     }
 
     var appl = applianceFor(id);
@@ -16709,11 +16709,12 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   // Hemma round #11a: repeats of one source are one card with a count instead of three rows and a cut. The key is the
   // entity; the same text from another source within DEDUPE_MS joins that stack (two sensors of one doorbell).
   // events: newest first. Returns the cards: the newest message, members (all, newest first), count, stackKey.
+  // A passive or noStack row (a detection: one row per ring) is never stacked.
   function stackUp(events) {
     var heads = [], byKey = {};
     (events || []).forEach(function (e) {
       if (!e) return;
-      if (e.passive) {
+      if (e.passive || e.noStack) {
         heads.push(Object.assign({}, e, { members: [e], count: 1, stackKey: e.id }));
         return;
       }
@@ -16957,6 +16958,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
           once: d.once || null,
           done: !!d.done,
           passive: !!d.passive,
+          noStack: !!d.noStack,
         });
       });
 
