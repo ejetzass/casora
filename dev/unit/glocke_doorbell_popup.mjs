@@ -81,6 +81,8 @@ async function setup(kind, options = {}) {
     [cam]: { device_id: 'mock-bell', platform: kind, translation_key: kind === 'ring' ? 'live_view' : 'sub' },
   };
   const entries = [{ entity_id: source, state: states[source].state, when: when / 1000 }];
+  // A listed detection counts only as off-to-on (#188): the logbook shows the sensor off before the press.
+  if (options.detection) entries.unshift({ entity_id: source, state: 'off', when: when / 1000 - 5 });
   if (options.released) {
     entries.push({ entity_id: source, state: 'off', when: when / 1000 + 3 });
     states[source].state = 'off';
