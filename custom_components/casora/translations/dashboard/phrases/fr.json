@@ -3005,7 +3005,15 @@
     "erst lesen": "à lire d'abord",
     "automatisch": "automatique",
     "automatische Updates": "mises à jour automatiques",
-    "Zurückholen": "Rétablir"
+    "Zurückholen": "Rétablir",
+    "Flüge verwalten": "Gérer les vols",
+    "Keine verfolgten Flüge": "Aucun vol suivi",
+    "Quelle nicht verfügbar": "Source indisponible",
+    "Quelle für verfolgte Flüge auswählen": "Choisir une source de vols suivis",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Choisissez la source dans Studio, sous Général → Vols suivis.",
+    "1 verfolgter Flug": "1 vol suivi",
+    "Geplant": "Prévu",
+    "Am Boden": "Au sol"
   },
   "patterns": [
     [
@@ -5447,6 +5455,12 @@
     [
       "^Version (.+) übersprungen$",
       "Version {1} ignorée"
+    ],
+    [
+      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
+      "Zone de confort {1}–{2} %",
+      "^(\\d+) verfolgte Flüge$",
+      "{1} vols suivis"
     ]
   ]
 }

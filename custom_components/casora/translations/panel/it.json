@@ -3183,7 +3183,15 @@
     "Gas": "Gas",
     "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Il costo di oggi di luce e gas affiancati sul riquadro, oppure il consumo in kWh. Il popup mostra il giorno, la settimana o il mese: consumo e costo di luce e gas separati, quota fissa e totale, con un grafico a barre per ora o per giorno. Settimana e mese vengono dalle statistiche dei contatori giornalieri di Home Assistant. Per contatori intelligenti senza fotovoltaico, ad es. Hildebrand Glow e Octopus Energy.",
     "Close popups when idle": "Chiudi le finestre se inattivo",
-    "Tablets only. Closes an open popup after a while without use.": "Solo tablet. Chiude una finestra aperta dopo un po' senza uso."
+    "Tablets only. Closes an open popup after a while without use.": "Solo tablet. Chiude una finestra aperta dopo un po' senza uso.",
+    "Tracked flights": "Voli monitorati",
+    "Source unavailable": "Fonte non disponibile",
+    "Select a tracked-flights source": "Scegli una fonte per i voli monitorati",
+    "FlightRadar24 is missing a part Casora needs: {name}": "A FlightRadar24 manca una parte di cui Casora ha bisogno: {name}",
+    "source sensor": "sensore di origine",
+    "Manage flights": "Gestisci i voli",
+    "The FlightRadar24 source that every flight display on this dashboard reads.": "La fonte FlightRadar24 da cui leggono tutte le schermate dei voli di questa dashboard.",
+    "Appears once FlightRadar24 is installed.": "Compare quando FlightRadar24 è installato."
   },
   "patterns": [
     [
