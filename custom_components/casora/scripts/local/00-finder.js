@@ -1529,7 +1529,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       }
       var cameras = o.cameras || (window.CASORA_SETTINGS || {}).cameras || [];
       if ((dom === 'binary_sensor' || dom === 'event') && cameras.some(function (camera) {
-        return camera && Array.isArray(camera.detection_triggers) && camera.detection_triggers.indexOf(id) >= 0;
+        return window.casoraTriggerIds(camera, 'detection').indexOf(id) >= 0;
       })) add(id, 'detection', false);
       if (dc === 'battery' && (dom === 'sensor' || dom === 'binary_sensor')) {
         var pct = parseFloat(s);
