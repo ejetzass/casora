@@ -1,0 +1,12 @@
+{
+  "domain": "flightradar24",
+  "name": "FlightRadar24 Stub (nur für Tests)",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://example.invalid",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "0.0.0"
+}
