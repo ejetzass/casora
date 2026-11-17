@@ -3,6 +3,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+// casoraTriggerIds lives in casora-core.js, which these tests do not load: run that one helper before 26.
+const triggerIdsSource = (() => {
+  const core = fs.readFileSync(new URL('../../custom_components/casora/scripts/casora-core.js', import.meta.url), 'utf8');
+  return core.slice(core.indexOf('  function triggerIds('), core.indexOf('  window.casoraTriggerIds = triggerIds;')) + '  window.casoraTriggerIds = triggerIds;';
+})();
 
 const dir = new URL('../../custom_components/casora/scripts/local/', import.meta.url);
 const NOW = Date.parse('2026-11-13T12:00:00Z');
@@ -32,6 +37,7 @@ function env({ cfg, cameras }) {
     _casoraRingPopup: { open: o => { opened.push(o); return true; }, handled() {} } };
   Object.defineProperty(window, 'location', { get: () => ({ pathname: window.route }) });
   const context = vm.createContext({ window, Date: Clock, JSON, Object, Number, Array, Promise });
+  vm.runInContext(triggerIdsSource, context);
   for (const f of ['00-finder.js', '26-camera-triggers.js', '24-klingel.js']) vm.runInContext(fs.readFileSync(new URL(f, dir), 'utf8'), context);
   const settle = () => new Promise(resolve => setImmediate(resolve));
   return { setCfg: next => { current = next; }, window, hass, opened, timers, settle, tick: () => tick(), ring: window._casoraRing, triggers: window._casoraCameraTriggers };
