@@ -3,6 +3,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+// casoraTriggerIds lives in casora-core.js, which these tests do not load: run that one helper before 26.
+const triggerIdsSource = (() => {
+  const core = fs.readFileSync(new URL('../../custom_components/casora/scripts/casora-core.js', import.meta.url), 'utf8');
+  return core.slice(core.indexOf('  function triggerIds('), core.indexOf('  window.casoraTriggerIds = triggerIds;')) + '  window.casoraTriggerIds = triggerIds;';
+})();
 
 let now = Date.parse('2026-11-13T12:00:00Z');
 class Clock extends Date { static now() { return now; } }
@@ -12,7 +17,7 @@ const loc = r => ({ get pathname() { return '/' + r(); } });
 const window = { location: loc(() => route), CASORA_SETTINGS: { cameras: [
   { entity_id: 'camera.mock', open_on_ring: true, doorbell_triggers: ['binary_sensor.mock', 'event.mock'] },
 ] } };
-const source = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/26-camera-triggers.js', import.meta.url), 'utf8');
+const source = triggerIdsSource + fs.readFileSync(new URL('../../custom_components/casora/scripts/local/26-camera-triggers.js', import.meta.url), 'utf8');
 vm.runInNewContext(source, { window, Date: Clock, Number, Object, Array, JSON });
 const h = { panels: PANELS, states: {
   'binary_sensor.mock': { state: 'on', last_changed: new Date(now).toISOString(), attributes: { friendly_name: 'Mock bell' } },

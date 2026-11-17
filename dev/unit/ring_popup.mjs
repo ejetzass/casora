@@ -3,6 +3,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+// casoraTriggerIds lives in casora-core.js, which these tests do not load: run that one helper before 26.
+const triggerIdsSource = (() => {
+  const core = fs.readFileSync(new URL('../../custom_components/casora/scripts/casora-core.js', import.meta.url), 'utf8');
+  return core.slice(core.indexOf('  function triggerIds('), core.indexOf('  window.casoraTriggerIds = triggerIds;')) + '  window.casoraTriggerIds = triggerIds;';
+})();
 
 const root = new URL('../../custom_components/casora/scripts/local/', import.meta.url);
 const press = '2026-11-12T12:00:00.000Z';
@@ -65,6 +70,7 @@ function load(options = {}) {
     },
   };
   const context = vm.createContext({ window, document, Date: Clock, JSON, Object, Number });
+  vm.runInContext(triggerIdsSource, context);
   for (const name of ['00-finder.js', '26-camera-triggers.js', '45-ring-popup.js']) vm.runInContext(fs.readFileSync(new URL(name, root), 'utf8'), context);
   ready = true;
   function advance(ms) {
@@ -92,6 +98,7 @@ function load(options = {}) {
     h.window.CASORA_SETTINGS = { cameras: [{ entity_id: 'camera.mock_sub',
       open_on_detection: true, detection_triggers: ['event.mock_detection'] }] };
     vm.runInContext(fs.readFileSync(new URL('25-camera-popup.js', root), 'utf8'), h.context);
+    vm.runInContext(triggerIdsSource, h.context);
     vm.runInContext(fs.readFileSync(new URL('26-camera-triggers.js', root), 'utf8'), h.context);
   };
   const hidden = load({ hidden: true });
@@ -172,6 +179,7 @@ const tileCfg = { type: 'custom:button-card', template: 'casora_reolink_doorbell
     const h = load({ hidden });
     h.window.CASORA_SETTINGS = { cameras: [{ entity_id: 'camera.mock_sub', open_on_ring: true, doorbell_triggers: ['event.listed'] }] };
     vm.runInContext(fs.readFileSync(new URL('25-camera-popup.js', root), 'utf8'), h.context);
+    vm.runInContext(triggerIdsSource, h.context);
     vm.runInContext(fs.readFileSync(new URL('26-camera-triggers.js', root), 'utf8'), h.context);
     return h;
   };
@@ -199,6 +207,7 @@ const tileCfg = { type: 'custom:button-card', template: 'casora_reolink_doorbell
   // Avoid starting the interval in this seam test; drive the actual consumer explicitly.
   const interval = h.window.setInterval;
   h.window.setInterval = null;
+  vm.runInContext(triggerIdsSource, h.context);
   vm.runInContext(fs.readFileSync(new URL('26-camera-triggers.js', root), 'utf8'), h.context);
   h.window.setInterval = interval;
   const id = new Date(now).toISOString();
