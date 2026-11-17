@@ -4,6 +4,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
+// The press times below are fixed on 2026-11-12. The doorbell history keeps 3 days, so pin the clock just after them.
+const PinnedDate = class extends Date {
+  constructor(...args) { super(...(args.length ? args : [pinnedNow])); }
+  static now() { return pinnedNow; }
+};
+const pinnedNow = Date.parse('2026-11-12T12:05:00Z');
+globalThis.Date = PinnedDate;
+
 const source = new URL('../../custom_components/casora/scripts/local/26-camera-triggers.js', import.meta.url);
 const storage = new Map();
 function load(extra = {}, clock = Date) {
