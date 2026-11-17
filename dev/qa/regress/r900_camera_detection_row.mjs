@@ -1,6 +1,6 @@
 // @zustand: arbeit
 // @parallel: allein
-// Listed camera detections are shown in the bell but are not interactive.
+// Listed camera detections are one row per ring in the bell; a tap opens the camera popup.
 // Stores the camera list with the settings call the Studio uses on save (test HA only) and restores the settings after.
 import { open, usePage, casoraDashboard, check, need, finish, ready, atFinish } from './lib.mjs';
 import { ws } from '../ws.mjs';
@@ -58,5 +58,5 @@ const result = await page.evaluate((id) => {
   const row = [...document.querySelectorAll('.casora-notify-menu .hui-row')].find((el) => el._casoraRow?.entity === id);
   return row && { tappable: row.classList.contains('hui-tap'), cursor: row.style.cursor, target: row.dataset.casoraOpen, moreInfo: row.dataset.casoraMi };
 }, entity);
-await check('detection row has no tap affordance or target', !!result && !result.tappable && result.cursor !== 'pointer' && !result.target && !result.moreInfo, result);
+await check('detection row opens the camera popup, one row per ring', !!result && result.tappable && result.target === 'casora:detection', result);
 await finish();
