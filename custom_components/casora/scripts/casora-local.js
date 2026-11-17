@@ -262,6 +262,7 @@ const MODULES = [
   '46-screensaver',
   '47-media-extra',
   '48-energie-verlauf',
+  '49-flights',
   '49-security-detectors',
   '50-smart-meter',
   '50-waste-out',
