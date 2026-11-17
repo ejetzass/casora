@@ -1,4 +1,5 @@
 // Camera tile alerts come from the House listed-trigger helper (#188), not from the popup watcher.
+// @deckt: dashboards/casora/button_card_templates.json
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
