@@ -79,6 +79,12 @@
         { k: "screen", sec: "General", sub: "chrome", keys: ["casora_idle_home", "casora_idle_close"], title: "Wall tablet",
           plain: "Go back to Home and close popups after a while without use.",
           kw: "tablet inaktivität zurück zuhause idle kiosk wand popup popups schließen schliessen sluiten close" },
+        // FlightRadar24's tracked flights: the one source for every flight display (scripts/local/49-flights.js). Only drawn
+        // where FlightRadar24 is (or a pick is saved); a draft like every setting.
+        { k: "flights", sec: "General", sub: "chrome", keys: ["casora_flights_source"], title: "Tracked flights",
+          plain: "The FlightRadar24 source that every flight display on this dashboard reads.",
+          empty: "Appears once FlightRadar24 is installed.",
+          kw: "flüge flug flugzeug flightradar24 flightradar verfolgt quelle flights tracked source aircraft" },
         { k: "dialogs", sec: "General", sub: "dialogs", title: "Home Assistant detail windows", adv: true,
           plain: "What the windows of Home Assistant itself show: logbook, history, attributes.",
           kw: "logbuch verlauf attribute brotkrumen lichtaktionen dialog mehr infos kiosk-mode" },
@@ -1360,7 +1366,12 @@
         else head.querySelector("b").appendChild(el("span", "rdetail cs-dash cn-only", t("Only this dashboard")));
         const card = this._csDashCard(b.sec);
         // The note is for a missing dashboard only (the screensaver's preview had made it show under every card).
-        if (card) { trimCard(this, card, b); box.appendChild(card); if (b.saver) this._csSaverPreview(box, card); }
+        if (card) {
+          trimCard(this, card, b);
+          if (b.empty && !card.querySelector(".row")) box.appendChild(el("p", "cs-lede", t(b.empty)));
+          else box.appendChild(card);
+          if (b.saver) this._csSaverPreview(box, card);
+        }
         else box.appendChild(el("p", "cs-lede", t("Open a dashboard in the Studio to change this.")));
         if (b.personal && cs && cs.loaded && typeof this._casoraPersonalGroups === "function") this._casoraPersonalGroups(box, cs.S, b.personal, rerender);
         return;
