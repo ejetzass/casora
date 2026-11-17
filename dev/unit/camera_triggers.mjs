@@ -1,4 +1,5 @@
 // Listed camera triggers, tested without Home Assistant.
+// @deckt: custom_components/casora/scripts/local/26-camera-triggers.js#_casoraCameraTriggers custom_components/casora/scripts/local/25-camera-popup.js#casoraCameraPopup
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
