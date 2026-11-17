@@ -16029,12 +16029,22 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   var DOORBELL_OPENS = 'casora:doorbell';
   var DETECTION_OPENS = 'casora:detection';
 
+  // The trigger ids a camera record lists: of one kind ('doorbell' or 'detection'), or both when kind is omitted.
+  // The watcher, the bell and the Studio read the lists through this one helper.
+  function triggerIds(camera, kind) {
+    var lists = kind ? [kind] : ['doorbell', 'detection'];
+    return lists.reduce(function (ids, k) {
+      var list = camera && camera[k + '_triggers'];
+      return Array.isArray(list) ? ids.concat(list) : ids;
+    }, []);
+  }
+  window.casoraTriggerIds = triggerIds;
   // The camera record whose list of this kind ('doorbell' or 'detection') names this entity, or null.
   function listedCameraTrigger(id, kind) {
     var cameras = (window.CASORA_SETTINGS || {}).cameras;
     if (!Array.isArray(cameras)) return null;
     return cameras.find(function (camera) {
-      return camera && Array.isArray(camera[kind + '_triggers']) && camera[kind + '_triggers'].indexOf(id) !== -1;
+      return triggerIds(camera, kind).indexOf(id) !== -1;
     }) || null;
   }
   function listedDoorbell(id) { return listedCameraTrigger(id, 'doorbell'); }
