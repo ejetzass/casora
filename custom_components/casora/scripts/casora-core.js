@@ -16156,7 +16156,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       if (!on('camera_detection')) return null;
       if (id.indexOf('binary_sensor.') === 0 && (prev !== 'off' || s !== 'on')) return null;
       if (id.indexOf('event.') === 0 && !isFinite(Date.parse(s))) return null;
-      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS, noStack: true };
+      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS };
     }
 
     var appl = applianceFor(id);
