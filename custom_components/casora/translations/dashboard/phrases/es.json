@@ -3005,7 +3005,15 @@
     "erst lesen": "leer primero",
     "automatisch": "automático",
     "automatische Updates": "actualizaciones automáticas",
-    "Zurückholen": "Recuperar"
+    "Zurückholen": "Recuperar",
+    "Flüge verwalten": "Gestionar vuelos",
+    "Keine verfolgten Flüge": "Ningún vuelo seguido",
+    "Quelle nicht verfügbar": "Fuente no disponible",
+    "Quelle für verfolgte Flüge auswählen": "Elige una fuente de vuelos seguidos",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Elige la fuente en Studio, en General → Vuelos seguidos.",
+    "1 verfolgter Flug": "1 vuelo seguido",
+    "Geplant": "Programado",
+    "Am Boden": "En tierra"
   },
   "patterns": [
     [
@@ -5447,6 +5455,12 @@
     [
       "^Version (.+) übersprungen$",
       "Versión {1} omitida"
+    ],
+    [
+      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
+      "Rango de confort {1}–{2} %",
+      "^(\\d+) verfolgte Flüge$",
+      "{1} vuelos seguidos"
     ]
   ]
 }
