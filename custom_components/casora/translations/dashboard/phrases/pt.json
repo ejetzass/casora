@@ -3009,6 +3009,14 @@
     "automatisch": "automático",
     "automatische Updates": "atualizações automáticas",
     "Zurückholen": "Repor",
+    "Flüge verwalten": "Gerir voos",
+    "Keine verfolgten Flüge": "Nenhum voo acompanhado",
+    "Quelle nicht verfügbar": "Fonte indisponível",
+    "Quelle für verfolgte Flüge auswählen": "Escolher uma fonte de voos acompanhados",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Escolha a fonte no Studio, em Geral → Voos acompanhados.",
+    "1 verfolgter Flug": "1 voo acompanhado",
+    "Geplant": "Programado",
+    "Am Boden": "Em solo",
     "Höchsttemperatur": "Temperatura máxima",
     "Sommer": "Verão",
     "Außerhalb der Heizzeit": "Fora da época de aquecimento",
@@ -5496,6 +5504,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Aviso meteorológico: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "{1} voos acompanhados"
     ]
   ]
 }

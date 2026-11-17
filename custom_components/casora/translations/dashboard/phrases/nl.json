@@ -3009,6 +3009,14 @@
     "automatisch": "automatisch",
     "automatische Updates": "automatische updates",
     "Zurückholen": "Terughalen",
+    "Flüge verwalten": "Vluchten beheren",
+    "Keine verfolgten Flüge": "Geen gevolgde vluchten",
+    "Quelle nicht verfügbar": "Bron niet beschikbaar",
+    "Quelle für verfolgte Flüge auswählen": "Kies een bron voor gevolgde vluchten",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Kies de bron in de Studio onder Algemeen → Gevolgde vluchten.",
+    "1 verfolgter Flug": "1 gevolgde vlucht",
+    "Geplant": "Gepland",
+    "Am Boden": "Op de grond",
     "Höchsttemperatur": "Maximumtemperatuur",
     "Sommer": "Zomer",
     "Außerhalb der Heizzeit": "Buiten het stookseizoen",
@@ -5496,6 +5504,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Weerwaarschuwing: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "{1} gevolgde vluchten"
     ]
   ]
 }
