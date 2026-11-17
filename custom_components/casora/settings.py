@@ -148,10 +148,10 @@ async def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 
 
 def camera_records(value: Any) -> list[dict[str, Any]]:
-    """Cameras of the Studio: identity (entity, device, name) and detection triggers, nothing else.
+    """Cameras of the Studio: identity, trigger lists, popup switches and the status sensor. Other keys are dropped.
 
     A camera without a non-empty string entity_id is dropped, and so is a repeat of a camera (the first one
-    wins); the trigger list keeps each non-empty string once.
+    wins). Trigger lists keep each non-empty string once; a popup switch is kept only when it is true.
     """
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -162,11 +162,17 @@ def camera_records(value: Any) -> list[dict[str, Any]]:
         if not isinstance(entity_id, str) or not entity_id or entity_id in seen:
             continue
         seen.add(entity_id)
-        clean: dict[str, Any] = {k: camera[k] for k in ("entity_id", "device_id", "name") if isinstance(camera.get(k), str)}
-        triggers = camera.get("detection_triggers")
-        kept = list(dict.fromkeys(t for t in triggers if isinstance(t, str) and t)) if isinstance(triggers, list) else []
-        if kept:
-            clean["detection_triggers"] = kept
+        clean: dict[str, Any] = {k: camera[k] for k in ("entity_id", "name", "status_entity") if isinstance(camera.get(k), str)}
+        if "device_id" in camera and isinstance(camera["device_id"], (str, type(None))):
+            clean["device_id"] = camera["device_id"]
+        for key in ("doorbell_triggers", "detection_triggers"):
+            triggers = camera.get(key)
+            kept = list(dict.fromkeys(t for t in triggers if isinstance(t, str) and t)) if isinstance(triggers, list) else []
+            if kept:
+                clean[key] = kept
+        for key in ("open_on_ring", "open_on_detection"):
+            if camera.get(key) is True:
+                clean[key] = True
         out.append(clean)
     return out
 
