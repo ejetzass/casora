@@ -63,8 +63,8 @@ assert.equal(rows.find(row => row.entity === restart), undefined, 'unavailable b
 assert.equal(rows.find(row => row.entity === absent), undefined, 'missing predecessor does not invent a detection');
 assert.ok(calls.some(c => c.type === 'logbook/get_events' && c.entity_ids.includes(id)), 'listed detection is watched');
 const detections = rows.filter(row => row.entity === id);
-assert.equal(detections.length, 2, 'each off-to-on detection has its own row');
-assert.ok(detections.every(row => row.count === 1), 'detection rows do not become expandable stacks');
+assert.equal(detections.length, 1, 'repeated detections of one sensor join one stacked row');
+assert.equal(detections[0].count, 2, 'the stack counts both off-to-on detections');
 assert.equal(detections[0].label, 'Person erkannt');
 assert.ok(!detections[0].passive, 'detection row is tappable');
 assert.equal(detections[0].opens, 'casora:detection', 'the row opens the camera popup');
