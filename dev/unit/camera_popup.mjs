@@ -1,4 +1,5 @@
 // Camera popup family follows registry identity, not the tile that opened it.
+// @deckt: custom_components/casora/scripts/local/25-camera-popup.js#casoraCameraPopup dashboards/casora/button_card_templates.json
 // node dev/unit/camera_popup.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
