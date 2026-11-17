@@ -2991,6 +2991,14 @@
     "automatisch": "automatic",
     "automatische Updates": "automatic updates",
     "Zurückholen": "Bring back",
+    "Flüge verwalten": "Manage flights",
+    "Keine verfolgten Flüge": "No tracked flights",
+    "Quelle nicht verfügbar": "Source unavailable",
+    "Quelle für verfolgte Flüge auswählen": "Select a tracked-flights source",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Choose the source in Studio under General → Tracked flights.",
+    "1 verfolgter Flug": "1 tracked flight",
+    "Geplant": "Scheduled",
+    "Am Boden": "On the ground",
     "Höchsttemperatur": "Maximum temperature",
     "Sommer": "Summer",
     "Außerhalb der Heizzeit": "Outside the heating season",
@@ -5478,6 +5486,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Weather warning: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "{1} tracked flights"
     ]
   ]
 }

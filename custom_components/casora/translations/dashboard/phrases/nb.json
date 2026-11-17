@@ -3002,6 +3002,14 @@
     "automatisch": "automatisk",
     "automatische Updates": "automatiske oppdateringer",
     "Zurückholen": "Hent tilbake",
+    "Flüge verwalten": "Administrer flyvninger",
+    "Keine verfolgten Flüge": "Ingen sporede flyvninger",
+    "Quelle nicht verfügbar": "Kilde utilgjengelig",
+    "Quelle für verfolgte Flüge auswählen": "Velg en kilde for sporede flyvninger",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Velg kilden i Studio under Generelt → Sporede flyvninger.",
+    "1 verfolgter Flug": "1 sporet flyvning",
+    "Geplant": "Planlagt",
+    "Am Boden": "På bakken",
     "Höchsttemperatur": "Maksimumstemperatur",
     "Sommer": "Sommermodus",
     "Außerhalb der Heizzeit": "Utenfor fyringssesongen",
@@ -5489,6 +5497,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Farevarsel: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "{1} sporede flyvninger"
     ]
   ]
 }

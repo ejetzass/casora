@@ -3009,6 +3009,14 @@
     "automatisch": "automatycznie",
     "automatische Updates": "automatyczne aktualizacje",
     "Zurückholen": "Przywróć",
+    "Flüge verwalten": "Zarządzaj lotami",
+    "Keine verfolgten Flüge": "Brak śledzonych lotów",
+    "Quelle nicht verfügbar": "Źródło niedostępne",
+    "Quelle für verfolgte Flüge auswählen": "Wybierz źródło śledzonych lotów",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Wybierz źródło w Studio w sekcji Ogólne → Śledzone loty.",
+    "1 verfolgter Flug": "1 śledzony lot",
+    "Geplant": "Zaplanowany",
+    "Am Boden": "Na ziemi",
     "Höchsttemperatur": "Temperatura maksymalna",
     "Sommer": "Lato",
     "Außerhalb der Heizzeit": "Poza sezonem grzewczym",
@@ -5496,6 +5504,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Ostrzeżenie pogodowe: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "Śledzonych lotów: {1}"
     ]
   ]
 }
