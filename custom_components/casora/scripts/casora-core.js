@@ -17567,24 +17567,20 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     tapCard(t, done);
   };
 
+  // The popup of a listed camera (the ring or detection a bell row names). False when no popup opens for it.
+  function openListedPopup(camera) {
+    if (!camera || !window.casoraCameraPopup || typeof window.casoraCameraPopup.open !== 'function') return false;
+    userGuard(camera.entity_id, function () { window.casoraCameraPopup.open(camera.entity_id, function () {}); });
+    return true;
+  }
   function openTarget(what, fallbackEntity) {
     if (what === DETECTION_OPENS) {
-      var camera = listedDetection(fallbackEntity);
-      if (camera && window.casoraCameraPopup && typeof window.casoraCameraPopup.open === 'function') {
-        return userGuard(camera.entity_id, function () {
-          window.casoraCameraPopup.open(camera.entity_id, function () {});
-        });
-      }
+      openListedPopup(listedDetection(fallbackEntity));
       return;
     }
     if (what === DOORBELL_OPENS) {
       var h = hassOf();
-      var listed = listedDoorbell(fallbackEntity);
-      if (listed && window.casoraCameraPopup && typeof window.casoraCameraPopup.open === 'function') {
-        return userGuard(listed.entity_id, function () {
-          window.casoraCameraPopup.open(listed.entity_id, function () {});
-        });
-      }
+      if (openListedPopup(listedDoorbell(fallbackEntity))) return;
       var bell = h && window.casoraDoorbellSources && window.casoraDoorbellSources(h).find(function (c) {
         return c.sensor === fallbackEntity;
       });
