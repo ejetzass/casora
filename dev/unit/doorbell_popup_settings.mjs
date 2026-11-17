@@ -1,4 +1,5 @@
 // Doorbell popup settings take precedence without migrating saved tile values.
+// @deckt: custom_components/casora/scripts/local/25-camera-popup.js#casoraCameraPopup custom_components/casora/panel/casora-panel-personal.js#casoraPersonal custom_components/casora/panel/casora-panel-types.js dashboards/casora/button_card_templates.json
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/25-camera-popup.js', import.meta.url), 'utf8');
