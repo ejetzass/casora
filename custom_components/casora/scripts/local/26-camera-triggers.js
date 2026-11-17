@@ -195,7 +195,7 @@
     var states = (hass && hass.states) || {}, hits = {};
     cameras.forEach(function (camera) {
       if (!camera) return;
-      [].concat(camera.doorbell_triggers || [], camera.detection_triggers || []).forEach(function (id) {
+      window.casoraTriggerIds(camera).forEach(function (id) {
         if (Object.prototype.hasOwnProperty.call(hits, id)) return;
         hits[id] = null;
         var st = states[id], value = st && st.state, at = null;
@@ -272,7 +272,7 @@
     if (!hass || typeof hass.callWS !== 'function') return [];
     var cameras = (window.CASORA_SETTINGS || {}).cameras || [], ids = [];
     cameras.forEach(function (camera) {
-      [].concat(camera && camera.doorbell_triggers || [], camera && camera.detection_triggers || []).forEach(function (id) {
+      window.casoraTriggerIds(camera).forEach(function (id) {
         if (id.indexOf('binary_sensor.') !== 0 || ids.indexOf(id) >= 0) return;
         var state = (hass.states || {})[id];
         if (!state || (state.state !== 'on' && state.state !== 'off')) return;
@@ -328,8 +328,7 @@
   var hasTriggers = function () {
     var cameras = (window.CASORA_SETTINGS || {}).cameras || [];
     return cameras.some(function (camera) {
-      return camera && ((Array.isArray(camera.doorbell_triggers) && camera.doorbell_triggers.length)
-        || (Array.isArray(camera.detection_triggers) && camera.detection_triggers.length));
+      return window.casoraTriggerIds(camera).length > 0;
     });
   };
   var enqueue = function (items) {
