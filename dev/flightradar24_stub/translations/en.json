@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": { "user": { "title": "FlightRadar24 stub" } },
+    "abort": { "already_configured": "Already configured" }
+  },
+  "entity": {
+    "sensor": { "additional_tracked": { "name": "Additional tracked" } },
+    "text": {
+      "add_track": { "name": "Add to track" },
+      "remove_track": { "name": "Remove from track" }
+    },
+    "switch": { "scanning": { "name": "API data fetching" } }
+  }
+}
