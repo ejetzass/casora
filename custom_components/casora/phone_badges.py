@@ -346,11 +346,31 @@ def notify_of(cfg: dict) -> dict:
     return {}
 
 
+FLIGHT_KEYS = ("casora_flights_source", "casora_flights_altitude_unit", "casora_flights_speed_unit",
+               "casora_flights_vspeed_unit", "casora_flights_timezones")
+
+
+def flights_of(cfg: dict) -> dict:
+    """The Flights settings of a desktop dashboard for its phone twin (49-flights.js F.pinned): the first value a view's
+    hero card holds. A switch is 'true' or 'false', as the phone reads it; a setting with no value is left out."""
+    out: dict = {}
+    for view in cfg.get("views") or []:
+        cards = view.get("cards") if isinstance(view, dict) else None
+        hero = cards[0] if isinstance(cards, list) and cards and isinstance(cards[0], dict) else {}
+        variables = hero.get("variables") if isinstance(hero.get("variables"), dict) else {}
+        for k in FLIGHT_KEYS:
+            v = variables.get(k)
+            if k in out or v is None or v == "":
+                continue
+            out[k] = ("true" if v else "false") if isinstance(v, bool) else str(v)
+    return out
+
+
 async def async_partner_info(hass, url_path: str, admin: bool = True) -> dict | None:
     cfg = await _load(hass, url_path, admin)
     if not cfg:
         return None
-    return {"confirm": confirm_of(cfg), "scenes": scenes_of(cfg), "notify": notify_of(cfg)}
+    return {"confirm": confirm_of(cfg), "scenes": scenes_of(cfg), "notify": notify_of(cfg), "flights": flights_of(cfg)}
 
 
 def async_setup_phone_badges(hass) -> None:
