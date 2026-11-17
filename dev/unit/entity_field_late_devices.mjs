@@ -132,7 +132,8 @@ await Promise.resolve();
     return { row };
   };
   p._boolSwitch = () => mk('button');
-  p._entityList = () => [];
+  p._entityList = (domains) => Object.keys(hass.states).filter((id) => domains.includes(id.split('.')[0]));
+  p._prettyEntity = (id) => hass.states[id]?.attributes?.friendly_name || id;
   p._trace = noop;
   p._scrollSnap = noop;
   p._restoreScroll = noop;
@@ -146,19 +147,22 @@ await Promise.resolve();
     }
     return null;
   };
-  for (const title of ['Doorbell from', 'Detection from']) {
+  // The doorbell list puts the camera's own entities first; the detection list (the #188 picker) sorts by name.
+  const order = { 'Doorbell from': [own, other], 'Detection from': [other, own] };
+  for (const title of Object.keys(order)) {
     const row = findRow(host, title);
     const input = row.querySelector('.combo').children.find((el) => el.tagName === 'INPUT');
     input.onfocus();
-    assert.deepEqual(p.overlay.querySelectorAll('.combo-opt').map((el) => el.title), [own, other], title + ': camera device first');
+    assert.deepEqual(p.overlay.querySelectorAll('.combo-opt').map((el) => el.title), order[title], title + ': candidate order');
     p._openCombo();
   }
   globalThis.innerWidth = 390;
-  for (const title of ['Doorbell from', 'Detection from']) {
+  const phoneOrder = { 'Doorbell from': ['Zulu', 'Alpha'], 'Detection from': ['Alpha', 'Zulu'] };
+  for (const title of Object.keys(phoneOrder)) {
     const input = findRow(host, title).querySelector('.combo').children.find((el) => el.tagName === 'INPUT');
     input.onclick();
     assert.deepEqual(p.overlay.querySelectorAll('.psheet-row').map((el) => el.querySelector('.lbl').textContent),
-      ['Zulu', 'Alpha'], title + ': phone camera device first');
+      phoneOrder[title], title + ': phone candidate order');
     p._openCombo();
   }
   globalThis.innerWidth = 1400;
