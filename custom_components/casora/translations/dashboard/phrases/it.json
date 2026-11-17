@@ -3009,6 +3009,14 @@
     "automatisch": "automatico",
     "automatische Updates": "aggiornamenti automatici",
     "Zurückholen": "Ripristina",
+    "Flüge verwalten": "Gestisci i voli",
+    "Keine verfolgten Flüge": "Nessun volo monitorato",
+    "Quelle nicht verfügbar": "Fonte non disponibile",
+    "Quelle für verfolgte Flüge auswählen": "Scegli una fonte per i voli monitorati",
+    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Scegli la fonte in Studio, in Generale → Voli monitorati.",
+    "1 verfolgter Flug": "1 volo monitorato",
+    "Geplant": "Programmato",
+    "Am Boden": "A terra",
     "Höchsttemperatur": "Temperatura massima",
     "Sommer": "Estate",
     "Außerhalb der Heizzeit": "Fuori stagione di riscaldamento",
@@ -5496,6 +5504,10 @@
     [
       "^Wetterwarnung: (.+)$",
       "Allerta meteo: {1}"
+    ],
+    [
+      "^(\\d+) verfolgte Flüge$",
+      "{1} voli monitorati"
     ]
   ]
 }

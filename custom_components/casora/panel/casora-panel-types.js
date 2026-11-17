@@ -38,6 +38,15 @@ if (!window.casoraImportScript) {
   window.casoraImportScript = (path) => window.casoraScriptUrl(path).then((u) => import(u));
 }
 const ICON = { key: "icon", label: "Icon", type: "icon" };
+// Tracked flights (FlightRadar24): source discovery lives in scripts/local/49-flights.js, which the Studio loads once if no
+// dashboard did. Returns the module, or null until it is there (the next draw has it).
+let flightsLoad = null;
+window.casoraFlightsMod = () => {
+  if (window._casoraFlights) return window._casoraFlights;
+  if (!flightsLoad) flightsLoad = (window.casoraImportScript || ((p) => import("/casora_scripts/" + p)))("local/49-flights.js").catch(() => {});
+  return null;
+};
+try { window.casoraFlightsMod(); } catch (e) { /* loaded on the first use instead */ }
 // Frigate stream fields (#61): choices = the camera's go2rtc streams from the Frigate integration
 // (23-frigate.js F.streamChoices; the Studio loads the module once if no dashboard did). Until the list
 // is there (or without any), only "Default"/"Standard". dynOptions(hass, entityId, redraw) → {options, labels} | null.
@@ -435,6 +444,12 @@ window.CASORA_TILE_TYPES = [
     onlyIf: (hass) => !!(hass && hass.states && Object.keys(hass.states).some((id) => id.startsWith("todo."))),
     fields: [{ key: "lists", label: "Lists", type: "list", noAnchor: true, domains: ["todo"], placeholder: "Add list …", hint: "Empty: every to-do list in your home." },
       ICON, { ...TITLE, placeholder: "Tasks" }] },
+  // Manage flights (FlightRadar24): no entity of its own, like the calendar and tasks; opens the complete tracked list of the
+  // source picked under Controls (scripts/local/49-flights.js). Offered only where FlightRadar24 has its source sensor.
+  { id: "casora_flights", label: "Manage flights", template: "casora_flights", domains: [], noEntity: true, icon: "flights",
+    color: "var(--casora-color-teal, #00C3D0)",
+    onlyIf: (hass) => { const F = window.casoraFlightsMod(); return !!(F && F.sources(hass).length); },
+    fields: [ICON, { ...TITLE, placeholder: "Manage flights" }] },
   { id: "casora_shopping", label: "Bring! shopping list", template: "casora_shopping", domains: ["todo"],
     icon: "cart", color: "var(--casora-color-green, #30D158)", entityLabel: "List", entityPlaceholder: "Choose your shopping list",
     community: { desc: "How many items are open on the tile. The popup lists them with Bring's specification, ticks one off with a tap, adds new ones and clears the ticked ones. For Bring! and every other to-do list in Home Assistant.",
@@ -775,7 +790,7 @@ window.CASORA_EXTRA_ICONS = Object.fromEntries([
   "window-closed", "heating_coil", "wind", "rooms", "soccer", "pulse", "lawn-mower", "coffee-maker", "paw",
   "coffee-espresso", "coffee-doppio", "coffee-cup", "coffee-cappuccino", "coffee-latte", "coffee-tall", "coffee-water",
   "coffee-milk", "coffee-tea", "chart", "velair", "list", "tasks", "grid", "cart", "universal", "kettle", "co", "heat_pump",
-  "coffee-milk", "coffee-tea", "chart", "velair", "list", "tasks", "grid", "cart", "universal", "kettle", "co", "map", "smart_heating",
+  "coffee-milk", "coffee-tea", "chart", "velair", "list", "tasks", "grid", "cart", "universal", "kettle", "co", "map", "smart_heating", "flights",
 ].map((n) => [n, "/casora_assets/icons/" + n + ".svg"]));
 
 // Preview: show conditional cards (type: conditional) as the dashboard does –
