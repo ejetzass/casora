@@ -148,10 +148,11 @@ async def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 
 
 def camera_records(value: Any) -> list[dict[str, Any]]:
-    """Cameras of the Studio: identity (entity, device, name) and detection triggers, nothing else.
+    """Cameras of the Studio: identity, trigger lists, popup switches and the status sensor. Other keys are dropped.
 
     A camera without a non-empty string entity_id is dropped. A repeat of a camera keeps the first one's identity
-    and adds its triggers to the first one; the trigger list keeps each non-empty string once.
+    and adds its triggers to the first one; the trigger lists keep each non-empty string once. A popup switch is
+    kept only when it is true.
     """
     out: list[dict[str, Any]] = []
     by_entity: dict[str, dict[str, Any]] = {}
@@ -161,16 +162,22 @@ def camera_records(value: Any) -> list[dict[str, Any]]:
         entity_id = camera.get("entity_id")
         if not isinstance(entity_id, str) or not entity_id:
             continue
-        triggers = camera.get("detection_triggers")
-        kept = [t for t in triggers if isinstance(t, str) and t] if isinstance(triggers, list) else []
         clean = by_entity.get(entity_id)
         if clean is None:
-            clean = {k: camera[k] for k in ("entity_id", "device_id", "name") if isinstance(camera.get(k), str)}
+            clean = {k: camera[k] for k in ("entity_id", "name", "status_entity") if isinstance(camera.get(k), str)}
+            if "device_id" in camera and isinstance(camera["device_id"], (str, type(None))):
+                clean["device_id"] = camera["device_id"]
             by_entity[entity_id] = clean
             out.append(clean)
-        merged = list(dict.fromkeys([*clean.get("detection_triggers", []), *kept]))
-        if merged:
-            clean["detection_triggers"] = merged
+        for key in ("doorbell_triggers", "detection_triggers"):
+            triggers = camera.get(key)
+            kept = [t for t in triggers if isinstance(t, str) and t] if isinstance(triggers, list) else []
+            merged = list(dict.fromkeys([*clean.get(key, []), *kept]))
+            if merged:
+                clean[key] = merged
+        for key in ("open_on_ring", "open_on_detection"):
+            if camera.get(key) is True:
+                clean[key] = True
     return out
 
 
