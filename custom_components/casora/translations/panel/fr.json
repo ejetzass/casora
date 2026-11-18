@@ -1,5 +1,4 @@
 {
-  "_comment": "Traducción del panel de Casora. Clave = texto original en inglés del panel. Nuevo idioma: crea el archivo <código>.json y luego ejecuta tools/build-panel-i18n.py.",
   "exact": {
     "Hide when the title contains": "Masquer si le titre contient",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Sépare les entrées par des virgules ; une entrée peut contenir plusieurs mots. La fenêtre du calendrier les affiche toujours.",
@@ -3210,7 +3209,8 @@
     "Total cost": "Coût total",
     "Electricity": "Électricité",
     "Gas": "Gaz",
-    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Le coût du jour pour l’électricité et le gaz côte à côte sur la tuile, ou la consommation en kWh. Le popup affiche le jour, la semaine ou le mois : consommation et coût de l’électricité et du gaz séparés, abonnement et total, avec un graphique en barres par heure ou par jour. La semaine et le mois viennent des statistiques des compteurs journaliers de Home Assistant. Pour les compteurs intelligents sans solaire, p. ex. Hildebrand Glow et Octopus Energy."
+    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Le coût du jour pour l’électricité et le gaz côte à côte sur la tuile, ou la consommation en kWh. Le popup affiche le jour, la semaine ou le mois : consommation et coût de l’électricité et du gaz séparés, abonnement et total, avec un graphique en barres par heure ou par jour. La semaine et le mois viennent des statistiques des compteurs journaliers de Home Assistant. Pour les compteurs intelligents sans solaire, p. ex. Hildebrand Glow et Octopus Energy.",
+    "Choose cameras": "Choisir les caméras"
   },
   "patterns": [
     [
@@ -3934,6 +3934,7 @@
       "{1} disponibles"
     ]
   ],
+  "_comment": "Traducción del panel de Casora. Clave = texto original en inglés del panel. Nuevo idioma: crea el archivo <código>.json y luego ejecuta tools/build-panel-i18n.py.",
   "The dashboard of this suggestion is gone. Discard it and ask your assistant again.": "Le tableau de bord de cette proposition n'existe plus. Ignore-la et redemande à ton assistant.",
   "The dashboard could not be loaded. Reload the page, then try again.": "Le tableau de bord n'a pas pu être chargé. Recharge la page, puis réessaie.",
   "Finish or close the open step first.": "Termine ou ferme d'abord l'étape ouverte."

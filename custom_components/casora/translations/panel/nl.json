@@ -1,5 +1,4 @@
 {
-  "_comment": "Vertaling van het Casora-paneel. Sleutel = originele Engelse tekst in het paneel. Nieuwe taal: maak het bestand <code>.json aan en voer dan tools/build-panel-i18n.py uit.",
   "exact": {
     "Hide when the title contains": "Verbergen als de titel bevat",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Scheid items met een komma; een item mag uit meerdere woorden bestaan. Het agendavenster toont ze nog steeds.",
@@ -3210,7 +3209,8 @@
     "Total cost": "Totale kosten",
     "Electricity": "Stroom",
     "Gas": "Gas",
-    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "De kosten van vandaag voor stroom en gas naast elkaar op de tegel, of het verbruik in kWh. De pop-up toont de dag, de week of de maand: verbruik en kosten van stroom en gas apart, vastrecht en totaal, met een grafiek met staven per uur of dag. Week en maand komen uit de statistieken van de dagtellers in Home Assistant. Voor slimme meters zonder zonnepanelen, bijv. Hildebrand Glow en Octopus Energy."
+    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "De kosten van vandaag voor stroom en gas naast elkaar op de tegel, of het verbruik in kWh. De pop-up toont de dag, de week of de maand: verbruik en kosten van stroom en gas apart, vastrecht en totaal, met een grafiek met staven per uur of dag. Week en maand komen uit de statistieken van de dagtellers in Home Assistant. Voor slimme meters zonder zonnepanelen, bijv. Hildebrand Glow en Octopus Energy.",
+    "Choose cameras": "Camera’s kiezen"
   },
   "patterns": [
     [
@@ -3934,6 +3934,7 @@
       "{1} beschikbaar"
     ]
   ],
+  "_comment": "Vertaling van het Casora-paneel. Sleutel = originele Engelse tekst in het paneel. Nieuwe taal: maak het bestand <code>.json aan en voer dan tools/build-panel-i18n.py uit.",
   "The dashboard of this suggestion is gone. Discard it and ask your assistant again.": "Het dashboard van dit voorstel bestaat niet meer. Verwerp het en vraag je assistent opnieuw.",
   "The dashboard could not be loaded. Reload the page, then try again.": "Het dashboard kon niet worden geladen. Laad de pagina opnieuw en probeer het dan nog eens.",
   "Finish or close the open step first.": "Rond eerst de open stap af of sluit hem."

@@ -1,5 +1,4 @@
 {
-  "_comment": "Casora-paneloversettelse. Nøkkel = engelsk originaltekst i panelet. Nytt språk: opprett filen <kode>.json, kjør deretter tools/build-panel-i18n.py.",
   "exact": {
     "Hide when the title contains": "Skjul når tittelen inneholder",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Skill oppføringene med komma; en oppføring kan ha flere ord. Kalender-popupen viser dem fortsatt.",
@@ -3210,7 +3209,8 @@
     "Total cost": "Totalkostnad",
     "Electricity": "Strøm",
     "Gas": "Gass",
-    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Dagens kostnad for strøm og gass side om side på flisen, eller forbruket i kWh. Popupen viser dagen, uken eller måneden: forbruk og kostnad for strøm og gass hver for seg, fastledd og sum, med et diagram med søyler per time eller dag. Uke og måned kommer fra Home Assistants statistikk for dagstellerne. For smartmålere uten solceller, f.eks. Hildebrand Glow og Octopus Energy."
+    "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Dagens kostnad for strøm og gass side om side på flisen, eller forbruket i kWh. Popupen viser dagen, uken eller måneden: forbruk og kostnad for strøm og gass hver for seg, fastledd og sum, med et diagram med søyler per time eller dag. Uke og måned kommer fra Home Assistants statistikk for dagstellerne. For smartmålere uten solceller, f.eks. Hildebrand Glow og Octopus Energy.",
+    "Choose cameras": "Velg kameraer"
   },
   "patterns": [
     [
@@ -3934,6 +3934,7 @@
       "{1} tilgjengelig"
     ]
   ],
+  "_comment": "Casora-paneloversettelse. Nøkkel = engelsk originaltekst i panelet. Nytt språk: opprett filen <kode>.json, kjør deretter tools/build-panel-i18n.py.",
   "The dashboard of this suggestion is gone. Discard it and ask your assistant again.": "Dashbordet for dette forslaget finnes ikke lenger. Forkast det og spør assistenten din på nytt.",
   "The dashboard could not be loaded. Reload the page, then try again.": "Dashbordet kunne ikke lastes. Last inn siden på nytt og prøv igjen.",
   "Finish or close the open step first.": "Fullfør eller lukk det åpne trinnet først."
