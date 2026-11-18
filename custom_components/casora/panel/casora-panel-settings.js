@@ -585,7 +585,7 @@
           this._csRepaint();
           return false;
         }
-        const pin = rooms.map((r) => (r.variables || {})[F.KEY]).find(Boolean) || "";
+        const pin = F.firstValue(rooms.map((r) => r.variables || {}));
         if (F.resolve(this._hass, pin).state === "choose") {
           cs.err = t("Select a tracked-flights source") + " · "
             + [t("Settings"), t("Tapping & tablet"), t("Tracked flights")].join(" → ");
