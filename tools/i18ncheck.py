@@ -86,7 +86,8 @@ SAME_TEXT = {"Bosch Smart System", "Café au lait", "Café con leche", "Caffè c
              "Team (Team Tracker)", "YYYY-MM-DD"}
 # Per language: normal words there, but the same text as English or German (no native speaker has read them yet).
 SAME_TEXT_LANG = {"nb": {"Casora Kamera-KI", "Start café au lait", "Start café au lait?", "via Wi-Fi"},
-                  "nl": {"AI: 1 breaking change", "AI: {1} breaking changes", "Mbit/s download", "Mbit/s upload"},
+                  "nl": {"AI: 1 breaking change", "AI: {1} breaking changes", "Mbit/s download", "Mbit/s upload",
+                         "“{name}” in {room}"},
                   "pt": {"Mbit/s download", "Mbit/s upload"}}
 
 
