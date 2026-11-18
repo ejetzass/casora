@@ -110,32 +110,37 @@
       f = f && typeof f === 'object' ? f : {};
       var label = str(f.flight_number) || str(f.callsign) || str(f.aircraft_registration) || str(f.id) || String(i + 1);
       var from = airport(f, 'origin'), to = airport(f, 'destination');
-      var state = str(f.tracked_type) === 'schedule' ? (window.casoraTr ? window.casoraTr('Geplant') : 'Geplant') : (f.on_ground === 1 || f.on_ground === '1' || f.on_ground === true) ? (window.casoraTr ? window.casoraTr('Am Boden') : 'Am Boden') : '';
+      var state = str(f.tracked_type) === 'schedule' ? tr('Geplant') : (f.on_ground === 1 || f.on_ground === '1' || f.on_ground === true) ? tr('Am Boden') : '';
       var parts = [str(f.airline_short) || str(f.airline), from && to ? from + ' → ' + to : '', state].filter(Boolean);
       return { key: str(f.id) || String(i), label: label, detail: parts.join(' · ') };
     });
   };
 
   // ── The setting ───────────────────────────────────────────────────────────
-  F.pinned = function (cfg) {
-    var views = (cfg && cfg.views) || [];
-    for (var i = 0; i < views.length; i++) {
-      var hero = ((views[i] || {}).cards || [])[0];
-      var v = hero && hero.variables && hero.variables[KEY];
+  // The first value of the setting over a list of variables objects (one per view's hero card): its String, or '' when none
+  // holds one. Shared by the dashboard config (F.pinned) and the Studio save guard.
+  F.firstValue = function (list) {
+    for (var i = 0; i < (list || []).length; i++) {
+      var v = (list[i] || {})[KEY];
       if (v !== undefined && v !== null && v !== '') return String(v);
     }
     return '';
   };
+  F.pinned = function (cfg) {
+    var views = (cfg && cfg.views) || [];
+    var heroes = Array.prototype.map.call(views, function (view) { return ((view || {}).cards || [])[0] || {}; });
+    return F.firstValue(heroes.map(function (hero) { return hero.variables || {}; }));
+  };
   // The open dashboard's own value; '' when it has none.
-  var ownOf = function (key) {
-    try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg(), key); } catch (e) { return ''; }
+  var ownOf = function () {
+    try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg()); } catch (e) { return ''; }
   };
   // Own value first; a phone takes the rest from its desktop twin (below). '' = Automatic, or not known yet (F.ready).
-  F.setting = function (key) {
-    var own = ownOf(key);
+  F.setting = function () {
+    var own = ownOf();
     if (own) return own;
     var t = twinOf();
-    return t && (t.state === 'ok' || t.state === 'none') ? (t.flights[key || KEY] || '') : '';
+    return t && (t.state === 'ok' || t.state === 'none') ? (t.flights[KEY] || '') : '';
   };
   // ── The phone twin: a phone dashboard (<name>-mobile) takes the Flights settings it has no value for from its desktop twin
   // (<name>), read with casora/partner_info. The read is async, so until it has answered the phone resolves nothing (no tile,
