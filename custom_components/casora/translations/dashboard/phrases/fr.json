@@ -3010,7 +3010,7 @@
     "Keine verfolgten Flüge": "Aucun vol suivi",
     "Quelle nicht verfügbar": "Source indisponible",
     "Quelle für verfolgte Flüge auswählen": "Choisir une source de vols suivis",
-    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Choisissez la source dans Studio, sous Général → Vols suivis.",
+    "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Choisissez la source dans Studio, sous Réglages → Toucher et tablette → Vols suivis.",
     "1 verfolgter Flug": "1 vol suivi",
     "Geplant": "Prévu",
     "Am Boden": "Au sol"
