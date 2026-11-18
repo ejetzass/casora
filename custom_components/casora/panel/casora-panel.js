@@ -2736,23 +2736,19 @@ const SECTIONS = [
       { key: "casora_flights_source", sub: "chrome", label: "Tracked flights", type: "select", auto: true, scope: "dashboard",
         options: [""], optionLabels: { "": "Automatic" },
         when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(v && v.casora_flights_source) || !!(F && F.present(hass)); },
-        dynOptions: (hass, cur) => {
+        // live(hass, value) → {options, labels, note} from the house, or null without the module. note = {text, name?} or null.
+        live: (hass, cur) => {
           const F = window.casoraFlightsMod && window.casoraFlightsMod();
           if (!F) return null;
           const c = F.choices(hass, cur);
           const labels = { "": c.empty === "choose" ? "Select a tracked-flights source" : "Automatic" };
           c.options.forEach((id) => { if (id) labels[id] = c.labels[id] == null ? "Source unavailable" : c.labels[id]; });
-          return { options: c.options, labels };
-        },
-        note: (hass, cur) => {
-          const F = window.casoraFlightsMod && window.casoraFlightsMod();
-          if (!F) return null;
-          const c = F.choices(hass, cur);
-          if (c.note === "missing") return { text: "Source unavailable" };
-          if (c.note === "choose") return { text: "Select a tracked-flights source" };
-          if (c.note === "parts") return { text: "FlightRadar24 is missing a part Casora needs: {name}", name: "source sensor" };
-          if (c.unavailable) return { text: "Source unavailable" };
-          return null;
+          let note = null;
+          if (c.note === "missing") note = { text: "Source unavailable" };
+          else if (c.note === "choose") note = { text: "Select a tracked-flights source" };
+          else if (c.note === "parts") note = { text: "FlightRadar24 is missing a part Casora needs: {name}", name: "source sensor" };
+          else if (c.unavailable) note = { text: "Source unavailable" };
+          return { options: c.options, labels, note };
         } },
       // Halten auf Kacheln (22-halten.js): leer = Schnellmenü. casora-core.js setzt daraus window._casoraHoldMode,
       // ans Handy geht es über casora_mobile_bg. Je Kachel überstimmbar (variables.hold_mode, Kachel-Inspektor).
@@ -19995,36 +19991,33 @@ class CasoraPanel extends HTMLElement {
           return;
         }
         if (f.type === "select") {
-          // Choices that depend on the house (tracked flights source): dynOptions(hass, value) → {options, labels}; a stored
-          // value stays selectable. note(hass, value) → {text, name?} is a status line under the row (role "status"); both are
-          // drawn again after a change.
-          let opts = f.options, dynLabels = null;
-          if (typeof f.dynOptions === "function") {
-            let dyn = null;
-            try { dyn = f.dynOptions(this._hass, String(cur)); } catch (e) { dyn = null; }
-            if (dyn && Array.isArray(dyn.options)) { opts = dyn.options; dynLabels = dyn.labels || null; }
+          // Choices that depend on the house (tracked flights source): live(hass, value) → {options, labels, note}; a stored
+          // value stays selectable. note = {text, name?} is a status line under the row (role "status"); all of it is drawn
+          // again after a change.
+          let opts = f.options, dynLabels = null, nt = null;
+          if (typeof f.live === "function") {
+            let lv = null;
+            try { lv = f.live(this._hass, String(cur)); } catch (e) { lv = null; }
+            if (lv && Array.isArray(lv.options)) { opts = lv.options; dynLabels = lv.labels || null; }
+            nt = (lv && lv.note) || null;
           }
           const c = this._combo(String(cur), opts, "",
             (v) => {
               setVar(f.key, v, f); filled(f);
               if (f.reveals) this._renderForm();
-              else if (f.dynOptions) { if (this._csOpen) this._csRender(); else this._renderForm(); }
+              else if (f.live) { if (this._csOpen) this._csRender(); else this._renderForm(); }
             },
             { fixed: true, labels: { "": "Default", ...(f.optionLabels || {}), ...(dynLabels || {}) } });
           row.appendChild(c.wrap);
           addDrop(row, f);
           fs.appendChild(row);
           addHint();
-          if (typeof f.note === "function") {
-            let nt = null;
-            try { nt = f.note(this._hass, String(cur)); } catch (e) { nt = null; }
-            if (nt && nt.text) {
-              const n = document.createElement("div");
-              n.className = "hint";
-              n.setAttribute("role", "status");
-              n.textContent = trLabel(nt.text).replace("{name}", nt.name ? trLabel(nt.name) : "");
-              fs.appendChild(n);
-            }
+          if (nt && nt.text) {
+            const n = document.createElement("div");
+            n.className = "hint";
+            n.setAttribute("role", "status");
+            n.textContent = trLabel(nt.text).replace("{name}", nt.name ? trLabel(nt.name) : "");
+            fs.appendChild(n);
           }
           addFault(cur);
           return;

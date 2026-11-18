@@ -360,7 +360,7 @@ FLIGHT_KEYS = ("casora_flights_source",)
 
 def flights_of(cfg: dict) -> dict:
     """The Flights settings of a desktop dashboard for its phone twin (49-flights.js F.pinned): the first value a view's
-    hero card holds. A switch is 'true' or 'false', as the phone reads it; a setting with no value is left out."""
+    hero card holds. A setting with no value is left out."""
     out: dict = {}
     for view in cfg.get("views") or []:
         cards = view.get("cards") if isinstance(view, dict) else None
@@ -370,7 +370,7 @@ def flights_of(cfg: dict) -> dict:
             v = variables.get(k)
             if k in out or v is None or v == "":
                 continue
-            out[k] = ("true" if v else "false") if isinstance(v, bool) else str(v)
+            out[k] = str(v)
     return out
 
 
