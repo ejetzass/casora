@@ -3204,6 +3204,7 @@
     "Electricity": "Stroom",
     "Gas": "Gas",
     "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "De kosten van vandaag voor stroom en gas naast elkaar op de tegel, of het verbruik in kWh. Het venster toont de dag, de week of de maand: verbruik en kosten van stroom en gas apart, vastrecht en totaal, met een grafiek met staven per uur of dag. Week en maand komen uit de statistieken van de dagtellers in Home Assistant. Voor slimme meters zonder zonnepanelen, bijv. Hildebrand Glow en Octopus Energy.",
+    "Choose cameras": "Camera’s kiezen",
     "Go back to Home and close popups after a while without use.": "Terug naar Thuis en vensters sluiten als de tablet een tijdje niet wordt gebruikt.",
     "Close popups when idle": "Vensters automatisch sluiten",
     "Only on tablets. Closes an open popup after a while without use. With “Return to Home when idle” on too, it then goes back to Home.": "Alleen op tablets. Sluit een open venster als de tablet een tijdje niet wordt gebruikt. Staat “Automatisch terug naar Thuis” ook aan, dan gaat de tablet daarna terug naar Thuis.",
