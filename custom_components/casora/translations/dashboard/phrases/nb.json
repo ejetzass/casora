@@ -5450,8 +5450,6 @@
       "Versjon {1} hoppet over"
     ],
     [
-      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
-      "Komfortområde {1}–{2}%",
       "^(\\d+) verfolgte Flüge$",
       "{1} sporede flyvninger"
     ]

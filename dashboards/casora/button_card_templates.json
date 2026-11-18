@@ -20641,7 +20641,7 @@
         }
       ]
     },
-    "hidden": "[[[\n  /* Without FlightRadar24 the tile is not shown; the saved configuration stays. */\n  return window._casoraFlights ? window._casoraFlights.hidden(hass) : false;\n]]]\n"
+    "hidden": "[[[\n  /* Without FlightRadar24 the tile is not shown; the saved configuration stays. */\n  return window._casoraFlights ? !window._casoraFlights.present(hass) : false;\n]]]\n"
   },
   "casora_popup_flights": {
     "tap_action": {
