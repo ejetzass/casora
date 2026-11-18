@@ -5457,8 +5457,6 @@
       "Versione {1} saltata"
     ],
     [
-      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
-      "Intervallo di comfort {1}–{2} %",
       "^(\\d+) verfolgte Flüge$",
       "{1} voli monitorati"
     ]
