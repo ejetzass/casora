@@ -2748,10 +2748,10 @@ const SECTIONS = [
           const F = window.casoraFlightsMod && window.casoraFlightsMod();
           if (!F) return null;
           const c = F.choices(hass, cur);
-          if (c.note === "missing") return { key: "Source unavailable" };
-          if (c.note === "choose") return { key: "Select a tracked-flights source" };
-          if (c.note === "parts") return { key: "FlightRadar24 is missing a part Casora needs: {name}", name: "source sensor" };
-          if (c.unavailable) return { key: "Source unavailable" };
+          if (c.note === "missing") return { text: "Source unavailable" };
+          if (c.note === "choose") return { text: "Select a tracked-flights source" };
+          if (c.note === "parts") return { text: "FlightRadar24 is missing a part Casora needs: {name}", name: "source sensor" };
+          if (c.unavailable) return { text: "Source unavailable" };
           return null;
         } },
       // Halten auf Kacheln (22-halten.js): leer = Schnellmenü. casora-core.js setzt daraus window._casoraHoldMode,
@@ -19996,7 +19996,7 @@ class CasoraPanel extends HTMLElement {
         }
         if (f.type === "select") {
           // Choices that depend on the house (tracked flights source): dynOptions(hass, value) → {options, labels}; a stored
-          // value stays selectable. note(hass, value) → {key, name?} is a status line under the row (role "status"); both are
+          // value stays selectable. note(hass, value) → {text, name?} is a status line under the row (role "status"); both are
           // drawn again after a change.
           let opts = f.options, dynLabels = null;
           if (typeof f.dynOptions === "function") {
@@ -20018,11 +20018,11 @@ class CasoraPanel extends HTMLElement {
           if (typeof f.note === "function") {
             let nt = null;
             try { nt = f.note(this._hass, String(cur)); } catch (e) { nt = null; }
-            if (nt && nt.key) {
+            if (nt && nt.text) {
               const n = document.createElement("div");
               n.className = "hint";
               n.setAttribute("role", "status");
-              n.textContent = trLabel(nt.key).replace("{name}", nt.name ? trLabel(nt.name) : "");
+              n.textContent = trLabel(nt.text).replace("{name}", nt.name ? trLabel(nt.name) : "");
               fs.appendChild(n);
             }
           }

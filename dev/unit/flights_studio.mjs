@@ -42,15 +42,15 @@ assert.equal(field.dynOptions(one, '').labels[''], 'Automatic');
 
 const two = hass([['sensor.a', 'd1', []], ['sensor.b', 'd2', []]]);
 assert.equal(field.dynOptions(two, '').labels[''], 'Select a tracked-flights source', 'several: no Automatic');
-assert.equal(field.note(two, '').key, 'Select a tracked-flights source');
+assert.equal(field.note(two, '').text, 'Select a tracked-flights source');
 assert.deepEqual(field.dynOptions(two, '').options, ['', 'sensor.a', 'sensor.b']);
 
 const gone = field.dynOptions(two, 'sensor.old');
 assert.ok(gone.options.includes('sensor.old'), 'a pick that is gone stays selectable');
 assert.equal(gone.labels['sensor.old'], 'Source unavailable');
-assert.equal(field.note(two, 'sensor.old').key, 'Source unavailable');
+assert.equal(field.note(two, 'sensor.old').text, 'Source unavailable');
 
 const part = { entities: { 'sensor.a': { entity_id: 'sensor.a', platform: 'flightradar24', device_id: 'd1', translation_key: 'additional_tracked' } }, states: { 'sensor.a': { state: '0', attributes: {} } }, devices: {} };
-assert.deepEqual({ ...field.note(part, '') }, { key: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
+assert.deepEqual({ ...field.note(part, '') }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
 assert.equal(tile.onlyIf(part), false, 'no tile offer without a usable source');
 console.log('ok flights_studio');
