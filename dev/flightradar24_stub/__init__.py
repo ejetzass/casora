@@ -10,8 +10,12 @@ Not the real thing: no network, no live traffic. Add and Remove change a list ke
 can be told to succeed, ignore, delay or fail (service flightradar24.stub_set_mode), like the real one that only logs
 on "not found" or an API error and returns normally. With the switch off, Add and Remove do nothing.
 
-Loaded by dev/haus.sh only when CASORA_FR24_INSTANCES is set (1 or 2); the config key `flightradar24:` then creates the
-entries: `flightradar24:` alone is one instance, `instances: 2` are two. Never in a house with the real integration.
+For a hand test, copy this folder into the Test HA config as `custom_components/flightradar24`;
+no launcher loads it. The config key `flightradar24:` then creates entries:
+`flightradar24:` alone is one instance, `instances: 2` are two. Set `omit_source: true`
+to keep the controls but omit the source sensor for the missing-part case. Never in a house
+with the real integration. The option is saved on first import; remove the entry or start a fresh
+Test house to change it.
 Device names are made up ("Flight tracker one"), so entity ids differ from those of any exported house.
 """
 from __future__ import annotations
@@ -102,12 +106,14 @@ async def async_setup(hass: HomeAssistant, config) -> bool:
     hass.services.async_register(DOMAIN, "stub_set_mode", set_mode, schema=vol.Schema(
         {vol.Optional("device"): str, vol.Required("mode"): vol.In(MODES)}))
     if DOMAIN in config:
-        count = int((config[DOMAIN] or {}).get("instances", 1))
+        options = config[DOMAIN] or {}
+        count = int(options.get("instances", 1))
+        omit_source = bool(options.get("omit_source", False))
         have = {e.unique_id for e in hass.config_entries.async_entries(DOMAIN)}
         for n in range(1, count + 1):
             if f"stub-{n}" not in have:
                 hass.async_create_task(hass.config_entries.flow.async_init(
-                    DOMAIN, context={"source": SOURCE_IMPORT}, data={"number": n}))
+                    DOMAIN, context={"source": SOURCE_IMPORT}, data={"number": n, "omit_source": omit_source}))
     return True
 
 
