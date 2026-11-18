@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { loadPanel } from './lib/testhaus.mjs';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
-const { I } = await loadPanel();
+const { I, P } = await loadPanel();
 const field = I.SECTIONS.find((s) => s.label === 'General').fields.find((f) => f.key === 'casora_flights_source');
 assert.ok(field, 'the setting is a field of the dashboard settings');
 assert.equal(field.scope, 'dashboard', 'Dashboard settings scope: every room carries it, new rooms inherit it');
@@ -50,7 +50,113 @@ assert.ok(gone.options.includes('sensor.old'), 'a pick that is gone stays select
 assert.equal(gone.labels['sensor.old'], 'Source unavailable');
 assert.equal(field.note(two, 'sensor.old').text, 'Source unavailable');
 
-const part = { entities: { 'sensor.a': { entity_id: 'sensor.a', platform: 'flightradar24', device_id: 'd1', translation_key: 'additional_tracked' } }, states: { 'sensor.a': { state: '0', attributes: {} } }, devices: {} };
+// The stub's omit_source variant leaves its controls in the entity registry.
+const part = { entities: {
+  'text.flight_tracker_one_add_to_track': { entity_id: 'text.flight_tracker_one_add_to_track', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'add_track' },
+  'text.flight_tracker_one_remove_from_track': { entity_id: 'text.flight_tracker_one_remove_from_track', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'remove_track' },
+  'switch.flight_tracker_one_api_data_fetching': { entity_id: 'switch.flight_tracker_one_api_data_fetching', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'scanning' },
+}, states: {}, devices: {} };
+assert.equal(field.when({}, part), true, 'the integration is present, but its source sensor is missing');
 assert.deepEqual({ ...field.note(part, '') }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
 assert.equal(tile.onlyIf(part), false, 'no tile offer without a usable source');
+const noList = { entities: {
+  'sensor.flight_tracker_one_additional_tracked': { entity_id: 'sensor.flight_tracker_one_additional_tracked', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'additional_tracked' },
+}, states: { 'sensor.flight_tracker_one_additional_tracked': { state: '0', attributes: {} } }, devices: {} };
+assert.equal(field.when({}, noList), true);
+assert.deepEqual({ ...field.note(noList, '') }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' },
+  'a source sensor without a flights list also shows the missing-part text');
+
+new Function(read('custom_components/casora/panel/casora-panel-settings.js'))();
+await new Promise((resolve) => setImmediate(resolve));
+const saved = (pin, sources = two) => {
+  const writes = [];
+  const self = {
+    _cs: { S: { test_flag: true }, S0: '{}' },
+    _csDirty: () => true,
+    _csRepaint() {},
+    _status() {},
+    _hass: { ...sources, callWS: async (message) => {
+      writes.push(message);
+      return message.type === 'casora/settings/get' ? { settings: {} }
+        : message.type === 'casora/settings/set' ? { settings: message.settings } : {};
+    } },
+    _state: { compact: { rooms: [{ variables: pin ? { casora_flights_source: pin } : {} }] } },
+    _isDirty: () => true,
+    _saveBlocked: false,
+    _save: async () => { writes.push({ type: 'dashboard/save' }); return true; },
+    shadowRoot: { querySelectorAll: () => [] },
+  };
+  return { self, writes };
+};
+const selectionError = 'Select a tracked-flights source · Settings → Tapping & tablet → Tracked flights';
+{
+  const { self, writes } = saved('');
+  assert.equal(await P._csSave.call(self), false, 'global Save requires a source when several are available');
+  assert.deepEqual(writes, [], 'an unresolved source blocks settings and dashboard writes');
+  assert.equal(self._cs.err, selectionError);
+}
+{
+  const { self, writes } = saved('sensor.b');
+  assert.equal(await P._csSave.call(self), true, 'an explicit source permits global Save');
+  assert.deepEqual(writes, [
+    { type: 'casora/settings/get' },
+    { type: 'casora/settings/set', settings: { test_flag: true } },
+    { type: 'dashboard/save' },
+  ]);
+}
+{
+  const { self, writes } = saved('');
+  const flights = window._casoraFlights;
+  const importScript = window.casoraImportScript;
+  delete window._casoraFlights;
+  let requested;
+  window.casoraImportScript = async (path) => {
+    requested = path;
+    await Promise.resolve();
+    window._casoraFlights = flights;
+    return flights;
+  };
+  const result = await P._csSave.call(self);
+  window.casoraImportScript = importScript;
+  window._casoraFlights = flights;
+  assert.equal(requested, 'local/49-flights.js', 'Save awaits the source module if it is still loading');
+  assert.equal(result, false, 'the async load does not let an unresolved source through');
+  assert.deepEqual(writes, []);
+}
+{
+  const { self, writes } = saved('');
+  self._state = {};
+  assert.equal(await P._csSave.call(self), false, 'Save waits for a current dashboard state before checking the source');
+  assert.deepEqual(writes, []);
+  assert.equal(self._cs.err, 'The settings could not be read. Reload the page, then try again.');
+}
+{
+  const { self, writes } = saved('');
+  const flights = window._casoraFlights;
+  const importScript = window.casoraImportScript;
+  delete window._casoraFlights;
+  window.casoraImportScript = async () => { throw new Error('offline'); };
+  const result = await P._csSave.call(self);
+  window.casoraImportScript = importScript;
+  window._casoraFlights = flights;
+  assert.equal(result, false, 'a failed source-module load blocks Save');
+  assert.deepEqual(writes, []);
+  assert.equal(self._cs.err, 'The settings could not be read. Reload the page, then try again.');
+}
+{
+  const { self, writes } = saved('', one);
+  assert.equal(await P._csSave.call(self), true, 'one source permits Automatic');
+  assert.deepEqual(writes, [
+    { type: 'casora/settings/get' },
+    { type: 'casora/settings/set', settings: { test_flag: true } },
+    { type: 'dashboard/save' },
+  ]);
+}
+if (process.env.CASORA_FLIGHT_STUB_REGISTRY) {
+  const stubRegistry = JSON.parse(process.env.CASORA_FLIGHT_STUB_REGISTRY);
+  assert.equal(field.when({}, stubRegistry), true, 'the real stub registry keeps the source setting visible');
+  assert.deepEqual({ ...field.note(stubRegistry, '') },
+    { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
+  console.log('ok flights_studio stub registry');
+}
 console.log('ok flights_studio');

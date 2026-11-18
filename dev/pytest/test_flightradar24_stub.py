@@ -9,7 +9,9 @@ Test HA can be trusted as a stand-in: keys and categories, a device per config e
 from __future__ import annotations
 
 import importlib
+import json
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -22,6 +24,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
 
 STUB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "flightradar24_stub")
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -37,9 +40,10 @@ def stub_as_integration():
         importlib.invalidate_caches()
 
 
-async def _setup(hass: HomeAssistant, instances: int):
+async def _setup(hass: HomeAssistant, instances: int, *, omit_source: bool = False):
     hass.data.pop(loader.DATA_CUSTOM_COMPONENTS, None)  # look at custom_components again, the stub is new
-    assert await async_setup_component(hass, "flightradar24", {"flightradar24": {"instances": instances}})
+    assert await async_setup_component(hass, "flightradar24", {"flightradar24": {
+        "instances": instances, "omit_source": omit_source}})
     await hass.async_block_till_done()
     return er.async_get(hass), dr.async_get(hass)
 
@@ -66,6 +70,23 @@ async def test_contract_keys_categories_and_one_device_per_entry(hass: HomeAssis
     # Neutral ids: nothing of an exported house.
     assert all("flightradar24_" not in e.entity_id for e in mine)
     assert not any(e.unique_id.startswith("stub-3") for e in mine)
+
+
+async def test_missing_source_sensor_variant(hass: HomeAssistant) -> None:
+    reg, _ = await _setup(hass, 1, omit_source=True)
+    mine = [e for e in reg.entities.values() if e.platform == "flightradar24"]
+    assert not any(e.domain == "sensor" and e.translation_key == "additional_tracked" for e in mine)
+    assert any(e.domain == "text" and e.translation_key == "add_track" for e in mine)
+    assert any(e.domain == "switch" and e.translation_key == "scanning" for e in mine)
+    snapshot = {"entities": {e.entity_id: {
+        "entity_id": e.entity_id, "platform": e.platform, "device_id": e.device_id,
+        "translation_key": e.translation_key,
+    } for e in mine}, "states": {}, "devices": {}}
+    env = os.environ.copy()
+    env["CASORA_FLIGHT_STUB_REGISTRY"] = json.dumps(snapshot)
+    result = subprocess.run(["node", os.path.join(ROOT, "dev", "unit", "flights_studio.mjs")],
+                            cwd=ROOT, env=env, text=True, capture_output=True, check=True)
+    assert "ok flights_studio stub registry" in result.stdout
 
 
 async def test_add_remove_scanning_and_modes(hass: HomeAssistant) -> None:

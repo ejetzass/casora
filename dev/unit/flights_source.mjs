@@ -168,11 +168,13 @@ assert.equal(list[5].detail, '', 'missing metadata is omitted');
 assert.ok(!list.some((e) => /unterwegs|in der luft|airborne/i.test(e.detail)), 'nothing asserts airborne');
 
 // ── Popup content: escaped, empty state, no calls ──
+const noteCalls = [];
 const UI = {
   line: (t, f) => `<line>${t}|${(f || []).join(',')}</line>`,
   group: (rows, title, act, opts) => `<group ${opts && opts.keepNames ? 'keep' : 'cut'} ${title || ''}>${rows.map((r) => `${r.label}~${r.sub || ''}`).join(';')}</group>`,
   empty: (o) => `<empty>${o.text}</empty>`,
   stage: (t, o) => `<stage ${o.text || (o.empty && o.empty.text) || ''}>`,
+  note: (text) => { noteCalls.push(text); return `<note>${text}</note>`; },
 };
 ctx.window._casoraUI = UI;
 const html = (hass, pin, part) => F.sec(part, { pin }, hass.states, hass);
@@ -212,10 +214,12 @@ assert.ok(read('custom_components/casora/scripts/casora-local.js').includes("'49
 h = house();
 h.add('sensor.a', { dev: 'd1', key: 'additional_tracked', state: '0', attrs: { flights: [] } });
 h.add('sensor.b', { dev: 'd2', key: 'additional_tracked', state: '0', attrs: { flights: [] } });
-assert.match(html(h, '', 'list'), /Studio unter Allgemein → Verfolgte Flüge/, 'choose: the Studio path is named');
+const sourceHint = 'Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.';
+assert.equal(html(h, '', 'list'), `<note>${sourceHint}</note>`, 'choose: the shared note renderer receives the Studio path');
 assert.equal(html(h, 'sensor.a', 'list').includes('Studio'), false, 'a chosen source: no hint');
 h = house();
 h.add('sensor.a', { dev: 'd1', key: 'additional_tracked', state: '0', attrs: { flights: [] } });
-assert.match(html(h, 'sensor.gone', 'list'), /Studio unter Allgemein → Verfolgte Flüge/, 'missing pin: the Studio path is named');
+assert.equal(html(h, 'sensor.gone', 'list'), `<note>${sourceHint}</note>`, 'missing pin: the shared note renderer receives the Studio path');
+assert.deepEqual(noteCalls, [sourceHint, sourceHint], 'the note renderer receives plain text for its admin check and escaping');
 
 console.log('ok flights_source');
