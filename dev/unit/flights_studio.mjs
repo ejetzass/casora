@@ -25,7 +25,7 @@ const hass = (sources, extra = {}) => {
 };
 // Before the module is loaded nothing is offered and nothing breaks (the Studio fetches the module on its own).
 assert.equal(!!field.when({}, hass([])), false);
-assert.equal(field.dynOptions(hass([]), ''), null);
+assert.equal(field.live(hass([]), ''), null);
 assert.equal(tile.onlyIf(hass([])), false);
 
 new Function(read('custom_components/casora/scripts/local/49-flights.js'))();
@@ -37,18 +37,18 @@ assert.equal(field.when({ casora_flights_source: 'sensor.old' }, hass([])), true
 const one = hass([['sensor.a', 'd1', []]]);
 assert.equal(field.when({}, one), true);
 assert.equal(tile.onlyIf(one), true);
-assert.equal(field.note(one, ''), null, 'one source: Automatic needs no comment');
-assert.equal(field.dynOptions(one, '').labels[''], 'Automatic');
+assert.equal(field.live(one, '').note, null, 'one source: Automatic needs no comment');
+assert.equal(field.live(one, '').labels[''], 'Automatic');
 
 const two = hass([['sensor.a', 'd1', []], ['sensor.b', 'd2', []]]);
-assert.equal(field.dynOptions(two, '').labels[''], 'Select a tracked-flights source', 'several: no Automatic');
-assert.equal(field.note(two, '').text, 'Select a tracked-flights source');
-assert.deepEqual(field.dynOptions(two, '').options, ['', 'sensor.a', 'sensor.b']);
+assert.equal(field.live(two, '').labels[''], 'Select a tracked-flights source', 'several: no Automatic');
+assert.equal(field.live(two, '').note.text, 'Select a tracked-flights source');
+assert.deepEqual(field.live(two, '').options, ['', 'sensor.a', 'sensor.b']);
 
-const gone = field.dynOptions(two, 'sensor.old');
+const gone = field.live(two, 'sensor.old');
 assert.ok(gone.options.includes('sensor.old'), 'a pick that is gone stays selectable');
 assert.equal(gone.labels['sensor.old'], 'Source unavailable');
-assert.equal(field.note(two, 'sensor.old').text, 'Source unavailable');
+assert.equal(field.live(two, 'sensor.old').note.text, 'Source unavailable');
 
 // The stub's omit_source variant leaves its controls in the entity registry.
 const part = { entities: {
@@ -57,13 +57,13 @@ const part = { entities: {
   'switch.flight_tracker_one_api_data_fetching': { entity_id: 'switch.flight_tracker_one_api_data_fetching', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'scanning' },
 }, states: {}, devices: {} };
 assert.equal(field.when({}, part), true, 'the integration is present, but its source sensor is missing');
-assert.deepEqual({ ...field.note(part, '') }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
+assert.deepEqual({ ...field.live(part, '').note }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
 assert.equal(tile.onlyIf(part), false, 'no tile offer without a usable source');
 const noList = { entities: {
   'sensor.flight_tracker_one_additional_tracked': { entity_id: 'sensor.flight_tracker_one_additional_tracked', platform: 'flightradar24', device_id: 'stub-1', translation_key: 'additional_tracked' },
 }, states: { 'sensor.flight_tracker_one_additional_tracked': { state: '0', attributes: {} } }, devices: {} };
 assert.equal(field.when({}, noList), true);
-assert.deepEqual({ ...field.note(noList, '') }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' },
+assert.deepEqual({ ...field.live(noList, '').note }, { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' },
   'a source sensor without a flights list also shows the missing-part text');
 
 new Function(read('custom_components/casora/panel/casora-panel-settings.js'))();
@@ -155,7 +155,7 @@ const selectionError = 'Select a tracked-flights source · Settings → Tapping 
 if (process.env.CASORA_FLIGHT_STUB_REGISTRY) {
   const stubRegistry = JSON.parse(process.env.CASORA_FLIGHT_STUB_REGISTRY);
   assert.equal(field.when({}, stubRegistry), true, 'the real stub registry keeps the source setting visible');
-  assert.deepEqual({ ...field.note(stubRegistry, '') },
+  assert.deepEqual({ ...field.live(stubRegistry, '').note },
     { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
   console.log('ok flights_studio stub registry');
 }
