@@ -22,7 +22,6 @@
   var KEY = 'casora_flights_source';
   F.KEY = KEY;
 
-  var esc = window.casoraEsc || function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var tr = function (s) { return window.casoraTr ? window.casoraTr(s) : s; };
 
   var bad = function (s) { return !s || s.state === 'unavailable' || s.state === 'unknown'; };
@@ -199,8 +198,8 @@
 
   // ── Tile and popup ────────────────────────────────────────────────────────
   var T_MISSING = 'Quelle nicht verfügbar', T_CHOOSE = 'Quelle für verfolgte Flüge auswählen', T_EMPTY = 'Keine verfolgten Flüge';
-  // Casora's own setting: the Studio names the place where it is chosen (General, Tracked flights).
-  var SOURCE_HINT = 'Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.';
+  // Casora's own setting: Studio → Settings → Tapping & tablet → Tracked flights.
+  var SOURCE_HINT = 'Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.';
   var countWord = function (n) { return n === 1 ? '1 verfolgter Flug' : n + ' verfolgte Flüge'; };
   var model = function (hass, pin) {
     var r = F.resolve(hass, pin);
@@ -231,7 +230,7 @@
       if (!m.rows) {
         var st0 = F.resolve(h, c && c.pin).state;
         if (st0 !== 'choose' && st0 !== 'missing') return '';
-        return '<p style="margin:0;font-size:14px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr(SOURCE_HINT)) + '</p>';
+        return UI.note(tr(SOURCE_HINT));
       }
       if (!m.rows.length) return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY });
       return UI.group(m.rows.map(function (e) { return { icon: 'mdi:airplane', label: e.label, sub: e.detail || null, noChev: true }; }), null, null, { keepNames: true });
