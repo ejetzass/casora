@@ -5457,8 +5457,6 @@
       "Versie {1} overgeslagen"
     ],
     [
-      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
-      "Comfortbereik {1}–{2} %",
       "^(\\d+) verfolgte Flüge$",
       "{1} gevolgde vluchten"
     ]
