@@ -8,7 +8,8 @@ from .entity import StubEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    async_add_entities([Tracked(entry, hass.data[DOMAIN][entry.entry_id])])
+    if not entry.data.get("omit_source"):
+        async_add_entities([Tracked(entry, hass.data[DOMAIN][entry.entry_id])])
 
 
 class Tracked(StubEntity, SensorEntity):

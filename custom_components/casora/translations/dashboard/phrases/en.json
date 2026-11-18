@@ -2995,7 +2995,7 @@
     "Keine verfolgten Flüge": "No tracked flights",
     "Quelle nicht verfügbar": "Source unavailable",
     "Quelle für verfolgte Flüge auswählen": "Select a tracked-flights source",
-    "Die Quelle wählst du im Studio unter Allgemein → Verfolgte Flüge.": "Choose the source in Studio under General → Tracked flights.",
+    "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Choose the source in Studio under Settings → Tapping & tablet → Tracked flights.",
     "1 verfolgter Flug": "1 tracked flight",
     "Geplant": "Scheduled",
     "Am Boden": "On the ground",
