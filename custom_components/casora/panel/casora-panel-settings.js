@@ -568,6 +568,31 @@
       const cs = this._cs || (this._cs = {});
       if (cs.busy) return false;
       if (!this._csDirty()) return true;
+      if (this._state) {
+        const rooms = this._state.compact && this._state.compact.rooms;
+        if (!Array.isArray(rooms)) {
+          cs.err = t("The settings could not be read. Reload the page, then try again.");
+          this._csRepaint();
+          return false;
+        }
+        let F = window._casoraFlights;
+        if (!F && typeof window.casoraImportScript === "function") {
+          try { await window.casoraImportScript("local/49-flights.js"); } catch (e) { /* the source cannot be checked */ }
+          F = window._casoraFlights;
+        }
+        if (!F) {
+          cs.err = t("The settings could not be read. Reload the page, then try again.");
+          this._csRepaint();
+          return false;
+        }
+        const pin = rooms.map((r) => (r.variables || {})[F.KEY]).find(Boolean) || "";
+        if (F.resolve(this._hass, pin).state === "choose") {
+          cs.err = t("Select a tracked-flights source") + " · "
+            + [t("Settings"), t("Tapping & tablet"), t("Tracked flights")].join(" → ");
+          this._csRepaint();
+          return false;
+        }
+      }
       const price = cs.O && cs.O.price_kwh;
       if (price !== undefined && (typeof price !== "number" || isNaN(price) || price < 0 || price > 2)) {
         cs.err = t("The electricity price must be between 0 and 2 €/kWh.");
