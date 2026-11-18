@@ -5457,8 +5457,6 @@
       "Pominięto wersję {1}"
     ],
     [
-      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
-      "Zakres komfortu {1}–{2} %",
       "^(\\d+) verfolgte Flüge$",
       "Śledzonych lotów: {1}"
     ]

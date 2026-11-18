@@ -39,7 +39,16 @@ assert.equal(F.present(h), false, 'another integration with the same key is not 
 eq(F.sources(h), []);
 assert.equal(F.resolve(h, '').state, 'none');
 assert.equal(F.tile(h, ''), '', 'no word without the integration');
-assert.equal(F.hidden(h), true, 'runtime tile hidden');
+assert.equal(F.present(h), false, 'no FlightRadar24 entry: nothing to show');
+assert.equal(F.hidden, undefined, 'the unused hidden() helper is gone: the tile uses present()');
+// The Manage tile template evaluates without a missing helper: hidden without the integration, shown with it.
+{
+  const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json')).casora_flights.hidden;
+  const run = (hs) => vm.runInContext('(function(hass){' + tpl.replace(/^\[\[\[|\]\]\]\s*$/g, '') + '})', ctx)(hs);
+  assert.equal(run(h), true, 'Manage tile is hidden without the integration');
+  const h2 = house(); h2.add('sensor.x', { key: 'additional_tracked', state: '0', attrs: { flights: [] } });
+  assert.equal(run(h2), false, 'Manage tile is shown with the integration');
+}
 
 // ── One source: found by platform + translation key, whatever it is called ──
 h = house();
@@ -48,7 +57,7 @@ h.add('sensor.stand_nord_geleid', tracked(null, 'd1', [fl({})]));
 let r = F.resolve(h, '');
 assert.equal(r.state, 'auto');
 assert.equal(r.id, 'sensor.stand_nord_geleid');
-assert.equal(F.hidden(h), false);
+assert.equal(F.present(h), true);
 
 // Entries with the wrong key, wrong domain or no flights list do not count.
 h.add('sensor.no_key', { dev: 'd1', key: null, attrs: { flights: [] } });
@@ -88,7 +97,7 @@ assert.equal(F.tile(h, r.id), 'Quelle nicht verfügbar');
 const gone = house();
 r = F.resolve(gone, 'sensor.stand_nord_geleid');
 assert.equal(r.state, 'missing');
-assert.equal(F.hidden(gone), true);
+assert.equal(F.present(gone), false);
 
 // ── Missing part: present but no usable source ──
 h = house();

@@ -5457,8 +5457,6 @@
       "Versión {1} omitida"
     ],
     [
-      "^Wohlfühlbereich (\\d+)–(\\d+) %$",
-      "Rango de confort {1}–{2} %",
       "^(\\d+) verfolgte Flüge$",
       "{1} vuelos seguidos"
     ]
