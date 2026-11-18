@@ -355,8 +355,7 @@ def notify_of(cfg: dict) -> dict:
     return {}
 
 
-FLIGHT_KEYS = ("casora_flights_source", "casora_flights_altitude_unit", "casora_flights_speed_unit",
-               "casora_flights_vspeed_unit", "casora_flights_timezones")
+FLIGHT_KEYS = ("casora_flights_source",)
 
 
 def flights_of(cfg: dict) -> dict:
