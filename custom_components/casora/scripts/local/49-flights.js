@@ -15,12 +15,15 @@
 //   window._casoraFlights.controls(hass, id)         → {source, add, remove, scanning, missing: [role, …]} by device_id
 //   window._casoraFlights.choices(hass, pin)         → Studio select: {options, labels, empty, note}
 //   window._casoraFlights.pinned(cfg)                → the setting from a dashboard config
-//   window._casoraFlights.tile(hass, pin) / .hidden(hass) / .popup(states, hass, vars) / .sec(part, c, states, hass)
+//   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
 (function () {
   if (window._casoraFlights) return;
   var F = window._casoraFlights = {};
   var KEY = 'casora_flights_source';
   F.KEY = KEY;
+
+  var esc = window.casoraEsc || function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var tr = function (s) { return window.casoraTr ? window.casoraTr(s) : s; };
 
   var bad = function (s) { return !s || s.state === 'unavailable' || s.state === 'unknown'; };
   var isList = function (v) { return Array.isArray(v); };
@@ -78,7 +81,6 @@
     else if (F.present(hass)) out.missing = ['source'];
     return out;
   };
-  F.hidden = function (hass) { return !F.present(hass); };
 
   // The related entities of a source: same device, by translation key. A role that is not found is listed in missing
   // (a disabled entity is not in hass.entities, so it reads as missing too).
