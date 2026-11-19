@@ -136,7 +136,10 @@
     missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: 'Die Datenabfrage in FlightRadar24 ist ausgeschaltet. Schalte sie ein, dann füge den Flug erneut hinzu.',
     ambiguous: 'Mehrere Eingabefelder zum Hinzufügen gefunden.', unavailable: 'Das Eingabefeld zum Hinzufügen ist nicht verfügbar.' };
   var tr = function (s) { return window.casoraTr ? window.casoraTr(s) : s; };
-  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  var esc = window.casoraEsc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  // German puts a narrow no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that
+  // knows both; the DOM pass only rewrites text for other languages, not for German.
+  var pctText = function (n) { return tr(n + ' %'); };
   var msgOf = function (a) { return a && MSG[a.state] ? tr(MSG[a.state]) : ''; };
   // A call HA refuses (the user may not use the control) is named apart from a failed call: the fix is a permission.
   var refused = function (e) { return !!e && (e.code === 'unauthorized' || /unauthori[sz]ed/i.test(String(e.message || ''))); };
@@ -452,12 +455,12 @@
       var a = F.addView(h, r.id);
       // The label names the input (axe: label). The focus ring is a rule here: the popup's own styles remove outlines.
       return '<style>[data-flights-in]:focus-visible,[data-flights-add-btn]:focus-visible{outline:2px solid var(--casora-popup-ui-action,var(--casora-accent,#276B64));outline-offset:2px}</style>'
-        + '<label for="flights-add-in" style="display:block;margin:0 0 6px;font-size:13px;font-weight:600;white-space:normal">' + esc(tr('Flugkennung')) + '</label>'
-        + '<div style="display:flex;gap:10px;align-items:center">'
+        + '<label for="flights-add-in" style="display:block;margin:0 0 8px;font-size:13px;font-weight:600;white-space:normal">' + esc(tr('Flugkennung')) + '</label>'
+        + '<div style="display:flex;gap:12px;align-items:center">'
         + '<input type="text" id="flights-add-in" data-flights-in data-flights-src="' + esc(r.id) + '" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="flights-add-help" value="' + esc(F.draft) + '"' + (inStudio() ? ' disabled' : '')
         + ' style="flex:1 1 auto;min-width:0;font:inherit;font-size:16px;min-height:44px;box-sizing:border-box;padding:8px 12px;border-radius:12px;border:1px solid currentColor;background:transparent;color:inherit">'
-        + '<button type="button" data-flights-add-btn data-flights-src="' + esc(r.id) + '"' + (inStudio() || (a && a.state === 'pending') ? ' disabled' : '') + ' style="font:inherit;font-size:16px;min-height:44px;box-sizing:border-box;padding:0 18px;border:0;border-radius:999px;font-weight:600;cursor:pointer;background:var(--casora-popup-ui-action,var(--casora-accent,#276B64));color:var(--casora-popup-ui-on-action,#fff)">' + esc(tr('Hinzufügen')) + '</button></div>'
-        + '<p id="flights-add-help" style="margin:6px 0 0;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Flugnummer, Rufzeichen oder Registrierung')) + '</p>'
+        + '<button type="button" data-flights-add-btn data-flights-src="' + esc(r.id) + '"' + (inStudio() || (a && a.state === 'pending') ? ' disabled' : '') + ' style="font:inherit;font-size:16px;min-height:44px;box-sizing:border-box;padding:0 20px;border:0;border-radius:999px;font-weight:600;cursor:pointer;background:var(--casora-popup-ui-action,var(--casora-accent,#276B64));color:var(--casora-popup-ui-on-action,#fff)">' + esc(tr('Hinzufügen')) + '</button></div>'
+        + '<p id="flights-add-help" style="margin:8px 0 0;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Flugnummer, Rufzeichen oder Registrierung')) + '</p>'
         + '<p data-flights-msg role="status" aria-live="polite" style="margin:8px 0 0;font-size:14px;font-weight:600;min-height:1em;white-space:normal;overflow-wrap:anywhere">' + esc(msgOf(a)) + '</p>';
     }
     if (part === 'stage') return UI.stage('status', { tone: m.tone, icon: 'mdi:airplane', text: m.text });
@@ -484,7 +487,7 @@
             ? '<button type="button" data-flights-stop data-flights-src="' + esc(rs.id) + '" data-flights-row="' + esc(e.key) + '"'
             + ' aria-describedby="flights-stop-help" aria-label="' + esc(tr('Verfolgung beenden')) + ': ' + esc(e.label) + '"'
             + (busy ? ' disabled' : '')
-            + ' style="flex:none;font:inherit;font-size:15px;min-height:44px;box-sizing:border-box;padding:0 14px;border-radius:999px;font-weight:600;cursor:pointer;border:1px solid currentColor;background:transparent;color:inherit">'
+            + ' style="flex:none;font:inherit;font-size:15px;min-height:44px;box-sizing:border-box;padding:0 16px;border-radius:999px;font-weight:600;cursor:pointer;border:1px solid currentColor;background:transparent;color:inherit">'
             + esc(tr('Verfolgung beenden')) + '</button>'
             : '')
           + '</div>';
