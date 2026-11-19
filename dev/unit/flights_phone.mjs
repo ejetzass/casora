@@ -1,16 +1,18 @@
-// Tracked flights on a phone dashboard (49-flights.js): a phone dashboard (<name>-mobile) with no Flights
+// Tracked flights on a phone dashboard (49-flights.js, 46-screensaver.js): a phone dashboard (<name>-mobile) with no Flights
 // setting of its own takes the one of its desktop twin (<name>), read with casora/partner_info. That read is async: until it
 // has answered, the phone resolves nothing (no tile, no rows, no guess), and then the flight cards are drawn again. A failed
 // read is retried later, not on every render. A pinned source that is gone stays missing on the phone, as on the desktop.
 // Controlled fake page: the twin's answer is a promise the test settles by hand. Synthetic data only.
 //   node dev/unit/flights_phone.mjs
 // @deckt: custom_components/casora/scripts/local/49-flights.js#setting,ready,resolve,model,tile,airborne,liveHidden,kickFlights,twinOf,fetchTwin
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#liveFlights
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const FLIGHTS = read('custom_components/casora/scripts/local/49-flights.js');
+const SAVER = read('custom_components/casora/scripts/local/46-screensaver.js');
 const now = 1800000000000;
 const tick = () => new Promise((r) => setImmediate(r));
 
@@ -44,7 +46,9 @@ const page = ({ pathname = '/qa-arbeit-mobile/0', own = {} } = {}) => {
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(FLIGHTS, ctx);
+  vm.runInContext(SAVER, ctx);
   P.F = ctx._casoraFlights;
+  P.S = ctx._casoraSaver;
   return P;
 };
 // The twin's answer (or a refusal), then the callbacks run.
@@ -153,5 +157,13 @@ P.hass = hass0;
 P.F.setting();
 assert.deepEqual(P.reads, ['qa-arbeit'], 'the next render reads the twin');
 await answer(P, { confirm: { ids: [], names: {}, views: [] }, scenes: {}, flights: {} });
+
+// ── Screensaver: a live dashboard's flight settings include the phone's twin values ──
+P = page({});
+P.hass.add('sensor.a', [flight('1')]);
+P.S.liveFlights({});
+await answer(P, { confirm: { ids: [], names: {}, views: [] }, scenes: {}, flights: { [KEY]: 'sensor.a', casora_flights_timezones: 'true' } });
+assert.deepEqual(JS(P.S.liveFlights({})), { [KEY]: 'sensor.a', casora_flights_timezones: 'true' }, 'the twin values reach the screensaver');
+assert.deepEqual(JS(P.S.liveFlights({ casora_flights_timezones: 'false' })), { [KEY]: 'sensor.a', casora_flights_timezones: 'true' }, 'the twin wins over an empty own value');
 
 console.log('ok flights_phone');
