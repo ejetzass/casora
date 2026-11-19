@@ -281,6 +281,9 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const vb = (h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || []).slice(1).map(Number);
   assert.equal(vb.length, 2, 'a picture with a box');
   assert.ok(vb[0] > 0 && vb[0] < 20, 'the dateline route is drawn across the line, not across the globe: ' + vb);
+  assert.match(h, /<path class="cs-fl-ac"[^>]*vector-effect="non-scaling-stroke"/, 'the aircraft outline stays visible without growing across the saver');
+  assert.match(h, /<line class="cs-fl-route"[^>]*vector-effect="non-scaling-stroke"/, 'the route outline does not grow with map scale');
+  assert.match(h, /<circle class="cs-fl-ap"[^>]*vector-effect="non-scaling-stroke"/, 'airport outlines do not cover the picture');
 }
 
 // Preview: with FlightRadar24 there but nothing qualifying, the preview shows the sky, as at runtime, and no invented flight.
