@@ -2964,7 +2964,7 @@
     "Open updates": "Apri aggiornamenti",
     "Which calendars the calendar tiles show, with name and color.": "Quali calendari mostrano i riquadri calendario, con nome e colore.",
     "Push to your phone when it is time to open or close the windows.": "Notifica sul telefono quando è ora di aprire o chiudere le finestre.",
-    "Go back to Home after a while without use.": "Tornare alla Home dopo un po’ di inattività.",
+    "Go back to Home and close popups after a while without use.": "Torna a Casa e chiude i popup dopo un po' senza uso.",
     "Waste days, doors and windows, scenes, music and calendars.": "Giorni di raccolta rifiuti, porte e finestre, scene, musica e calendari.",
     "Whether Casora looks for old Hemma dashboards to take over.": "Se Casora cerca vecchie dashboard Hemma da riprendere.",
     "Open a dashboard in the Studio to change this.": "Apri una dashboard nello Studio per modificarlo.",
@@ -3211,6 +3211,8 @@
     "Electricity": "Elettricità",
     "Gas": "Gas",
     "Today's electricity and gas cost side by side on the tile, or the usage in kWh. The popup shows the day, the week or the month: usage and cost of electricity and gas apart, standing charge and total, and a chart with bars per hour or day. Week and month come from Home Assistant's statistics of the daily counters. For smart meters without solar, e.g. Hildebrand Glow and Octopus Energy.": "Il costo di oggi di luce e gas affiancati sul riquadro, oppure il consumo in kWh. Il popup mostra il giorno, la settimana o il mese: consumo e costo di luce e gas separati, quota fissa e totale, con un grafico a barre per ora o per giorno. Settimana e mese vengono dalle statistiche dei contatori giornalieri di Home Assistant. Per contatori intelligenti senza fotovoltaico, ad es. Hildebrand Glow e Octopus Energy.",
+    "Close popups when idle": "Chiudi i popup se inattivo",
+    "Tablets only. Closes an open popup after a while without use.": "Solo tablet. Chiude un popup aperto dopo un po' senza uso.",
     "Choose cameras": "Scegli telecamere"
   },
   "patterns": [
