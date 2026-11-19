@@ -782,8 +782,11 @@
     }).join('');
     if (!rowsHtml) return '';
     // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
-    return '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
-      + '<div style="max-height:min(240px,50vh);overflow-y:auto;overscroll-behavior:contain">' + rowsHtml + '</div>';
+    return '<style>#container{height:100%;min-height:0;grid-template-rows:min-content min-content minmax(0,1fr)!important}'
+      + '#state{height:100%;min-height:0;align-self:stretch!important;overflow:hidden!important}'
+      + '@media (max-width:767px) and (orientation:portrait),(max-height:500px) and (orientation:portrait),(max-height:500px) and (orientation:landscape),(max-height:600px) and (orientation:landscape) and (hover:hover){#container{grid-template-rows:min-content minmax(0,1fr)!important}}'
+      + '[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
+      + '<div style="height:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain">' + rowsHtml + '</div>';
   };
   F.liveHidden = function (hass, now) { return !F.airborne(hass, F.setting(), now).length; };
 
