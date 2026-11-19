@@ -16191,6 +16191,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     }
 
     if (isDoorbell(id, st)) {
+      // A binary doorbell going back to „off“ is the release of the press, not a second ring.
       if (!on('doorbell')) return null;
       if (id.indexOf('binary_sensor.') === 0 && s !== 'on') return null;
       if (id.indexOf('event.') === 0 && listedDoorbell(id) && !isFinite(Date.parse(s))) return null;
