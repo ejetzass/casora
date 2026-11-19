@@ -76,9 +76,9 @@
           // #217: not the hint of the switch again, only what the title does not say.
           plain: "On phone and tablet, in the order of the room menu.",
           kw: "wischen swipe räume wechseln blättern tablet handy nächster raum" },
-        { k: "screen", sec: "General", sub: "chrome", keys: ["casora_idle_home"], title: "Wall tablet",
-          plain: "Go back to Home after a while without use.",
-          kw: "tablet inaktivität zurück zuhause idle kiosk wand" },
+        { k: "screen", sec: "General", sub: "chrome", keys: ["casora_idle_home", "casora_idle_close"], title: "Wall tablet",
+          plain: "Go back to Home and close popups after a while without use.",
+          kw: "tablet inaktivität zurück zuhause idle kiosk wand popup popups schließen schliessen sluiten close" },
         { k: "dialogs", sec: "General", sub: "dialogs", title: "Home Assistant detail windows", adv: true,
           plain: "What the windows of Home Assistant itself show: logbook, history, attributes.",
           kw: "logbuch verlauf attribute brotkrumen lichtaktionen dialog mehr infos kiosk-mode" },
