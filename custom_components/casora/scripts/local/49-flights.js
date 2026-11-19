@@ -661,15 +661,19 @@
   };
   var num = function (v, t) {
     if (typeof v !== 'number' || !isFinite(v)) return '';
-    var loc; try { loc = window.casoraLocale ? window.casoraLocale() : undefined; } catch (e) { loc = undefined; }
     var p = Math.pow(10, t[1]), r = Math.round(v * t[0] * p) / p;
     if (r === 0) r = 0; // no negative zero
+    // The shared number format (01-basis.js casoraNum) applies the page locale; this module keeps a local
+    // fallback so a unit test can load it alone (the Studio preview never loads these modules).
+    var s = window.casoraNum ? window.casoraNum(r, t[1]) : (function () {
+      var loc; try { loc = window.casoraLocale ? window.casoraLocale() : undefined; } catch (e) { loc = undefined; }
+      return r.toLocaleString(loc, { minimumFractionDigits: t[1], maximumFractionDigits: t[1] });
+    })();
     // No-break space: a number and its unit never split across two lines ("9.540 m").
-    return r.toLocaleString(loc, { minimumFractionDigits: t[1], maximumFractionDigits: t[1] }) + '\u00a0' + t[2];
+    return s + '\u00a0' + t[2];
   };
   var fmtOf = function (kind, v, unit) { var set = UNIT[kind]; return num(v, set[unit] || set['']); };
   F.fmt = {
-    number: function (v, unit) { return num(v, [1, 0, unit]); },
     altitude: function (v, unit) { return fmtOf('altitude', v, unit); },
     speed: function (v, unit) { return fmtOf('speed', v, unit); },
     vspeed: function (v, unit) { return fmtOf('vspeed', v, unit); },
@@ -778,7 +782,7 @@
         + '" data-flights-label="' + esc(r.label) + '" style="' + ROW_BTN + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
         + (extra ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(extra) + '</span>' : '')
         + (eta ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta) + '</span>' : '')
-        + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pct) + ' %</span>' : '') + '</button>';
+        + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>' : '') + '</button>';
     }).join('');
     if (!rowsHtml) return '';
     // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
@@ -981,12 +985,12 @@
   defineMap();
   // The progress line: a track with the fill and the value as text (not by colour alone).
   var progressHtml = function (pct) {
-    var label = tr('Ungefährer Fortschritt');
+    var label = tr('Ungefährer Fortschritt'), value = pctText(pct);
     return '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
-      + '" aria-valuetext="' + esc(pct) + ' %" style="padding:12px 16px;box-sizing:border-box;">'
+      + '" aria-valuetext="' + esc(value) + '" style="padding:12px 16px;box-sizing:border-box;">'
       + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">' + esc(label)
-      + '</span><span style="font-weight:600">' + esc(pct) + ' %</span></div>'
-      + '<div style="position:relative;height:6px;margin-top:10px;border-radius:3px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)">'
+      + '</span><span style="font-weight:600">' + esc(value) + '</span></div>'
+      + '<div style="position:relative;height:6px;margin-top:12px;border-radius:3px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)">'
       + '<div style="position:absolute;left:0;top:0;bottom:0;width:' + esc(pct) + '%;background:currentColor"></div></div></div>';
   };
 
