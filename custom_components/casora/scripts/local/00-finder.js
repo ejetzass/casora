@@ -1469,6 +1469,8 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     return id.indexOf('binary_sensor.') === 0 && e.translation_key === 'visitor'
       && (e.platform === 'reolink' || e.platform === 'casora_mock');
   }
+  // The Reolink visitor sensor rule, shared with the Reolink doorbell module (24-klingel.js KL.is).
+  window.casoraIsReolinkVisitor = function (hass, id) { return isVisitor(id, reg(hass)[id] || {}); };
   // Is this entity a doorbell? Source of truth for notifySources and casora-core.js (bell rows, drawer routing).
   window.casoraIsDoorbell = function (hass, id) {
     var st = hass && hass.states && hass.states[id], a = (st && st.attributes) || {};
