@@ -1206,7 +1206,7 @@
     var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
     if (!detail) {
       var eta = F ? F.times(ctx.hass, f, tzOn).arr.filter(function (x) { return x.kind === 'estimated'; })[0] : null;
-      var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + v.progress + ' %' : '';
+      var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
       bodyHtml = (v ? '<div class="cs-fl-map">' + S.routeSvg(v) + '</div>' : '')
         + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
@@ -1381,8 +1381,7 @@
   // The settings of the dashboard: the first value found on a view's hero card.
   S.vars = function (cfg) {
     var out = {}, keys = ['casora_screensaver', 'casora_screensaver_kind', 'casora_screensaver_calendar', 'casora_screensaver_photos', 'casora_screensaver_mix',
-      'casora_screensaver_cameras', 'casora_screensaver_calendars', 'casora_screensaver_tint', 'weather_entity',
-      'casora_flights_source', 'casora_flights_altitude_unit', 'casora_flights_speed_unit', 'casora_flights_vspeed_unit', 'casora_flights_timezones'];
+      'casora_screensaver_cameras', 'casora_screensaver_calendars', 'casora_screensaver_tint', 'weather_entity'].concat(FLIGHT_KEYS);
     ((cfg && cfg.views) || []).forEach(function (v) {
       var vars = ((((v.cards || [])[0]) || {}).variables) || {};
       keys.forEach(function (k) { if ((out[k] == null || out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) && vars[k] != null && vars[k] !== '') out[k] = vars[k]; });
