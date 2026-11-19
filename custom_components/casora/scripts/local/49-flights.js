@@ -17,8 +17,26 @@
 //   window._casoraFlights.stopView(hass, id)         → the removal attempt shown for this source, or null
 //   window._casoraFlights.controls(hass, id)         → {source, add, remove, scanning, missing: [role, …]} by device_id
 //   window._casoraFlights.choices(hass, pin)         → Studio select: {options, labels, empty, note}
+//   window._casoraFlights.firstValue(list, key)       → first nonempty dashboard setting
 //   window._casoraFlights.pinned(cfg)                → the setting from a dashboard config
 //   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
+//   window._casoraFlights.airborne(hass, pin, now)   → the qualifying flights now (the shared rule for every flight surface)
+//   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (rows) and its hidden state
+//   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
+//   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
+//   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
+//   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin)
+//   window._casoraFlights.addView(hass, id) / .submit(hass, id, text) / .paint() / .draft → the Add field's attempt
+//   window._casoraFlights.watch(hass) → the source IDs (and the pin) a card follows; .active(hass) → tile highlight
+//   window._casoraFlights.KEY / .UNIT_KEYS → the setting keys (source, units)
+//   window._casoraFlights.progress(o, c, d) / .progressOf(entry) → approximate progress in whole percent, or null
+//   window._casoraFlights.distanceKm(a, b) / .trailOf(entry) → great-circle km and the valid trail points
+//   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
+//   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
+//   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit)
+//   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
+//   window._casoraFlights.times(hass, entry, tzOn) → {dep, arr}: [{kind: scheduled|real|estimated, text}] (origin/destination + HA-local time)
+//   window._casoraFlights.tz() → the saved "Show timezones" switch (off unless set)
 (function () {
   if (window._casoraFlights) return;
   var F = window._casoraFlights = {};
@@ -108,6 +126,8 @@
     var code = str(f['airport_' + side + '_code_iata']) || str(o && o.code_iata) || str(f['airport_' + side + '_code_icao']) || str(o && o.code_icao);
     return code;
   };
+  var labelOf = function (f) { return str(f.flight_number) || str(f.callsign) || str(f.aircraft_registration) || str(f.id); };
+  var routeOf = function (f) { var a = airport(f, 'origin'), b = airport(f, 'destination'); return a && b ? a + ' → ' + b : ''; };
   // Identity and what is there. No freshness is claimed: an airborne flag (on_ground 0) can be left over from before a
   // restart, so only "scheduled" and "on the ground" are worded; everything else says nothing.
   F.entries = function (hass, id) {
@@ -115,10 +135,9 @@
     if (!st || !isList((st.attributes || {}).flights)) return null;
     return st.attributes.flights.map(function (f, i) {
       f = f && typeof f === 'object' ? f : {};
-      var label = str(f.flight_number) || str(f.callsign) || str(f.aircraft_registration) || str(f.id) || String(i + 1);
-      var from = airport(f, 'origin'), to = airport(f, 'destination');
+      var label = labelOf(f) || String(i + 1);
       var state = str(f.tracked_type) === 'schedule' ? tr('Geplant') : (f.on_ground === 1 || f.on_ground === '1' || f.on_ground === true) ? tr('Am Boden') : '';
-      var parts = [str(f.airline_short) || str(f.airline), from && to ? from + ' → ' + to : '', state].filter(Boolean);
+      var parts = [str(f.airline_short) || str(f.airline), routeOf(f), state].filter(Boolean);
       return { key: str(f.id), label: label, detail: parts.join(' · ') };
     });
   };
@@ -310,8 +329,16 @@
     var ha = document.querySelector('home-assistant');
     F.stop(ha && ha.hass, el.getAttribute('data-flights-src'), el.getAttribute('data-flights-row'));
   };
-  var pressed = function (el) { if (el.hasAttribute('data-flights-stop')) stopFrom(el); else sendFrom(el); };
-  var button = function (ev) { return hit(ev, 'data-flights-add-btn') || hit(ev, 'data-flights-stop'); };
+  var rowFrom = function (el) {
+    var ha = document.querySelector('home-assistant');
+    F.open(ha && ha.hass, el.getAttribute('data-flights-src'), el.getAttribute('data-flights-key'));
+  };
+  var pressed = function (el) {
+    if (el.hasAttribute('data-flights-stop')) stopFrom(el);
+    else if (el.hasAttribute('data-flights-row')) rowFrom(el);
+    else sendFrom(el);
+  };
+  var button = function (ev) { return hit(ev, 'data-flights-add-btn') || hit(ev, 'data-flights-stop') || hit(ev, 'data-flights-row'); };
   // Own capture, like the other popup buttons: a touch is taken before a click follows, and it is not sent twice.
   if (typeof window.addEventListener === 'function') {
     var touched = 0;
@@ -321,9 +348,17 @@
       F.draft = el.value;
       if (add && add.state !== 'pending') { drop(); F.paint(); }
     }, true);
-    window.addEventListener('keydown', function (ev) { var el = hit(ev, 'data-flights-in'); if (el && ev.key === 'Enter') { ev.preventDefault(); sendFrom(el); } }, true);
+    window.addEventListener('keydown', function (ev) {
+      var el = hit(ev, 'data-flights-in'); if (el && ev.key === 'Enter') { ev.preventDefault(); sendFrom(el); return; }
+      // A focused row opens its popup with Enter or Space, as a tap does. The tile's own key handling (its tip) is not reached.
+      var row = hit(ev, 'data-flights-row');
+      if (row && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); ev.stopPropagation(); rowFrom(row); }
+    }, true);
     // The user moved the focus after a stop: the pending refocus is dropped, so a later settle does not take it back.
     window.addEventListener('focusin', function () { if (rm && rm.refocus && !focusLost(activeEl())) rm.refocus = false; });
+    // Space opens on the key down; its release would click the button again, so the release is cancelled too.
+    window.addEventListener('keyup', function (ev) { if (ev.key === ' ' && hit(ev, 'data-flights-row')) ev.preventDefault(); }, true);
+    // A tile row is the whole tap: it does not also reach the tile's own tap action (its popup or its more-info).
     // A finger that moved more than 10 px is a scroll, not a tap (as in 05, 06 and 07): no button is pressed by it.
     var start = null;
     window.addEventListener('touchstart', function (ev) { var t = ev.touches && ev.touches[0]; start = t ? { x: t.clientX, y: t.clientY } : null; }, { capture: true, passive: true });
@@ -331,36 +366,35 @@
       var el = button(ev); if (!el) return;
       var t = ev.changedTouches && ev.changedTouches[0];
       if (start && t && (Math.abs(t.clientX - start.x) > 10 || Math.abs(t.clientY - start.y) > 10)) return;
-      touched = Date.now(); if (ev.cancelable) ev.preventDefault(); pressed(el);
+      touched = Date.now(); if (ev.cancelable) ev.preventDefault(); if (el.hasAttribute('data-flights-row')) ev.stopPropagation(); pressed(el);
     }, true);
-    window.addEventListener('click', function (ev) { var el = button(ev); if (el && Date.now() - touched > 700) pressed(el); }, true);
+    window.addEventListener('click', function (ev) { var el = button(ev); if (el && Date.now() - touched > 700) { if (el.hasAttribute('data-flights-row')) ev.stopPropagation(); pressed(el); } }, true);
   }
 
   // ── The setting ───────────────────────────────────────────────────────────
-  // The first value of the setting over a list of variables objects (one per view's hero card): its String, or '' when none
-  // holds one. Shared by the dashboard config (F.pinned) and the Studio save guard.
-  F.firstValue = function (list) {
+  // The first value of a dashboard setting, shared with the Studio save guard.
+  F.firstValue = function (list, key) {
     for (var i = 0; i < (list || []).length; i++) {
-      var v = (list[i] || {})[KEY];
+      var v = (list[i] || {})[key || KEY];
       if (v !== undefined && v !== null && v !== '') return String(v);
     }
     return '';
   };
-  F.pinned = function (cfg) {
+  F.pinned = function (cfg, key) {
     var views = (cfg && cfg.views) || [];
     var heroes = Array.prototype.map.call(views, function (view) { return ((view || {}).cards || [])[0] || {}; });
-    return F.firstValue(heroes.map(function (hero) { return hero.variables || {}; }));
+    return F.firstValue(heroes.map(function (hero) { return hero.variables || {}; }), key);
   };
   // The open dashboard's own value; '' when it has none.
-  var ownOf = function () {
-    try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg()); } catch (e) { return ''; }
+  var ownOf = function (key) {
+    try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg(), key); } catch (e) { return ''; }
   };
-  // Own value first; a phone takes the rest from its desktop twin (below). '' = Automatic, or not known yet (F.ready).
-  F.setting = function () {
-    var own = ownOf();
+  // Own value first; a phone takes the rest from its desktop twin (below).
+  F.setting = function (key) {
+    var own = ownOf(key);
     if (own) return own;
     var t = twinOf();
-    return t && (t.state === 'ok' || t.state === 'none') ? (t.flights[KEY] || '') : '';
+    return t && (t.state === 'ok' || t.state === 'none') ? (t.flights[key || KEY] || '') : '';
   };
   // ── The phone twin: a phone dashboard (<name>-mobile) takes the Flights settings it has no value for from its desktop twin
   // (<name>), read with casora/partner_info. The read is async, so until it has answered the phone resolves nothing (no tile,
@@ -409,6 +443,13 @@
     if (ownOf() || !twinOf()) return true;
     return twin.state === 'ok' || twin.state === 'none';
   };
+  // Measurement units (Studio, Dashboard scope, drafts like the source). '' = the source unit (feet, knots, ft/min).
+  F.UNIT_KEYS = { altitude: 'casora_flights_altitude_unit', speed: 'casora_flights_speed_unit', vspeed: 'casora_flights_vspeed_unit' };
+  F.units = function () {
+    var out = {};
+    Object.keys(F.UNIT_KEYS).forEach(function (k) { out[k] = F.setting(F.UNIT_KEYS[k]); });
+    return out;
+  };
 
   // Studio select: values are '' (Automatic, or the prompt when several exist) and the source IDs; a stored pin stays
   // selectable. Words come from the Studio (labels hold only data names; null = the Studio words it).
@@ -450,6 +491,7 @@
     var UI = window._casoraUI;
     if (!UI || !hass) return '';
     var h = states && states !== hass.states ? Object.assign({}, hass, { states: states }) : hass;
+    if (c && c.flight !== undefined) return flightSec(part, c, h); // the flight popup (F.flightPopup)
     var m = model(h, c && c.pin);
     if (part === 'add') {
       var r = F.resolve(h, c && c.pin);
@@ -512,5 +554,521 @@
     var fields = { stage: card('stage'), list: card('list') };
     if (canAdd) fields.add = card('add');
     return KIT.layout({ fields: fields, top: canAdd ? ['add'] : [], stage: 'stage', left: [], right: ['list'] });
+  };
+  // ── Airborne: what the Flights tile lists ─────────────────────────────────────────────────────────────────────────
+  // The one rule for every flight surface (the Flights tile and the flight popup). A flight is listed when its
+  // source entry is a live tracked flight with an explicit airborne flag and finite coordinates, and its position has
+  // changed while Casora watched. Movement evidence is kept in memory per source and FR24 ID (a new ID is a new flight)
+  // and kept across redraws. A new or dropped connection, and a reload, start unverified. Ten minutes without a further
+  // observed change hides a flight. A ground flag, a missing entry or invalid data hides it at once and drops its evidence,
+  // so a later return must show movement again. Nothing here reads details_updated_at, last_updated, polls or reloads.
+  var MOVE_WINDOW = 600000;
+  var live = { conn: null, src: {}, kick: null, kickAt: 0 };
+  var resetLive = function () { live.src = {}; };
+  var watchConn = function (hass) {
+    var conn = hass && hass.connection;
+    if (!conn || conn === live.conn || typeof conn.addEventListener !== 'function') return;
+    live.conn = conn;
+    resetLive();
+    conn.addEventListener('disconnected', resetLive);
+    conn.addEventListener('ready', resetLive);
+  };
+  var airborneFlag = function (v) { return v === 0 || v === '0' || v === false; };
+  var inRange = function (v, max) { return typeof v === 'number' && isFinite(v) && Math.abs(v) <= max; };
+  // Stubs (schedule, registration), missing or unknown flags and invalid positions do not qualify. Exactly (0, 0) is no
+  // fix (the map leaves it out too), so it does not qualify either: a listed flight always has a point to draw.
+  var qualifies = function (f) {
+    return str(f.tracked_type) === 'live' && airborneFlag(f.on_ground) && inRange(f.latitude, 90) && inRange(f.longitude, 180)
+      && !(f.latitude === 0 && f.longitude === 0);
+  };
+  // The movement evidence of one source: {FR24 ID: {lat, lon, movedAt}}. Each new state object is read once; the same object
+  // again changes nothing. A new position is movement at the time it is seen; the first position is only a baseline.
+  var observe = function (hass, id, now) {
+    var st = (hass.states || {})[id], s = live.src[id] || (live.src[id] = { st: undefined, recs: {} });
+    if (s.st === st) return s.recs;
+    s.st = st;
+    var flights = !bad(st) && isList((st.attributes || {}).flights) ? st.attributes.flights : [];
+    var next = {}, count = {};
+    flights.forEach(function (f) {
+      var k = idOf(f);
+      if (!k) return;
+      count[k] = (count[k] || 0) + 1;
+      if (!qualifies(f)) return;
+      var old = s.recs[k], lat = f.latitude, lon = f.longitude;
+      if (!old) next[k] = { lat: lat, lon: lon, movedAt: null };
+      else if (old.lat === lat && old.lon === lon) next[k] = old;
+      else next[k] = { lat: lat, lon: lon, movedAt: now };
+    });
+    Object.keys(next).forEach(function (k) { if (count[k] > 1) delete next[k]; }); // a duplicate ID is no flight
+    s.recs = next;
+    return next;
+  };
+  // One wake-up at the earliest hide time, so the Flights tile and an open flight popup redraw without a new state.
+  // The popup's parts are cards whose code sits in custom_fields (secCard); the tile's code is its state_display.
+  var LIVE_CODE = /liveHtml\(|_casoraFlights\.sec\("f(stage|map|prog|move|air|places|times)"/;
+  var liveCard = function (c) {
+    var codes = [c && c.state_display].concat(c && c.custom_fields ? Object.keys(c.custom_fields).map(function (k) { return c.custom_fields[k]; }) : []);
+    return codes.some(function (x) { return typeof x === 'string' && LIVE_CODE.test(x); });
+  };
+  var redrawFlights = function () {
+    if (!window.casoraKick) return;
+    deepAll('button-card').forEach(function (el) {
+      if (liveCard(el._config)) window.casoraKick(el);
+    });
+  };
+  var arm = function (at, now) {
+    if (live.kick && live.kickAt > now && live.kickAt <= at) return;
+    if (live.kick) clearTimeout(live.kick);
+    live.kickAt = at;
+    live.kick = setTimeout(function () { live.kick = null; redrawFlights(); }, at - now);
+  };
+  // The flights to show now, in source order: [{src, key, label, route, altitude, speed, vspeed, heading, entry}].
+  // Only the selected source counts. The values are formatted with the saved units; the entry keeps the source values.
+  var airborneOf = function (hass, id, now) {
+    watchConn(hass);
+    var recs = observe(hass, id, now), out = [], next = null, u = F.units();
+    flightsOf(hass, id).forEach(function (f) {
+      var k = idOf(f), rec = k && recs[k];
+      if (!rec || rec.movedAt == null) return;
+      var until = rec.movedAt + MOVE_WINDOW;
+      if (now >= until) return;
+      if (next === null || until < next) next = until;
+      out.push({ src: id, key: k, label: labelOf(f), route: routeOf(f), altitude: F.fmt.altitude(f.altitude, u.altitude),
+        speed: F.fmt.speed(f.ground_speed, u.speed), vspeed: F.fmt.vspeed(f.vertical_speed, u.vspeed), heading: F.fmt.heading(f.heading), entry: f });
+    });
+    if (next !== null) arm(next, now);
+    return out;
+  };
+  F.airborne = function (hass, pin, now) {
+    if (!hass) return [];
+    now = now == null ? Date.now() : now;
+    var r = F.resolve(hass, pin);
+    if (r.state !== 'pinned' && r.state !== 'auto') return [];
+    return airborneOf(hass, r.id, now);
+  };
+  // One flight of one source, by its FR24 ID, if it qualifies now (the popup's and a row's check). Same rule as the tile.
+  F.flight = function (hass, src, key, now) {
+    if (!hass || !src || !key) return null;
+    var rows = airborneOf(hass, String(src), now == null ? Date.now() : now);
+    return rows.filter(function (r) { return r.key === String(key); })[0] || null;
+  };
+  // Shared formatting. Zero is a value; a missing or non-finite reading is left out, never shown as 0. Each unit maps the
+  // source value by a factor and rounds to a fixed number of decimals; '' is the source unit.
+  var UNIT = {
+    altitude: { '': [1, 0, 'ft'], m: [0.3048, 0, 'm'], km: [0.0003048, 1, 'km'] },
+    speed: { '': [1, 0, 'kn'], kmh: [1.852, 0, 'km/h'], mph: [1.150779, 0, 'mph'] },
+    vspeed: { '': [1, 0, 'ft/min'], ms: [0.00508, 1, 'm/s'] },
+  };
+  var num = function (v, t) {
+    if (typeof v !== 'number' || !isFinite(v)) return '';
+    var loc; try { loc = window.casoraLocale ? window.casoraLocale() : undefined; } catch (e) { loc = undefined; }
+    var p = Math.pow(10, t[1]), r = Math.round(v * t[0] * p) / p;
+    if (r === 0) r = 0; // no negative zero
+    // No-break space: a number and its unit never split across two lines ("9.540 m").
+    return r.toLocaleString(loc, { minimumFractionDigits: t[1], maximumFractionDigits: t[1] }) + '\u00a0' + t[2];
+  };
+  var fmtOf = function (kind, v, unit) { var set = UNIT[kind]; return num(v, set[unit] || set['']); };
+  F.fmt = {
+    number: function (v, unit) { return num(v, [1, 0, unit]); },
+    altitude: function (v, unit) { return fmtOf('altitude', v, unit); },
+    speed: function (v, unit) { return fmtOf('speed', v, unit); },
+    vspeed: function (v, unit) { return fmtOf('vspeed', v, unit); },
+    heading: function (v) {
+      if (typeof v !== 'number' || !isFinite(v) || v < 0 || v > 360) return '';
+      return (Math.round(v) % 360) + '°';
+    },
+  };
+  // ── Timing: destination or origin time, and HA-local time ─────────────────────────────────────────────────────────────
+  // FlightRadar24 gives Unix seconds per kind (scheduled, real, estimated) and each airport's offset in seconds (either
+  // sign) and abbreviation. The airport clock is that offset applied to the instant (UTC reading, no zone database). The
+  // local clock is hass.config.time_zone through Intl; without a usable HA zone no local time is shown, and the browser's
+  // zone is never used. A presentation whose airport metadata is missing shows only the local time, labelled as such.
+  // Dates appear when the two zone dates of one time differ, and on an arrival also when its day differs from the
+  // departure's local day. The suffix (zone name) is optional; the labels never change.
+  var TZ_KEY = 'casora_flights_timezones';
+  var KIND_WORD = { scheduled: 'Geplant', real: 'Tatsächlich', estimated: 'Voraussichtlich' };
+  var MAX_OFF = 50400;
+  F.tz = function () { return F.setting(TZ_KEY) === 'true'; }; // a Studio switch: 'true' or unset (off)
+  var locale = function () { try { return window.casoraLocale ? window.casoraLocale() : undefined; } catch (e) { return undefined; } };
+  var epochMs = function (v) { return typeof v === 'number' && isFinite(v) && v > 0 ? v * 1000 : null; };
+  var offsetOk = function (v) { return typeof v === 'number' && isFinite(v) && v % 60 === 0 && Math.abs(v) <= MAX_OFF; };
+  var haZone = function (hass) {
+    var z = hass && hass.config && hass.config.time_zone;
+    if (!z) return null;
+    try { new Intl.DateTimeFormat('en-US', { timeZone: String(z) }); return String(z); } catch (e) { return null; }
+  };
+  var zoneName = function (ms, zone, loc) {
+    var p = new Intl.DateTimeFormat(loc, { timeZone: zone, timeZoneName: 'short' }).formatToParts(new Date(ms))
+      .filter(function (x) { return x.type === 'timeZoneName'; })[0];
+    return p ? p.value : '';
+  };
+  var utcSuffix = function (off) {
+    var m = Math.abs(off) / 60, h = Math.floor(m / 60), mm = m % 60;
+    return 'UTC' + (off < 0 ? '-' : '+') + h + (mm ? ':' + (mm < 10 ? '0' : '') + mm : '');
+  };
+  // One moment in one zone: the clock, the calendar day (for comparing), the short date and the zone name.
+  var part = function (ms, z, loc) {
+    var zone = z.zone ? { timeZone: z.zone } : { timeZone: 'UTC' }, d = new Date(z.zone ? ms : ms + z.off * 1000);
+    var clock = d.toLocaleTimeString(loc, Object.assign({ hour: '2-digit', minute: '2-digit' }, zone));
+    var day = new Intl.DateTimeFormat('en-CA', Object.assign({ year: 'numeric', month: '2-digit', day: '2-digit' }, zone)).format(d);
+    var date = d.toLocaleDateString(loc, Object.assign({ day: '2-digit', month: '2-digit' }, zone));
+    var name = z.zone ? zoneName(ms, z.zone, loc) : (z.abbr || utcSuffix(z.off));
+    return { clock: clock, day: day, date: date, name: name };
+  };
+  // The UTC offset of an HA zone at one instant, in seconds: the zone's wall clock read as UTC, minus the instant.
+  var zoneOffset = function (ms, zone) {
+    var p = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(new Date(ms))
+      .forEach(function (x) { p[x.type] = +x.value; });
+    return (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(ms / 1000) * 1000) / 1000;
+  };
+  // One presentation for one moment: the airport time (label), then the local time. The same UTC offset at that instant
+  // collapses to the local time alone. Zone names are never compared. An arrival (arrival = true) also shows its date when
+  // one of its presented days differs from the departure's local day (ref).
+  var pair = function (hass, ms, f, side, label, tzOn, loc, ref, arrival) {
+    var abbr = str(f['airport_' + side + '_timezone_abbr']), off = f['airport_' + side + '_timezone_offset'];
+    var air = offsetOk(off) ? part(ms, { off: off, abbr: abbr }, loc) : null;
+    var zone = haZone(hass), home = zone ? part(ms, { zone: zone }, loc) : null;
+    // With the airport time, the two dates are compared. A local-only time is compared with the other end's local day (ref).
+    var dates = air && home ? air.day !== home.day : !!(home && ref && home.day !== ref);
+    if (arrival && ref) dates = dates || !!((air && air.day !== ref) || (home && home.day !== ref));
+    var line = function (p, word) { return p.clock + (dates ? ' ' + p.date : '') + (tzOn && p.name ? ' ' + p.name : '') + ' ' + tr(word); };
+    if (air && home && zoneOffset(ms, zone) === off) return line(home, 'Ortszeit');
+    if (air && home) return line(air, label) + ' · ' + line(home, 'Ortszeit');
+    if (air) return line(air, label);
+    if (home) return line(home, 'Ortszeit');
+    return '';
+  };
+  // Every timestamp the flight has: {dep: [{kind, text}], arr: [{kind, text}]}, scheduled before real before estimated.
+  // A missing timestamp is left out; the flight stays. The tile and the popup use this.
+  F.times = function (hass, f, tzOn) {
+    var out = { dep: [], arr: [] }, loc = locale();
+    if (!f || typeof f !== 'object') return out;
+    var zone = haZone(hass), KINDS = ['scheduled', 'real', 'estimated'];
+    // The first timestamp of a side (the earliest kind the source has): its local day is the other side's reference.
+    var first = function (side) {
+      for (var i = 0; i < KINDS.length; i++) { var ms = epochMs(f['time_' + KINDS[i] + '_' + side]); if (ms != null) return ms; }
+      return null;
+    };
+    var depMs = first('departure'), arrMs = first('arrival');
+    var localDay = function (ms) { return zone && ms != null ? part(ms, { zone: zone }, loc).day : null; };
+    [['dep', 'origin', 'Zeit am Abflugort', 'departure', arrMs, false], ['arr', 'destination', 'Zeit am Zielort', 'arrival', depMs, true]].forEach(function (s) {
+      KINDS.forEach(function (kind) {
+        var ms = epochMs(f['time_' + kind + '_' + s[3]]);
+        if (ms == null) return;
+        var text = pair(hass, ms, f, s[1], s[2], !!tzOn, loc, localDay(s[4]), s[5]);
+        if (text) out[s[0]].push({ kind: kind, text: text });
+      });
+    });
+    return out;
+  };
+  var estimateOf = function (hass, f) {
+    var hit = F.times(hass, f, F.tz()).arr.filter(function (x) { return x.kind === 'estimated'; })[0];
+    return hit ? hit.text : '';
+  };
+
+  var ROW_BTN = 'display:block;width:100%;box-sizing:border-box;min-height:44px;padding:8px 0 12px;margin:0;border:0;background:none;'
+    + 'font:inherit;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;';
+  F.liveHtml = function (hass, pin, now) {
+    var rowsHtml = F.airborne(hass, pin, now).map(function (r) {
+      var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
+      var eta = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
+      return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
+        + '" data-flights-label="' + esc(r.label) + '" style="' + ROW_BTN + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
+        + (extra ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(extra) + '</span>' : '')
+        + (eta ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta) + '</span>' : '')
+        + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pct) + ' %</span>' : '') + '</button>';
+    }).join('');
+    if (!rowsHtml) return '';
+    // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
+    return '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
+      + '<div style="max-height:min(240px,50vh);overflow-y:auto;overscroll-behavior:contain">' + rowsHtml + '</div>';
+  };
+  F.liveHidden = function (hass, now) { return !F.airborne(hass, F.setting(), now).length; };
+
+  // ── Map and approximate progress: one presentation for the popup and the tile line ───────────
+  // F.mapView is the selected flight now, from the shared rule (F.flight): no marker, trail or progress for a flight that
+  // does not qualify. Positions are [lat, lon]; a missing, non-finite, out-of-range or exactly (0, 0) point is left out,
+  // never drawn at zero. Progress is great-circle distance only: origin→current over origin→current plus current→destination,
+  // in whole percent, bounded. It is not elapsed time and not the flown path; it is omitted when a point is missing or the
+  // two airports lie within a kilometre of each other.
+  var R_KM = 6371, MIN_ROUTE_KM = 1;
+  var pointOk = function (p) {
+    if (!isList(p) || p.length < 2) return false;
+    var la = p[0], lo = p[1];
+    return typeof la === 'number' && typeof lo === 'number' && isFinite(la) && isFinite(lo)
+      && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && !(la === 0 && lo === 0);
+  };
+  var pointOf = function (lat, lon) { return pointOk([lat, lon]) ? [lat, lon] : null; };
+  // Great-circle distance in km. The longitude difference enters through sines, so the dateline needs no special case.
+  F.distanceKm = function (a, b) {
+    var rad = Math.PI / 180, dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+  };
+  F.progress = function (o, c, d) {
+    if (!o || !c || !d) return null;
+    if (F.distanceKm(o, d) < MIN_ROUTE_KM) return null; // coincident airports: nothing to measure along
+    var a = F.distanceKm(o, c), b = F.distanceKm(c, d), s = a + b;
+    if (!(s > 0) || !isFinite(s)) return null;
+    return Math.min(100, Math.max(0, Math.round(a / s * 100)));
+  };
+  F.progressOf = function (f) {
+    if (!f || typeof f !== 'object') return null;
+    return F.progress(pointOf(f.airport_origin_latitude, f.airport_origin_longitude), pointOf(f.latitude, f.longitude),
+      pointOf(f.airport_destination_latitude, f.airport_destination_longitude));
+  };
+  // The available trail of one flight: its coordinates list (oldest first), valid points only, no repeats in a row.
+  F.trailOf = function (f) {
+    var out = [];
+    (f && isList(f.coordinates) ? f.coordinates : []).forEach(function (p) {
+      if (!pointOk(p)) return;
+      var last = out[out.length - 1];
+      if (!last || last[0] !== p[0] || last[1] !== p[1]) out.push([p[0], p[1]]);
+    });
+    return out;
+  };
+  F.mapView = function (hass, src, key, now) {
+    var row = F.flight(hass, src, key, now);
+    if (!row) return null;
+    var f = row.entry, cur = pointOf(f.latitude, f.longitude);
+    if (!cur) return null;
+    var o = pointOf(f.airport_origin_latitude, f.airport_origin_longitude);
+    var d = pointOf(f.airport_destination_latitude, f.airport_destination_longitude);
+    return { key: row.key, label: row.label, cur: cur, heading: typeof f.heading === 'number' && f.heading >= 0 && f.heading <= 360 ? f.heading : null,
+      origin: o, destination: d, trail: F.trailOf(f), progress: F.progress(o, cur, d) };
+  };
+  // GeoJSON for the map layers ([lon, lat]): the trail as one line ending at the marker, the airports, the aircraft.
+  F.mapGeo = function (v) {
+    var fc = function (features) { return { type: 'FeatureCollection', features: features }; };
+    var pt = function (p, props) { return { type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [p[1], p[0]] } }; };
+    if (!v) return { trail: fc([]), points: fc([]) };
+    var pts = [];
+    if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0 }));
+    if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0 }));
+    pts.push(pt(v.cur, { role: 'aircraft', arrow: v.heading == null ? 0 : 1, heading: v.heading == null ? 0 : v.heading }));
+    var line = v.trail.slice();
+    var last = line[line.length - 1];
+    if (!last || last[0] !== v.cur[0] || last[1] !== v.cur[1]) line.push(v.cur);
+    var trail = line.length >= 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line.map(function (p) { return [p[1], p[0]]; }) } }] : [];
+    return { trail: fc(trail), points: fc(pts) };
+  };
+  // The box that holds every point of the view: [[west, south], [east, north]], or null.
+  F.mapBounds = function (v) {
+    if (!v) return null;
+    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], v.destination ? [v.destination] : []);
+    var lat = pts.map(function (p) { return p[0]; }), lon = pts.map(function (p) { return p[1]; });
+    return [[Math.min.apply(null, lon), Math.min.apply(null, lat)], [Math.max.apply(null, lon), Math.max.apply(null, lat)]];
+  };
+  F.MAP = { READY_MS: 12000, TICK_MS: 1000 };
+  var EMPTY = { type: 'FeatureCollection', features: [] };
+  var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
+  var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
+    + '.maplibregl-ctrl-bottom-right{right:0;bottom:0}'
+    + '.maplibregl-ctrl-attrib{font-size:8px!important;line-height:1.2!important;padding:0 14px 3px 4px!important;margin:0!important;min-height:0!important;background:transparent!important;color:inherit!important}'
+    + '.maplibregl-ctrl-attrib a{color:inherit!important}.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}';
+  // The arrow points north at heading 0; MapLibre turns it clockwise on the map. Drawn on a canvas: no file or URL loads.
+  var arrowImage = function (ml) {
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = 32;
+      var g = c.getContext && c.getContext('2d');
+      if (!g) return false;
+      g.beginPath(); g.moveTo(16, 3); g.lineTo(27, 28); g.lineTo(16, 22); g.lineTo(5, 28); g.closePath();
+      g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.stroke();
+      ml.addImage('casora-flight-arrow', g.getImageData(0, 0, 32, 32));
+      return true;
+    } catch (e) { return false; /* no canvas: the aircraft stays a circle */ }
+  };
+  var addLayers = function (ml) {
+    ml.addSource('casora-flight-trail', { type: 'geojson', data: EMPTY });
+    ml.addSource('casora-flight-points', { type: 'geojson', data: EMPTY });
+    var arrow = arrowImage(ml);
+    // Dark casing under a light line: visible on light and dark map tiles alike.
+    ml.addLayer({ id: 'casora-flight-trail-casing', type: 'line', source: 'casora-flight-trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 5 } });
+    ml.addLayer({ id: 'casora-flight-trail', type: 'line', source: 'casora-flight-trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 2.5 } });
+    ml.addLayer({ id: 'casora-flight-airports', type: 'circle', source: 'casora-flight-points', filter: ['==', ['get', 'role'], 'airport'],
+      paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#000000', 'circle-stroke-width': 1.5 } });
+    ml.addLayer({ id: 'casora-flight-aircraft', type: 'circle', source: 'casora-flight-points', filter: ['==', ['get', 'role'], 'aircraft'],
+      paint: { 'circle-radius': 7, 'circle-color': '#ffcc00', 'circle-stroke-color': '#000000', 'circle-stroke-width': 2 } });
+    if (arrow) {
+      ml.addLayer({ id: 'casora-flight-arrow', type: 'symbol', source: 'casora-flight-points', filter: ['==', ['get', 'arrow'], 1],
+        layout: { 'icon-image': 'casora-flight-arrow', 'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': 0.6 } });
+    }
+  };
+  var defineMap = function () {
+    if (!window.customElements || customElements.get('casora-flight-map')) return;
+    class FlightMap extends HTMLElement {
+      connectedCallback() {
+        // Only the properties the element needs: the popup's own box (its 4:3 aspect ratio) stays, so the box has a height.
+        this.style.display = 'block'; this.style.position = 'relative'; this.style.width = '100%';
+        this.style.overflow = 'hidden'; this.style.borderRadius = 'inherit';
+        this._since = Date.now(); this._tiles = 0; this._ml = this._el = this._timer = null; this._layers = false; this._ok = false;
+        this._sent = null; this._ident = null;
+        var H = window._casoraHaMap, hass = hassNow();
+        // HA's map service and ha-map are the only map there is; without them the text stays and this element hides.
+        if (!H || !hass || !H.ok()) { this._fail(); return; }
+        H.defined().then((ok) => {
+          if (!this.isConnected) return;
+          if (!ok) { this._fail(); return; }
+          this._build(hass);
+        });
+      }
+      disconnectedCallback() {
+        this._stop();
+        if (this._el && this._el.remove) this._el.remove();
+        this._el = this._ml = null; this._layers = this._ok = false; this._sent = this._ident = null;
+      }
+      _build(hass) {
+        var m = document.createElement('ha-map');
+        m._connection = { connection: hass.connection, hassUrl: function (u) { return hass.hassUrl ? hass.hassUrl(u) : u; } };
+        m.entities = []; m.themeMode = 'auto'; m.zoom = 8; m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
+        // The map fills the box. The fade is off for reduced motion. The map is not a focus stop: its attribution link sits
+        // inside the popup's button (axe: nested-interactive); the map itself is shown, only its controls are inert.
+        var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        m.style.position = 'absolute'; m.style.top = '0'; m.style.left = '0'; m.style.width = '100%'; m.style.height = '100%';
+        m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
+        m.inert = true;
+        this.appendChild(m); this._el = m;
+        this._timer = setInterval(() => this._poll(), F.MAP.TICK_MS);
+      }
+      _poll() {
+        if (!this.isConnected) { this._stop(); return; }
+        var H = window._casoraHaMap, ml = H && this._el ? H.ml(this._el) : null, hass = hassNow();
+        if (!ml) { if (Date.now() - this._since > F.MAP.READY_MS) this._fail(); return; }
+        if (!this._ml) {
+          this._ml = ml;
+          ['dragPan', 'scrollZoom', 'boxZoom', 'doubleClickZoom', 'touchZoomRotate', 'keyboard', 'dragRotate', 'touchPitch'].forEach(function (x) {
+            if (ml[x] && ml[x].disable) ml[x].disable();
+          });
+          if (this._el.shadowRoot) { var st = document.createElement('style'); st.textContent = MAP_CSS; this._el.shadowRoot.appendChild(st); }
+          ml.on('data', (e) => { if (e && e.tile && (!e.tile.state || e.tile.state === 'loaded')) this._tiles++; });
+        }
+        if (!this._layers && ml.isStyleLoaded && ml.isStyleLoaded()) { addLayers(ml); this._layers = true; }
+        if (this._layers && hass) this._sync(hass);
+        if (!this._ok && this._layers && this._tiles > 0 && ml.loaded()) { this._ok = true; this._el.style.opacity = '1'; }
+        if (!this._ok && Date.now() - this._since > F.MAP.READY_MS) this._fail();
+      }
+      // The selected flight's layers; a change of flight clears the old ones first and fits the view once to the new flight.
+      _sync(hass) {
+        var key = this.getAttribute('data-key'), src = this.getAttribute('data-src');
+        var v = F.mapView(hass, src, key, Date.now());
+        var ident = v ? src + '|' + v.key : null, geo = v ? F.mapGeo(v) : null;
+        var sig = JSON.stringify([ident, geo]);
+        if (sig === this._sent) return;
+        this._sent = sig;
+        var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
+        if (!pts || !trail) return;
+        pts.setData(geo ? geo.points : EMPTY);
+        trail.setData(geo ? geo.trail : EMPTY);
+        if (ident && ident !== this._ident) {
+          var b = F.mapBounds(v);
+          if (b) ml.fitBounds(b, { padding: 36, maxZoom: 9, duration: 0 });
+        }
+        this._ident = ident;
+      }
+      _stop() { if (this._timer) clearInterval(this._timer); this._timer = null; }
+      _fail() { this._stop(); this.style.display = 'none'; }
+    }
+    customElements.define('casora-flight-map', FlightMap);
+  };
+  defineMap();
+  // The progress line: a track with the fill and the value as text (not by colour alone).
+  var progressHtml = function (pct) {
+    var label = tr('Ungefährer Fortschritt');
+    return '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
+      + '" aria-valuetext="' + esc(pct) + ' %" style="padding:12px 16px;box-sizing:border-box;">'
+      + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">' + esc(label)
+      + '</span><span style="font-weight:600">' + esc(pct) + ' %</span></div>'
+      + '<div style="position:relative;height:6px;margin-top:10px;border-radius:3px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)">'
+      + '<div style="position:absolute;left:0;top:0;bottom:0;width:' + esc(pct) + '%;background:currentColor"></div></div></div>';
+  };
+
+  // ── The flight popup (casora_popup_flight): one flight of one source, by its FR24 ID ──────────────────────────────────
+  // A flight that no longer qualifies (or whose source is gone) shows the unavailable stage and no details, never another
+  // flight with the same number. Building and redrawing the popup only reads the states; no tracking write from here.
+  var place = function (f, side) {
+    var o = f['airport_' + side] && typeof f['airport_' + side] === 'object' ? f['airport_' + side] : {};
+    var term = str(f['airport_' + side + '_terminal']) || str(o.terminal);
+    return [airport(f, side), str(f['airport_' + side + '_name']) || str(o.name), term ? tr('Terminal') + ' ' + term : '']
+      .filter(Boolean).join(' · ');
+  };
+  // A plate of label and value rows; a row without a value is left out, and no rows means no plate (no blank section).
+  var pairs = function (rows) {
+    var ok = rows.filter(function (x) { return x[1]; });
+    if (!ok.length) return '';
+    return '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
+      + ok.map(function (x, i) {
+        return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '')
+          + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:52px;box-sizing:border-box;padding:8px 16px">'
+          + '<div style="font-size:15px;color:var(--secondary-text-color,currentColor);white-space:normal;flex:none">' + esc(tr(x[0])) + '</div>'
+          + '<div style="font-size:15px;font-weight:600;text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere">' + esc(x[1]) + '</div></div>';
+      }).join('') + '</div>';
+  };
+  var flightSec = function (part, c, h) {
+    var UI = window._casoraUI;
+    if (!UI) return '';
+    var r = F.flight(h, c.src, c.flight, Date.now());
+    if (part === 'fstage') {
+      if (!r) return UI.stage('status', { tone: 'off', icon: 'mdi:airplane-off', text: tr('Nicht verfügbar') });
+      return r.route ? UI.stage('status', { tone: 'good', icon: 'mdi:airplane', text: r.route }) : '';
+    }
+    if (!r) return '';
+    var f = r.entry;
+    if (part === 'fmap') {
+      // The map element reads its flight from these attributes; it draws nothing for a flight that stops qualifying.
+      var mv = F.mapView(h, c.src, c.flight, Date.now());
+      if (!mv) return '';
+      return UI.stage('image', { html: '<casora-flight-map role="img" aria-label="' + esc(mv.label) + '" data-src="' + esc(c.src)
+        + '" data-key="' + esc(c.flight) + '" style="display:block;width:100%;aspect-ratio:4 / 3;border-radius:inherit;overflow:hidden;'
+        + 'background:var(--casora-soft-row-fill, rgba(127,127,127,0.1));"></casora-flight-map>' });
+    }
+    if (part === 'fprog') {
+      var pv = F.mapView(h, c.src, c.flight, Date.now());
+      return pv && pv.progress != null ? progressHtml(pv.progress) : '';
+    }
+    if (part === 'fmove') return pairs([[tr('Höhe'), r.altitude], [tr('Geschwindigkeit über Grund'), r.speed],
+      [tr('Vertikalgeschwindigkeit'), r.vspeed], [tr('Kurs'), r.heading]]);
+    if (part === 'fair') return pairs([[tr('Fluggesellschaft'), str(f.airline_short) || str(f.airline)], [tr('Flugzeugmodell'), str(f.aircraft_model)],
+      [tr('Registrierung'), str(f.aircraft_registration)], [tr('Rufzeichen'), str(f.callsign)]]);
+    if (part === 'fplaces') return pairs([[tr('Abflug'), place(f, 'origin')], [tr('Ankunft'), place(f, 'destination')]]);
+    if (part === 'ftimes') {
+      // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
+      var tm = F.times(h, f, F.tz()), rows = [];
+      tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
+      tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
+      return pairs(rows);
+    }
+    return '';
+  };
+  // A tile row opens its flight's popup through the card opener: the popup template gets the source and the FR24 ID.
+  // Only a flight that qualifies now opens. Not in the Studio (there the rows are only drawn).
+  F.open = function (hass, src, key) {
+    if (inStudio() || !hass || !src || !key) return null;
+    if (!F.flight(hass, src, key, Date.now())) return null;
+    if (typeof window._casoraNotifyOpenViaCard !== 'function') return null;
+    window._casoraNotifyOpenViaCard(src, function () {}, { type: 'custom:button-card', template: 'casora_popup_flight', entity: src,
+      variables: { source: src, flight: key } }, true); // ids only: no text from the source goes into the card config
+    return true;
+  };
+  // The popup's title: the flight's own label (its number, else callsign or registration) while the source lists it.
+  F.title = function (hass, v) {
+    var id = String((v && v.flight) || ''), f = flightsOf(hass, String((v && v.source) || '')).filter(function (x) { return idOf(x) === id; })[0];
+    return (f && labelOf(f)) || tr('Flug');
+  };
+  // The popup's content (casora_popup_flight): a stage with the route, the movement, the aircraft and the airports.
+  F.flightPopup = function (states, hass, vars) {
+    var KIT = window._casoraSoftKit, UI = window._casoraUI, S = states || {}, v = vars || {};
+    if (!KIT || !UI || !UI.stage || !hass) return { type: 'vertical-stack', cards: [] };
+    var cj = JSON.stringify({ src: String(v.source || ''), flight: String(v.flight || '') });
+    var watch = v.source ? [String(v.source)] : [];
+    var card = function (part) { return { card: KIT.secCard(watch, 'return window._casoraFlights ? window._casoraFlights.sec(' + JSON.stringify(part) + ', ' + cj + ', states, hass) : "";', S) }; };
+    // The route text on top, the map as the stage, the progress under it; the details in the two columns as before.
+    return KIT.layout({ fields: { stage: card('fstage'), map: card('fmap'), prog: card('fprog'), move: card('fmove'), air: card('fair'),
+      places: card('fplaces'), times: card('ftimes') },
+      top: ['stage'], stage: 'map', stageWide: true, left: ['prog', 'move', 'times', 'places'], right: ['air'] });
   };
 })();

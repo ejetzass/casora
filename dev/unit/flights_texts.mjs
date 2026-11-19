@@ -12,7 +12,7 @@ const phrases = Object.fromEntries(LANGS.map((l) => [l, JSON.parse(read('custom_
 
 // Every single-quoted literal in the module that is a sentence or a label (capital first, letters, no code characters).
 const literals = [...new Set([...src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)].map((m) => m[1]))].filter((l) =>
-  /^[A-ZÄÖÜ][a-zäöüß]/.test(l) && /[a-zäöüß]{3}/.test(l) && !/[{}:;=()\[\]<>]|mdi|data-|flights-|\bkeep\b|\bcut\b/.test(l) && !/^[A-Z][a-z]+\.[a-z]/.test(l) && l !== 'Enter'); // Enter: a key name, not a text
+  /^[A-ZÄÖÜ][a-zäöüß]/.test(l) && /[a-zäöüß]{3}/.test(l) && !/[{}:;=()\[\]<>]|mdi|data-|flights-|\bkeep\b|\bcut\b/.test(l) && !/^[A-Z][a-z]+\.[a-z]/.test(l) && !['Enter', 'Feature', 'FeatureCollection', 'Point', 'LineString'].includes(l)); // key and GeoJSON type names, not texts
 
 // The rendered German text is the key; each language must carry it.
 const missing = [];

@@ -822,6 +822,7 @@ const FILTER_CATEGORIES = {
   casora_shopping: "unfiltered",
   casora_tasks: "unfiltered",
   casora_flights: "unfiltered",
+  casora_flights_airborne: "unfiltered",
   casora_kettle: "unfiltered",
   casora_co: "security",
   casora_smart_meter: "energy",
@@ -2683,6 +2684,20 @@ const SECTIONS = [
           else if (c.unavailable) note = { text: "Source unavailable" };
           return { options: c.options, labels, note };
         } },
+      // Units of the flight displays (49-flights.js F.fmt): the same Dashboard scope and draft as the source. '' = the
+      // source unit (feet, knots, feet per minute); shown where FlightRadar24 is.
+      { key: "casora_flights_altitude_unit", sub: "chrome", label: "Altitude", type: "select", auto: true, scope: "dashboard",
+        options: ["", "m", "km"], optionLabels: { "": "Feet", m: "Meters", km: "Kilometers" },
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(F && F.present(hass)); } },
+      { key: "casora_flights_speed_unit", sub: "chrome", label: "Ground speed", type: "select", auto: true, scope: "dashboard",
+        options: ["", "kmh", "mph"], optionLabels: { "": "Knots", kmh: "Kilometers per hour", mph: "Miles per hour" },
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(F && F.present(hass)); } },
+      { key: "casora_flights_vspeed_unit", sub: "chrome", label: "Vertical speed", type: "select", auto: true, scope: "dashboard",
+        options: ["", "ms"], optionLabels: { "": "Feet per minute", ms: "Meters per second" },
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(F && F.present(hass)); } },
+      // Zone names after the flight times (49-flights.js F.times): off by default; the labels stay the same either way.
+      { key: "casora_flights_timezones", sub: "chrome", label: "Show timezones", type: "bool", boolDefault: false, auto: true, scope: "dashboard",
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(F && F.present(hass)); } },
       // Halten auf Kacheln (22-halten.js): leer = Schnellmenü. casora-core.js setzt daraus window._casoraHoldMode,
       // ans Handy geht es über casora_mobile_bg. Je Kachel überstimmbar (variables.hold_mode, Kachel-Inspektor).
       { key: "hold_mode", sub: "hold", label: "Hold on tiles", type: "select", auto: true, scope: "dashboard",
@@ -4218,7 +4233,7 @@ const autoRoomGlyph = (name) => {
 // Tile types about the whole home: a room's own device (a dishwasher's plug in the
 // kitchen) is no reason to offer them as "Fits <room>".
 const HOUSE_WIDE_TILES = new Set(["energy_tile", "network", "battery", "updates", "casora_alarm",
-  "casora_weather_warning", "casora_solar_tip", "casora_trash", "casora_recipe", "casora_pulse", "casora_calendar", "casora_tasks", "casora_flights",
+  "casora_weather_warning", "casora_solar_tip", "casora_trash", "casora_recipe", "casora_pulse", "casora_calendar", "casora_tasks", "casora_flights", "casora_flights_airborne",
   "casora_entity_list", "casora_more", "casora_map"]);
 
 // The automatic icon follows the name. A new name it doesn't know ("Küche" →
@@ -6845,7 +6860,7 @@ const tileStateWord = (kind, tile, ent, states, hass, settings) => {
     return window.casoraI18n && window.casoraI18n.t ? window.casoraI18n.t("No events") : "No events";
   }
   if (kind === "casora_map") return "";
-  if (kind === "casora_flights") return "";
+  if (kind === "casora_flights" || kind === "casora_flights_airborne") return "";
   if (kind === "casora_tasks") {
     const T = typeof window !== "undefined" && window._casoraTasks;
     return T && T.tile ? T.tile(states || {}, V) : "Tasks";
