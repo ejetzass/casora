@@ -444,6 +444,12 @@ window.CASORA_TILE_TYPES = [
     color: "var(--casora-color-teal, #00C3D0)",
     onlyIf: (hass) => { const F = window.casoraFlightsMod(); return !!(F && F.sources(hass).length); },
     fields: [ICON, { ...TITLE, placeholder: "Manage flights" }] },
+  // Flights in the air (FlightRadar24): the rule and the rows are in scripts/local/49-flights.js. Offered only where the source
+  // exists; the tile itself is shown only while a flight qualifies (its template's hidden rule).
+  { id: "casora_flights_airborne", label: "Flights", template: "casora_flights_airborne", domains: [], noEntity: true, icon: "flights",
+    color: "var(--casora-color-teal, #00C3D0)",
+    onlyIf: (hass) => { const F = window.casoraFlightsMod(); return !!(F && F.sources(hass).length); },
+    fields: [ICON, { ...TITLE, placeholder: "Flights" }] },
   { id: "casora_shopping", label: "Bring! shopping list", template: "casora_shopping", domains: ["todo"],
     icon: "cart", color: "var(--casora-color-green, #30D158)", entityLabel: "List", entityPlaceholder: "Choose your shopping list",
     community: { desc: "How many items are open on the tile. The popup lists them with Bring's specification, ticks one off with a tap, adds new ones and clears the ticked ones. For Bring! and every other to-do list in Home Assistant.",

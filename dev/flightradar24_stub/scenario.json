@@ -6,7 +6,9 @@
       "flights": [
         {"id": "s1", "flight_number": "XY123", "callsign": "TST123", "aircraft_registration": "T-AAAA", "tracked_by": "flight", "tracked_type": "live",
          "latitude": 10.0, "longitude": 20.0, "altitude": 31000, "ground_speed": 450, "vertical_speed": 0, "heading": 90, "on_ground": 0,
-         "airline_short": "Testair", "airport_origin_code_iata": "AAA", "airport_destination_code_iata": "BBB"},
+         "airline_short": "Testair", "airport_origin_code_iata": "AAA", "airport_destination_code_iata": "BBB",
+         "airport_origin_timezone_offset": 3600, "airport_origin_timezone_abbr": "CET", "airport_destination_timezone_offset": -18000, "airport_destination_timezone_abbr": "EST",
+         "time_scheduled_departure": 1794992400, "time_real_departure": 1794993600, "time_scheduled_arrival": 1795045200, "time_estimated_arrival": 1795046100},
         {"id": "s2", "flight_number": "XY456", "callsign": "", "aircraft_registration": "T-BBBB", "tracked_by": "flight", "tracked_type": "schedule",
          "latitude": 10.0, "longitude": 20.0, "on_ground": 0, "airline_short": "Testair",
          "airport_origin_code_iata": "BBB", "airport_destination_code_iata": "CCC"},

@@ -4,7 +4,7 @@
 // read is retried later, not on every render. A pinned source that is gone stays missing on the phone, as on the desktop.
 // Controlled fake page: the twin's answer is a promise the test settles by hand. Synthetic data only.
 //   node dev/unit/flights_phone.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,ready,resolve,model,tile,kickFlights,twinOf,fetchTwin
+// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,ready,resolve,model,tile,airborne,liveHidden,kickFlights,twinOf,fetchTwin
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -71,7 +71,9 @@ P.hass.add('sensor.b', [flight('2')]);
 assert.equal(P.F.setting(), '', 'no value yet');
 assert.equal(P.F.resolve(P.hass, P.F.setting()).state, 'loading', 'not a guess: the twin is not in yet');
 assert.equal(P.F.ready(), false);
+assert.deepEqual(JS(P.F.airborne(P.hass, P.F.setting(), now)), [], 'no flights in the air while loading');
 assert.equal(P.F.tile(P.hass, P.F.setting()), '', 'the Manage tile says nothing while loading');
+assert.equal(P.F.liveHidden(P.hass, now), true, 'the Flights tile stays hidden while loading');
 assert.deepEqual(P.reads, ['qa-arbeit'], 'the twin is read once, by its desktop name');
 P.F.setting(); P.F.resolve(P.hass, '');
 assert.deepEqual(P.reads, ['qa-arbeit'], 'a render during the read asks again: no second read');
@@ -81,6 +83,7 @@ P.cards.push({ localName: 'button-card', _config: { state_display: "[[[ const F 
 P.cards.push({ localName: 'button-card', _config: { state_display: "[[[ return 'other tile'; ]]]" } });
 await answer(P, { confirm: { ids: [], names: {}, views: [] }, scenes: {}, flights: { [KEY]: 'sensor.b', casora_flights_altitude_unit: 'm' } });
 assert.equal(P.F.setting(), 'sensor.b', 'the desktop value is the phone value');
+assert.equal(P.F.setting('casora_flights_altitude_unit'), 'm', 'the units come along');
 assert.equal(P.F.ready(), true);
 assert.equal(P.F.resolve(P.hass, P.F.setting()).state, 'pinned');
 assert.equal(P.F.resolve(P.hass, P.F.setting()).id, 'sensor.b');
@@ -115,6 +118,7 @@ await answer(P, { confirm: { ids: [], names: {}, views: [] }, scenes: {}, flight
 const gone = P.F.resolve(P.hass, P.F.setting());
 assert.equal(gone.state, 'missing', 'a missing pin stays missing');
 assert.equal(gone.id, 'sensor.gone');
+assert.deepEqual(JS(P.F.airborne(P.hass, P.F.setting(), now)), [], 'no fallback to another source');
 
 // ── A failed read: nothing is resolved, and it is not read again on every render ──
 P = page({});
