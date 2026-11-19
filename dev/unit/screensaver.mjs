@@ -180,7 +180,7 @@ win.casoraEnergyHouse = () => ({ solar: ['sensor.pv'], grid: ['sensor.grid'], ba
 const he = { states: { 'sensor.pv': { state: '2.5', attributes: { unit_of_measurement: 'kW' } }, 'sensor.grid': { state: '-700', attributes: { unit_of_measurement: 'W' } } } };
 assert.deepEqual(JSON.parse(JSON.stringify(S.energy(he))), { solar: 2500, grid: -700, battery: null, soc: null, hasSolar: true, hasBattery: false, house: 1800 });
 delete win.casoraEnergyHouse;
-assert.equal(S.KINDS.length, 12, 'twelve screensavers');
+assert.equal(S.KINDS.length, 13, 'thirteen screensavers (Flights among them)');
 // A preview shows an example where the house has nothing; what the house has stays.
 const bare = S.sample(ctx({ wx: null, hourly: [], daily: [], events: [], bins: [], media: null, energy: null, bell: [], people: [] }));
 for (const k of ['wetter', 'linie', 'woche', 'musik', 'energie', 'kameras', 'kalender']) assert.ok(new RegExp('data-kind="' + k + '"').test(S.html(k, bare)), 'example for ' + k);

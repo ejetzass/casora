@@ -20,7 +20,9 @@
 //   window._casoraFlights.firstValue(list, key)       → first nonempty dashboard setting
 //   window._casoraFlights.pinned(cfg)                → the setting from a dashboard config
 //   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
-//   window._casoraFlights.airborne(hass, pin, now)   → the qualifying flights now (the shared rule for every flight surface)
+//   window._casoraFlights.airborne(hass, pin, now, units) → the qualifying flights now (the shared rule for every flight surface; units optional, a draft's)
+//   window._casoraFlights.details(entry)             → {airline, model, registration, callsign, origin, destination} ('' when missing)
+//   window._casoraFlights.timeRows(hass, entry, tzOn) → [[label, text]] departure and arrival timestamps (the popup's rows)
 //   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (rows) and its hidden state
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
@@ -624,9 +626,9 @@
   };
   // The flights to show now, in source order: [{src, key, label, route, altitude, speed, vspeed, heading, entry}].
   // Only the selected source counts. The values are formatted with the saved units; the entry keeps the source values.
-  var airborneOf = function (hass, id, now) {
+  var airborneOf = function (hass, id, now, units) {
     watchConn(hass);
-    var recs = observe(hass, id, now), out = [], next = null, u = F.units();
+    var recs = observe(hass, id, now), out = [], next = null, u = units || F.units();
     flightsOf(hass, id).forEach(function (f) {
       var k = idOf(f), rec = k && recs[k];
       if (!rec || rec.movedAt == null) return;
@@ -639,12 +641,13 @@
     if (next !== null) arm(next, now);
     return out;
   };
-  F.airborne = function (hass, pin, now) {
+  // units (optional) overrides the saved ones: the Studio's draft in a preview. Only the formatting changes, never the rule.
+  F.airborne = function (hass, pin, now, units) {
     if (!hass) return [];
     now = now == null ? Date.now() : now;
     var r = F.resolve(hass, pin);
     if (r.state !== 'pinned' && r.state !== 'auto') return [];
-    return airborneOf(hass, r.id, now);
+    return airborneOf(hass, r.id, now, units);
   };
   // One flight of one source, by its FR24 ID, if it qualifies now (the popup's and a row's check). Same rule as the tile.
   F.flight = function (hass, src, key, now) {
@@ -766,6 +769,13 @@
       });
     });
     return out;
+  };
+  // The timestamps as rows [label, text] for the details (departure, then arrival); labels are the German words to translate.
+  F.timeRows = function (hass, f, tzOn) {
+    var tm = F.times(hass, f, tzOn), rows = [];
+    tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
+    tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
+    return rows;
   };
   var estimateOf = function (hass, f) {
     var hit = F.times(hass, f, F.tz()).arr.filter(function (x) { return x.kind === 'estimated'; })[0];
@@ -1003,6 +1013,12 @@
     return [airport(f, side), str(f['airport_' + side + '_name']) || str(o.name), term ? tr('Terminal') + ' ' + term : '']
       .filter(Boolean).join(' · ');
   };
+  // The identity and the airports of one entry, shared by the popup and the screensaver: '' for a missing value.
+  F.details = function (f) {
+    f = f || {};
+    return { airline: str(f.airline_short) || str(f.airline), model: str(f.aircraft_model), registration: str(f.aircraft_registration),
+      callsign: str(f.callsign), origin: place(f, 'origin'), destination: place(f, 'destination') };
+  };
   // A plate of label and value rows; a row without a value is left out, and no rows means no plate (no blank section).
   var pairs = function (rows) {
     var ok = rows.filter(function (x) { return x[1]; });
@@ -1039,16 +1055,11 @@
     }
     if (part === 'fmove') return pairs([[tr('Höhe'), r.altitude], [tr('Geschwindigkeit über Grund'), r.speed],
       [tr('Vertikalgeschwindigkeit'), r.vspeed], [tr('Kurs'), r.heading]]);
-    if (part === 'fair') return pairs([[tr('Fluggesellschaft'), str(f.airline_short) || str(f.airline)], [tr('Flugzeugmodell'), str(f.aircraft_model)],
-      [tr('Registrierung'), str(f.aircraft_registration)], [tr('Rufzeichen'), str(f.callsign)]]);
-    if (part === 'fplaces') return pairs([[tr('Abflug'), place(f, 'origin')], [tr('Ankunft'), place(f, 'destination')]]);
-    if (part === 'ftimes') {
-      // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
-      var tm = F.times(h, f, F.tz()), rows = [];
-      tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
-      tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
-      return pairs(rows);
-    }
+    if (part === 'fair') { var d = F.details(f); return pairs([[tr('Fluggesellschaft'), d.airline], [tr('Flugzeugmodell'), d.model],
+      [tr('Registrierung'), d.registration], [tr('Rufzeichen'), d.callsign]]); }
+    if (part === 'fplaces') { var p = F.details(f); return pairs([[tr('Abflug'), p.origin], [tr('Ankunft'), p.destination]]); }
+    // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
+    if (part === 'ftimes') return pairs(F.timeRows(h, f, F.tz()));
     return '';
   };
   // A tile row opens its flight's popup through the card opener: the popup template gets the source and the FR24 ID.
