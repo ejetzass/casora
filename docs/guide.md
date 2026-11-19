@@ -12,6 +12,7 @@ Everything the [README](../README.md) leaves out: setting up, the Studio, moving
 - [Moving from Hemma](#moving-from-hemma)
 - [Removing Hemma](#removing-hemma)
 - [Using the dashboard](#using-the-dashboard)
+- [Tracked flights (FlightRadar24)](#tracked-flights-flightradar24)
 - [Community cards](#community-cards)
 - [When a device is missing](#when-a-device-is-missing)
 - [Rewind: going back to an earlier version](#rewind-going-back-to-an-earlier-version)
@@ -151,6 +152,44 @@ Casora replaces Hemma. Once your dashboards have moved, Hemma is no longer neede
 - **Casora pages instead of Home Assistant's dialog.** A reading (temperature, power …) opens its chart with 24 h, 7 days or 30 days, highest, lowest and average value. A door or window contact shows when it was open. A device opens its device page with everything that belongs to it and "Open in Home Assistant" for the rest. All of them have ‹ back to where you came from.
 - **Ask first.** Unlock, "Open door" and the alarm always ask before they act; codes are asked masked. Any other tile can ask too: turn it on in the Studio in the tile's settings under **Visibility, ask first & hold**.
 - **The bell** collects what needs attention, such as open doors, low batteries, finished appliances and updates. It also shows Home Assistant's notifications, so a script or automation can put a message there with `persistent_notification.create`; Home Assistant's own notices appear too. Tap one to read the whole message and delete it; swiping it away in the bell dismisses it in Home Assistant as well. With the Pulse integration, its problems show up in the bell too. What the bell shows is set per dashboard under **Settings › Bell & messages › Bell on this dashboard** (switch off **Home Assistant notifications** there if you don't want them).
+
+## Tracked flights (FlightRadar24)
+
+Casora can show the flights you track in the [FlightRadar24](https://github.com/AlexandrErohin/home-assistant-flightradar24) integration on a Flights tile, in its popup and in the screensaver. It needs nothing else: Home Assistant, Casora and FlightRadar24 (tested with FlightRadar24 2.5.0). No calendar, template sensor, helper or script is required.
+
+**Setup**
+
+1. Install the FlightRadar24 integration and add its tracked-flights part in Home Assistant. It creates the sensor that lists your tracked flights, the two text fields for adding and removing a flight, and its switch for data fetching.
+2. In Casora Studio, open the **Tracked flights** setting. If FlightRadar24 is the only source, Casora selects it by itself. If there are several FlightRadar24 instances, pick one; a source you picked that disappears is not replaced by another one, so nothing shows until you pick again. Casora finds the parts by their role in the integration, not by their names, so renamed entities keep working.
+3. Choose the units under the same setting: altitude in feet (default) or metres, speed in knots (default), km/h or mph, vertical speed in ft/min (default) or m/s. Times show the departure and arrival airport's local time and Home Assistant's local time. A time zone suffix is off by default and can be switched on there.
+
+**Adding and stopping flights**
+
+- **Manage flights** is a tile of its own, not part of the Flights tile. Add it in the Studio under **Add a tile** (it is offered once a source exists), then tap it to open the list. Type a flight number, a callsign or a registration. Upper and lower case and spaces around the text do not matter. **Add** sends it to FlightRadar24. Casora says *Flight is tracked* once the flight appears in the list. If it does not appear within about 30 seconds, Casora says *Addition not confirmed*: check the tracked list before you try again. Casora never retries by itself.
+- The whole list is in the same window, including flights that are scheduled or on the ground. Each row has **Stop tracking**. The explanation next to it says what happens: FlightRadar24 stops tracking the flight and may stop notifications attached to it; an automation can add the flight again later. Casora sends the flight's number, callsign or registration to the source's remove field and waits until the row has gone. If that identifier belongs to more than one entry, Casora sends nothing.
+- **Stop tracking** is the only way to take a flight off the list. Hiding a tile does not stop tracking. FlightRadar24 may also remove old entries by itself; they simply disappear from the list.
+
+**When a flight is shown**
+
+Casora shows a flight on the tile and in the screensaver only when it is in the air and its position has changed while Casora was watching. The first position Casora sees after the dashboard connects, or after a browser reload, is only a starting point: the flight appears once it moves. A flight that lands disappears at once. A flight whose position has not changed for ten minutes disappears too, even if FlightRadar24 keeps updating its details. Scheduled and grounded flights are never shown as airborne.
+
+**Optional automations**
+
+Your own automations may use the same tracked list, for example to notify you when a flight is added. They are optional, and Casora does not read, call or depend on them. Because they share the list, stopping a flight in Casora can change what they see, and they can add the flight again. Casora does not edit them.
+
+**Troubleshooting**
+
+| Message | What to do |
+|---|---|
+| *Select a tracked-flights source* | More than one FlightRadar24 source exists. Pick one in the Tracked flights setting. |
+| *Source unavailable* | The chosen source is missing or unavailable. Check the FlightRadar24 integration. |
+| *No field found to add a flight* / *No control found to stop tracking* | The integration does not show the add or remove field for this source. Check that it is the tracked-flights part of FlightRadar24 and that its entities are enabled. |
+| *The add field is not available* / *The control to stop tracking is not available* | The field exists but is unavailable. Check FlightRadar24 and Home Assistant's entity state. |
+| *Addition not confirmed* / *Removal not confirmed* | Look at the tracked list first. A later list update can still confirm it; only then try again. |
+| *Adding failed* / *Stopping failed* | Home Assistant returned an error for the command. Check your permissions and the Home Assistant log, then try again. |
+| *No tracked flights* | Nothing is in the air with a changing position yet. Wait for a movement, or check the list in Manage flights. |
+
+Missing details are left out rather than shown as zero: no estimated arrival means no arrival line, and no airport positions means no progress line. A map that cannot load does not hide the text.
 
 ## Community cards
 
