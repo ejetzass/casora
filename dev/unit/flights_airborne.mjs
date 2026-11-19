@@ -274,7 +274,10 @@ hass.source("sensor.a", nineAt(0.05));
 const tileMany = F.liveHtml(hass, '', T0 + MIN);
 assert.equal((tileMany.match(/data-flights-row data-flights-src/g) || []).length, 9, 'all nine rows are listed, none cut off');
 assert.match(tileMany, /overflow-y:auto/, 'the rows scroll inside the tile');
-assert.match(tileMany, /max-height:/, 'the scroll area has a height limit');
+assert.match(tileMany, /height:100%;max-height:100%;overflow-y:auto/, 'the flight list fills and scrolls within its allotted card space');
+assert.match(tileMany, /#container\{[^}]*height:100%[^}]*grid-template-rows:min-content min-content minmax\(0,1fr\)/, 'the desktop grid limits the list to the card');
+assert.match(tileMany, /@media[^}]*#container\{grid-template-rows:min-content minmax\(0,1fr\)/, 'the phone grid also limits the list to the card');
+assert.match(tileMany, /#state\{[^}]*min-height:0[^}]*overflow:hidden/, 'flight rows cannot paint over neighboring tiles');
 assert.match(tileMany, /\[data-flights-row\]:focus-visible[^{]*\{[^}]*outline:\s*2px/, 'a row shows a 2px focus ring');
 assert.doesNotMatch(tileMany, /opacity:\.75/, 'secondary text keeps its contrast');
 
