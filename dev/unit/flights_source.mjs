@@ -1,7 +1,7 @@
 // Tracked flights, shared source boundary (49-flights.js): which FlightRadar24 source sensor is found, how the choice
 // resolves, what the Manage flights list shows, and that none of it writes to tracking.
 //   node dev/unit/flights_source.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#present,sources,resolve,entries,choices,controls,tile,popup
+// @deckt: custom_components/casora/scripts/local/49-flights.js#present,sources,resolve,entries,choices,controls,tile,popup,sec
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -137,7 +137,7 @@ h.add('text.irgendwas', { dev: 'd1', key: 'add_track', cat: 'config', state: '' 
 h.add('text.anderes', { dev: 'd1', key: 'remove_track', cat: 'config', state: '' });
 h.add('switch.sw', { dev: 'd1', key: 'scanning', cat: 'config', state: 'on' });
 h.add('text.fremd', { dev: 'd2', key: 'add_track', cat: 'config', state: '' });
-eq({ ...F.controls(h, 'sensor.a') }, { source: 'sensor.a', add: 'text.irgendwas', remove: 'text.anderes', scanning: 'switch.sw', missing: [] });
+eq({ ...F.controls(h, 'sensor.a') }, { source: 'sensor.a', add: 'text.irgendwas', remove: 'text.anderes', scanning: 'switch.sw', missing: [], ambiguous: [] });
 h = house();
 h.add('sensor.a', tracked(null, 'd1', []));
 h.add('text.fremd', { dev: 'd2', key: 'add_track', cat: 'config', state: '' });
@@ -178,10 +178,13 @@ const UI = {
 };
 ctx.window._casoraUI = UI;
 const html = (hass, pin, part) => F.sec(part, { pin }, hass.states, hass);
-assert.match(html(h, 'sensor.a', 'list'), /QQ100~Testair · AAA → BBB/);
-// Entity text goes through the shared rows (they escape), and flight numbers sharing a prefix keep their full names.
-assert.match(html(h, 'sensor.a', 'list'), /<group keep /);
-assert.ok(!/<[a-z]/.test(html(h, 'sensor.a', 'list').replace(/<\/?(group|line|empty|stage)[^>]*>/g, '')), 'no markup of its own around entity text');
+assert.match(html(h, 'sensor.a', 'list'), />QQ100<\/div>/, 'the list shows the flight number');
+assert.match(html(h, 'sensor.a', 'list'), /Testair · AAA → BBB/, 'and the route');
+assert.match(html(h, 'sensor.a', 'list'), /data-flights-row="a"/, 'each row carries its FR24 ID for the Stop button');
+// Entity text is escaped in the rows, and flight numbers sharing a prefix keep their full names.
+h.states['sensor.a'].attributes.flights = [{ id: 'x', flight_number: '<i>XY</i>', tracked_type: 'live', on_ground: 0 }];
+assert.ok(!/<i>XY/.test(html(h, 'sensor.a', 'list')), 'entity text is escaped');
+assert.match(html(h, 'sensor.a', 'list'), /&lt;i&gt;XY/);
 h.states['sensor.a'].attributes.flights = [];
 assert.match(html(h, 'sensor.a', 'list'), /Keine verfolgten Flüge/, 'empty list: stated, popup still reachable');
 assert.match(html(h, 'sensor.a', 'stage'), /Keine verfolgten Flüge/);
@@ -203,7 +206,12 @@ assert.equal(F.pinned(null), '');
 
 // ── Nothing above wrote to tracking ──
 assert.equal(calls.length, 0, 'discovery, resolution, lists and popup never call a service');
-assert.ok(!/callService|\.callWS|text\.set_value/.test(read('custom_components/casora/scripts/local/49-flights.js')), 'this slice has no write path');
+// Two write paths only: the Add button's submit and a row's Stop button (flights_add.mjs and flights_stop.mjs cover that
+// rendering never reaches them).
+const src49 = read('custom_components/casora/scripts/local/49-flights.js');
+assert.equal((src49.match(/callService\(/g) || []).length, 2, 'exactly two service calls in the module: add and stop');
+assert.equal((src49.match(/text', 'set_value'/g) || []).length, 2, 'both calls are the text set_value');
+assert.ok(!/\.callWS/.test(src49), 'no websocket writes');
 
 // ── Wiring ──
 const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json'));
