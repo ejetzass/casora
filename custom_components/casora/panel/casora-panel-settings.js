@@ -81,10 +81,10 @@
           kw: "tablet inaktivität zurück zuhause idle kiosk wand popup popups schließen schliessen sluiten close" },
         // FlightRadar24's tracked flights: the one source for every flight display (scripts/local/49-flights.js). Only drawn
         // where FlightRadar24 is (or a pick is saved); a draft like every setting.
-        { k: "flights", sec: "General", sub: "chrome", keys: ["casora_flights_source"], title: "Tracked flights",
-          plain: "The FlightRadar24 source that every flight display on this dashboard reads.",
+        { k: "flights", sec: "General", sub: "chrome", keys: ["casora_flights_source", "casora_flights_altitude_unit", "casora_flights_speed_unit", "casora_flights_vspeed_unit", "casora_flights_timezones"], title: "Tracked flights",
+          plain: "The FlightRadar24 source that every flight display on this dashboard reads, and the units its tile and popups show.",
           empty: "Appears once FlightRadar24 is installed.",
-          kw: "flüge flug flugzeug flightradar24 flightradar verfolgt quelle flights tracked source aircraft" },
+          kw: "flüge flug flugzeug flightradar24 flightradar verfolgt quelle flights tracked source aircraft höhe geschwindigkeit steigrate einheit meter fuß knoten units altitude speed" },
         { k: "dialogs", sec: "General", sub: "dialogs", title: "Home Assistant detail windows", adv: true,
           plain: "What the windows of Home Assistant itself show: logbook, history, attributes.",
           kw: "logbuch verlauf attribute brotkrumen lichtaktionen dialog mehr infos kiosk-mode" },

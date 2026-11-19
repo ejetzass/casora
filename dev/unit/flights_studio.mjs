@@ -1,7 +1,7 @@
 // Studio side of the tracked flights source: the setting is a Dashboard-scope draft, offered and worded from what the
 // house has, and the Manage flights tile is offered only where a source exists.
 //   node dev/unit/flights_studio.mjs
-// @deckt: custom_components/casora/panel/casora-panel.js#SECTIONS
+// @deckt: custom_components/casora/panel/casora-panel.js#SECTIONS,casora_flights_altitude_unit
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { loadPanel } from './lib/testhaus.mjs';
@@ -12,6 +12,21 @@ const field = I.SECTIONS.find((s) => s.label === 'General').fields.find((f) => f
 assert.ok(field, 'the setting is a field of the dashboard settings');
 assert.equal(field.scope, 'dashboard', 'Dashboard settings scope: every room carries it, new rooms inherit it');
 assert.equal(field.type, 'select');
+// Units of the flight displays: three Dashboard-scope selects in the same section, defaults = the source units.
+const UNITS = { casora_flights_altitude_unit: ['', 'm', 'km'], casora_flights_speed_unit: ['', 'kmh', 'mph'], casora_flights_vspeed_unit: ['', 'ms'] };
+const flightsSection = I.SECTIONS.find((s) => s.label === 'General').fields.filter((f) => f.key === 'casora_flights_source' || f.key === 'casora_flights_timezones' || UNITS[f.key]);
+assert.deepEqual(flightsSection.map((f) => f.key), ['casora_flights_source', 'casora_flights_altitude_unit', 'casora_flights_speed_unit', 'casora_flights_vspeed_unit', 'casora_flights_timezones']);
+// The zone-name switch: Dashboard scope, off by default, a draft like the units (Save or Discard).
+const tzField = flightsSection.find((f) => f.key === 'casora_flights_timezones');
+assert.equal(tzField.type, 'bool');
+assert.equal(tzField.boolDefault, false, 'Show timezones is off by default');
+assert.equal(tzField.scope, 'dashboard', 'Show timezones: Dashboard scope, saved with the other settings');
+for (const [key, opts] of Object.entries(UNITS)) {
+  const f = I.SECTIONS.find((s) => s.label === 'General').fields.find((x) => x.key === key);
+  assert.equal(f.scope, 'dashboard', key + ': Dashboard scope, saved with the other settings');
+  assert.equal(f.type, 'select');
+  assert.deepEqual(f.options, opts, key + ': the source unit is the empty value');
+}
 const tile = I.TILE_TYPES.find((t) => t.id === 'casora_flights');
 assert.ok(tile && tile.noEntity, 'Manage flights is a tile that needs no entity');
 
@@ -159,4 +174,7 @@ if (process.env.CASORA_FLIGHT_STUB_REGISTRY) {
     { text: 'FlightRadar24 is missing a part Casora needs: {name}', name: 'source sensor' });
   console.log('ok flights_studio stub registry');
 }
+const unitField = I.SECTIONS.find((s) => s.label === 'General').fields.find((x) => x.key === 'casora_flights_altitude_unit');
+assert.equal(unitField.when({}, hass([])), false, 'units: only where FlightRadar24 is');
+assert.equal(unitField.when({}, one), true, 'units: shown with a source');
 console.log('ok flights_studio');
