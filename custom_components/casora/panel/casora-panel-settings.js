@@ -1669,7 +1669,7 @@
       chips.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;";
       const paint = () => {
         chips.textContent = "";
-        [{ id: "mix", label: "One after the other" }].concat(SV.KINDS).forEach((k) => {
+        [{ id: "mix", label: "One after the other" }].concat(SV.offered ? SV.offered(this._hass) : SV.KINDS).forEach((k) => {
           const c = btn(t(k.label), () => {
             if (show === k.id) return;
             show = k.id;
@@ -1852,7 +1852,7 @@
         lists.textContent = "";
         const hass = this._hass;
         if (show === "mix") {
-          pickList("casora_screensaver_mix", SV.KINDS.map((k) => ({ id: k.id, label: k.label, icon: k.icon, tone: k.tone, sub: k.needs })), "Take turns",
+          pickList("casora_screensaver_mix", (SV.offered ? SV.offered(hass) : SV.KINDS).map((k) => ({ id: k.id, label: k.label, icon: k.icon, tone: k.tone, sub: k.needs })), "Take turns",
             "All of them take turns, five minutes each. Tap one to leave it out. One with nothing to show right now is skipped.",
             "Only the ones picked here take turns, five minutes each. One with nothing to show right now is skipped.", "");
         } else if (show === "kameras" && typeof SV.cameraChoices === "function") {

@@ -3,8 +3,9 @@
 // back. Set per dashboard in the Studio (Settings › Screensaver): casora_screensaver (minutes, empty = off),
 // casora_screensaver_kind (which one, „mix“ = one after the other) and the ones listed below. Like
 // casora_idle_home they ride in the hero card of each view.
-// Twelve screensavers: sky, drawn landscapes, room photos, word clock, weather, day line, week, music, energy flow,
-// the house at rest, cameras and a month calendar. Every one is drawn from what the house knows (time, sun, weather and its forecast, calendars,
+// Thirteen screensavers: sky, drawn landscapes, room photos, word clock, weather, day line, week, music, energy flow,
+// the house at rest, cameras, a month calendar and the tracked flights (a map and the details, one flight per turn;
+// only with FlightRadar24, the shared rule of 49-flights.js). Every one is drawn from what the house knows (time, sun, weather and its forecast, calendars,
 // waste dates, the playing media player, the energy settings, the bell, the dashboard's room photos); nothing is
 // loaded from another server. One that has nothing to show (no music playing, energy not set up) shows the sky; in the
 // alternation („mix“, the kinds picked in casora_screensaver_mix) it is skipped instead. The same drawing serves the Studio's preview (mount into any box): all sizes are
@@ -31,6 +32,7 @@
 (function () {
   if (window._casoraSaver) return;
   var S = window._casoraSaver = {};
+  var TURN_MS = 300000; // „mix“: one kind after the other, five minutes each (also the turn of the flights)
   var esc = window.casoraEsc || function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   // Inside a CSS url("…"): quote, backslash and line breaks as CSS escapes (an address never has them).
   var cssUrl = function (u) { return String(u == null ? '' : u).replace(/["\\\n\r\f]/g, function (c) { return '\\' + c.charCodeAt(0).toString(16) + ' '; }); };
@@ -54,6 +56,7 @@
     { id: 'energie', label: 'Energy flow', icon: 'mdi:lightning-bolt', tone: '#E8B04A', needs: 'Only with energy set up' },
     { id: 'ruhe', label: 'House at rest', icon: 'mdi:sofa-outline', tone: '#4E9E95' },
     { id: 'kameras', label: 'Cameras', icon: 'mdi:cctv', tone: '#5B8FC9', needs: 'Only with cameras' },
+    { id: 'flights', label: 'Flights', icon: 'mdi:airplane', tone: '#3F9CC0', needs: 'Only with tracked flights' },
     { id: 'kalender', label: 'Calendar', icon: 'mdi:calendar-month-outline', tone: '#DE8A4E' },
   ];
 
@@ -529,7 +532,8 @@
   // ── What alternates ──────────────────────────────────────────────────────
   var truthy = function (v) { return v === true || v === 'true' || v === 1 || v === '1'; };
   S.on = truthy;
-  // The kinds picked in the Studio for „mix“ (casora_screensaver_mix); none picked = all (as before).
+  // The kinds picked in the Studio for „mix“ (casora_screensaver_mix); none picked = all the kinds. A kind with nothing
+  // to show is left out by S.pool.
   S.selected = function (vars) {
     var ids = S.KINDS.map(function (k) { return k.id; }), pick = vars && vars.casora_screensaver_mix;
     var mine = Array.isArray(pick) ? ids.filter(function (id) { return pick.indexOf(id) > -1; }) : [];
@@ -544,7 +548,42 @@
     if (id === 'energie') return !!S.energy(hass);
     if (id === 'kameras') return S.cameras(hass, vars.casora_screensaver_cameras).length > 0;
     if (id === 'fotos') return !!(c.rooms && c.rooms.length);
+    if (id === 'flights') return S.flightRows(hass, vars, c.now).length > 0;
     return true;
+  };
+  // ── Flights: which flights qualify is decided by the shared rule (49-flights.js); here only the turn picks one ─────────
+  var FL = function () { return window._casoraFlights || null; };
+  var flightUnits = function (vars) {
+    return { altitude: vars.casora_flights_altitude_unit || '', speed: vars.casora_flights_speed_unit || '', vspeed: vars.casora_flights_vspeed_unit || '' };
+  };
+  // The flights on show now: the selected source's qualifying flights, in source order, with the saved draft's units.
+  S.flightRows = function (hass, vars, now) {
+    var F = FL();
+    if (!F || !hass) return [];
+    return F.airborne(hass, (vars && vars.casora_flights_source) || '', now == null ? Date.now() : +now, flightUnits(vars || {}));
+  };
+  // The flight settings of the open dashboard: the phone takes the ones it has no value for from its desktop twin
+  // (49-flights.js F.setting). Only for the live dashboard; a Studio preview keeps the draft's own values.
+  var FLIGHT_KEYS = ['casora_flights_source', 'casora_flights_altitude_unit', 'casora_flights_speed_unit', 'casora_flights_vspeed_unit', 'casora_flights_timezones'];
+  S.liveFlights = function (vars) {
+    var F = FL();
+    if (!F || !F.setting) return vars;
+    var out = Object.assign({}, vars);
+    FLIGHT_KEYS.forEach(function (k) { var v = F.setting(k); if (v) out[k] = v; else delete out[k]; });
+    return out;
+  };
+  // The kinds the Studio offers: Flights only where FlightRadar24 is (a saved Flights kind without it shows the sky).
+  S.offered = function (hass) {
+    var F = FL();
+    return S.KINDS.filter(function (k) { return k.id !== 'flights' || !!(F && hass && F.present(hass)); });
+  };
+  // The turn of „mix“: five minutes each. A kind's own turn number is the count of its turns so far (the cycle of the
+  // pool), so the flights step through every flight and both layouts, one per turn. A single kind has no turn: 0.
+  S.turnOf = function (kind, now, pool) {
+    if (kind !== 'mix') return 0;
+    var slot = Math.floor(+now / TURN_MS);
+    var n = Array.isArray(pool) && pool.length ? pool.length : S.KINDS.length;
+    return Math.floor(slot / n);
   };
   // The kinds that take turns: the picked ones the house has something for; never empty (then the sky).
   S.pool = function (vars, has) {
@@ -791,6 +830,19 @@
     + '.cs-sv .cs-kl{display:flex;flex-direction:column;gap:' + u(3) + ';min-width:0;}'
     + '.cs-sv .cs-ke{display:flex;align-items:center;gap:' + u(8) + ';min-width:0;font-size:' + u(19.5) + ';font-weight:600;line-height:1.2;}'
     + '.cs-sv .cs-ke i{flex:none;width:' + u(10) + ';height:' + u(10) + ';border-radius:50%;background:var(--cs-c);}'
+    // Flights: the route picture between the head and the figures; the details as two columns of rows.
+    + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
+    + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
+    + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
+    + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.45);stroke-width:' + u(2) + ';}'
+    + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
+    + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
+    + '.cs-sv .cs-fl-ac{fill:#FFCC00;stroke:#070D1A;stroke-width:' + u(2) + ';}'
+    + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
+    + '.cs-sv .cs-fl-eta{bottom:' + u(72) + ';font-size:' + u(24) + ';font-weight:500;color:rgba(246,239,230,.8);}'
+    + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
+    + '.cs-sv .cs-fl-row{display:flex;justify-content:space-between;align-items:baseline;gap:' + u(16) + ';font-size:' + u(22) + ';padding-top:' + u(10) + ';border-top:1px solid rgba(246,239,230,.18);}'
+    + '.cs-sv .cs-fl-row span{opacity:.7;flex:none;}.cs-sv .cs-fl-row b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;}'
     + '.cs-sv .cs-ke em{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}'
     + '.cs-sv .cs-kmore{font-size:' + u(19) + ';font-weight:700;color:var(--ink3);padding-left:' + u(18) + ';}'
     // Two weeks: the span as the big thing, as large as its length leaves room beside the clock (--cs-res: what the
@@ -1281,6 +1333,67 @@
     }
     return html + '</div></div>';
   };
+  // ── Flights: a map and the details, one flight per turn ─────────────────────────────────────────────────────────────
+  // In „mix“, turn t (see S.turnOf) shows flight t mod n; the layout changes once every n turns, so each flight gets the
+  // map and the details in turn. A single Flights kind has turn 0: the first flight, always on the map. No timer or
+  // count of its own: the native turns and the native update do the rest.
+  // The route is plain shapes from the view's points (F.mapView): no tile, image or link is loaded.
+  S.routeSvg = function (v) {
+    if (!v || !v.cur) return '';
+    var ref = v.cur[1];
+    // The longitude nearest to the aircraft's, so a route over the dateline stays one picture.
+    var P = function (p) { return [p[0], ref + ((((p[1] - ref) % 360) + 540) % 360 - 180)]; };
+    var pts = [v.cur].concat(v.trail || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : []).map(P);
+    var la = pts.map(function (p) { return p[0]; }), lo = pts.map(function (p) { return p[1]; });
+    var lo0 = Math.min.apply(null, lo), lo1 = Math.max.apply(null, lo), la0 = Math.min.apply(null, la), la1 = Math.max.apply(null, la);
+    var padA = Math.max(0.3, (la1 - la0) * 0.15), padO = Math.max(0.3, (lo1 - lo0) * 0.15);
+    var s0 = la0 - padA, s1 = la1 + padA, w0 = lo0 - padO, w1 = lo1 + padO;
+    var k = Math.cos((s0 + s1) / 2 * Math.PI / 180); // longitude degrees shrink towards the poles
+    var W = (w1 - w0) * k, H = s1 - s0, r = Math.max(W, H) / 60;
+    // Picture coordinates of one [lat, lon] point, as text (escaped where they are written).
+    var X = function (p) { return ((P(p)[1] - w0) * k); }, Y = function (p) { return (s1 - P(p)[0]); };
+    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(W.toFixed(2)) + ' ' + esc(H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    if (v.origin && v.destination) {
+      svgHtml += '<line class="cs-fl-route" x1="' + esc(X(v.origin).toFixed(2)) + '" y1="' + esc(Y(v.origin).toFixed(2))
+        + '" x2="' + esc(X(v.destination).toFixed(2)) + '" y2="' + esc(Y(v.destination).toFixed(2))
+        + '" stroke-dasharray="' + esc((r * 0.6).toFixed(2)) + ' ' + esc((r * 0.6).toFixed(2)) + '"/>';
+    }
+    if (v.trail && v.trail.length > 1) {
+      svgHtml += '<polyline class="cs-fl-trail" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
+        + esc(v.trail.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')) + '"/>';
+    }
+    [v.origin, v.destination].forEach(function (p) {
+      if (!p) return;
+      svgHtml += '<circle class="cs-fl-ap" cx="' + esc(X(p).toFixed(2)) + '" cy="' + esc(Y(p).toFixed(2)) + '" r="' + esc((r * 0.45).toFixed(2)) + '"/>';
+    });
+    svgHtml += '<path class="cs-fl-ac" transform="translate(' + esc(X(v.cur).toFixed(2)) + ' ' + esc(Y(v.cur).toFixed(2)) + ') rotate(' + esc(v.heading || 0)
+      + ')" d="M0 ' + esc((-r * 1.3).toFixed(2)) + ' L' + esc((r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' L0 ' + esc((r * 0.4).toFixed(2))
+      + ' L' + esc((-r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' Z"/>';
+    return svgHtml + '</svg>';
+  };
+  DRAW.flights = function (ctx) {
+    var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
+    var r = rows[((t % n) + n) % n], detail = Math.floor(t / n) % 2 === 1;
+    var f = r.entry, v = F ? F.mapView(ctx.hass, r.src, r.key, +ctx.now) : null;
+    var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
+    if (!detail) {
+      var eta = F ? F.times(ctx.hass, f, tzOn).arr.filter(function (x) { return x.kind === 'estimated'; })[0] : null;
+      var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + v.progress + ' %' : '';
+      var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
+      bodyHtml = (v ? '<div class="cs-fl-map">' + S.routeSvg(v) + '</div>' : '')
+        + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
+        + (eta ? '<div class="cs-fl-stat cs-fl-eta">' + esc(T('Voraussichtliche Ankunft')) + ': ' + esc(eta.text) + '</div>' : '');
+    } else {
+      var items = [[T('Fluggesellschaft'), d.airline], [T('Flugzeugmodell'), d.model], [T('Registrierung'), d.registration], [T('Rufzeichen'), d.callsign],
+        [T('Kurs'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
+      // The timestamps as the popup has them (F.timeRows): the side (Abflug or Ankunft), then the kind and the time.
+      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), x[1]]; }) : []);
+      bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {
+        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
+      }).join('') + '</div>';
+    }
+    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>';
+  };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
   var TINT_KINDS = ['wort', 'wetter', 'linie', 'woche', 'energie', 'ruhe', 'kalender'];
   S.TINT_KINDS = TINT_KINDS;
@@ -1334,6 +1447,7 @@
       hourly: o.hourly !== undefined ? o.hourly : need(['wetter']) ? S.forecast(hass, vars.weather_entity, 'hourly') : [],
       daily: o.daily !== undefined ? o.daily : need(['wetter', 'woche']) ? S.forecast(hass, vars.weather_entity, 'daily') : [],
       events: events,
+      flights: o.flights !== undefined ? o.flights : need(['flights']) ? S.flightRows(hass, vars, now) : [],
       bins: o.bins !== undefined ? o.bins : need(['woche']) ? S.waste(hass) : [],
       media: media,
       energy: o.energy !== undefined ? o.energy : need(['energie']) ? S.energy(hass) : null,
@@ -1346,7 +1460,7 @@
     var ids = S.KINDS.map(function (k) { return k.id; });
     if (kind === 'mix') {
       var list = Array.isArray(pool) && pool.length ? pool : ids;
-      return list[Math.floor(+now / 300000) % list.length];
+      return list[Math.floor(+now / TURN_MS) % list.length];
     }
     return ids.indexOf(kind) === -1 ? ids[0] : kind;
   };
@@ -1357,7 +1471,8 @@
     var k = S.kindAt(kind, ctx.now, pool);
     h12 = use12(ctx.hass, ctx.vars);
     // Nothing to show (no weather entity, nothing playing, energy not set up, no camera): the sky, with its own look.
-    if ((k === 'wetter' && !ctx.wx) || (k === 'musik' && !ctx.media) || (k === 'energie' && !ctx.energy) || (k === 'kameras' && !(ctx.cams && ctx.cams.length))) k = 'himmel';
+    if ((k === 'wetter' && !ctx.wx) || (k === 'musik' && !ctx.media) || (k === 'energie' && !ctx.energy) || (k === 'kameras' && !(ctx.cams && ctx.cams.length))
+      || (k === 'flights' && !(ctx.flights && ctx.flights.length))) k = 'himmel';
     // The screensavers with a ground of their own are light by day and deep by night (and with a dark theme).
     var dark = ctx.dark || (NIGHT_KINDS.indexOf(k) > -1 && isNight(ctx));
     var cls = (dark ? ' cs-dark' : '') + (!dark && LIGHT_KINDS.indexOf(k) > -1 ? ' cs-light' : '');
@@ -1410,11 +1525,12 @@
         var rooms = null;
         pool = S.pool(vars, o.sample ? null : function (id) {
           if (id === 'fotos' && !rooms) rooms = S.rooms(base.config, hass, !!(hass && hass.themes && hass.themes.darkMode), { url: base.photoUrl, only: vars.casora_screensaver_photos });
-          return S.has(id, { hass: hass, vars: vars, rooms: rooms });
+          return S.has(id, { hass: hass, vars: vars, rooms: rooms, now: now });
         });
       }
       var k = S.kindAt(want, now, pool);
       var ctx = S.context(Object.assign({}, base, { kind: k }));
+      ctx.turn = S.turnOf(want, now, pool);
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
       api.kind = k;
@@ -1507,7 +1623,8 @@
   S.vars = function (cfg) {
     var out = {}, keys = ['casora_screensaver', 'casora_screensaver_kind', 'casora_screensaver_calendar', 'casora_screensaver_photos', 'casora_screensaver_mix',
       'casora_screensaver_cameras', 'casora_screensaver_calendars', 'casora_screensaver_tint', 'casora_screensaver_wander', 'casora_screensaver_calendar_range', 'weather_entity', 'use_12h',
-      'casora_screensaver_wake', 'casora_screensaver_wake_screen'];
+      'casora_screensaver_wake', 'casora_screensaver_wake_screen',
+      'casora_flights_source', 'casora_flights_altitude_unit', 'casora_flights_speed_unit', 'casora_flights_vspeed_unit', 'casora_flights_timezones'];
     ((cfg && cfg.views) || []).forEach(function (v) {
       var vars = ((((v.cards || [])[0]) || {}).variables) || {};
       keys.forEach(function (k) { if ((out[k] == null || out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) && vars[k] != null && vars[k] !== '') out[k] = vars[k]; });
@@ -1657,7 +1774,7 @@
     }
     // Every five seconds: the cameras' pictures stay fresh (everything else only repaints when it changed).
     live = S.mount(stage, null, { drift: function () { return S.wanders(S.vars(config() || cfg)); }, every: 5000, kind: function () { return S.vars(config() || cfg).casora_screensaver_kind || 'mix'; },
-      context: function () { var c = config() || cfg; return { config: c, vars: S.vars(c) }; } });
+      context: function () { var live = config(), c = live || cfg; return { config: c, vars: live ? S.liveFlights(S.vars(c)) : S.vars(c) }; } });
   };
   S.show = show;
   // A screensaver that is fading out after a wake no longer counts as shown.

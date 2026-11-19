@@ -17,7 +17,7 @@ vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js')
 const S = win._casoraSaver;
 const J = (x) => JSON.parse(JSON.stringify(x));
 const ALL = J(S.KINDS.map((k) => k.id));
-assert.deepEqual(J(ALL), ['himmel', 'land', 'fotos', 'wort', 'wetter', 'linie', 'woche', 'musik', 'energie', 'ruhe', 'kameras', 'kalender']);
+assert.deepEqual(J(ALL), ['himmel', 'land', 'fotos', 'wort', 'wetter', 'linie', 'woche', 'musik', 'energie', 'ruhe', 'kameras', 'flights', 'kalender']);
 assert.ok(S.KINDS.every((k) => /^mdi:/.test(k.icon) && /^#[0-9A-F]{6}$/i.test(k.tone)), 'every kind has an icon and a tone for the Studio list');
 
 // kindAt: five minutes each, over the pool; without a pool over all (as before).
@@ -28,9 +28,13 @@ assert.equal(S.kindAt('mix', slot(7), []), ALL[7], 'empty pool: all');
 assert.equal(S.kindAt('wort', slot(3), ['ruhe']), 'wort', 'a single kind ignores the pool');
 assert.equal(S.kindAt('kalender', new Date()), 'kalender');
 
-// selected: what the Studio picked, in the order of KINDS; nothing or nonsense = all.
-assert.deepEqual(J(S.selected({})), ALL, 'default: all (as before)');
+// selected: what the Studio picked, in the order of KINDS; nothing or nonsense = all, Flights included (it is on by
+// default like the others; with nothing to show it is skipped in the pool, see screensaver_flights.mjs).
+assert.deepEqual(J(S.selected({})), ALL, 'default: all kinds, Flights included');
 assert.deepEqual(J(S.selected({ casora_screensaver_mix: [] })), ALL);
+assert.deepEqual(J(S.selected({ casora_screensaver_mix: ['flights', 'wort'] })), ['wort', 'flights'], 'picked: in KINDS order');
+assert.ok(J(S.pool({}, () => true)).includes('flights'), 'default: Flights takes its turns like the others when the house has flights');
+assert.ok(J(S.pool({ casora_screensaver_mix: ['flights'] }, () => true)).includes('flights'), 'picked Flights takes its turns');
 assert.deepEqual(J(S.selected({ casora_screensaver_mix: ['ruhe', 'wort', 'quatsch'] })), ['wort', 'ruhe'], 'KINDS order, unknown ones dropped');
 assert.deepEqual(J(S.selected({ casora_screensaver_mix: ['quatsch'] })), ALL, 'nothing valid: all');
 assert.deepEqual(J(S.selected({ casora_screensaver_mix: 'wort' })), ALL, 'not a list: all');
@@ -38,7 +42,7 @@ assert.deepEqual(J(S.selected({ casora_screensaver_mix: 'wort' })), ALL, 'not a 
 // has: kinds without data. A house without weather, energy, cameras, photos and with nothing playing.
 const bare = { states: { 'media_player.tv': { state: 'paused', attributes: { media_title: 'X' } } } };
 const has = (h, v = {}, rooms = []) => (id) => S.has(id, { hass: h, vars: v, rooms });
-assert.deepEqual(ALL.filter((id) => !has(bare)(id)), ['fotos', 'wetter', 'musik', 'energie', 'kameras'], 'skipped without data');
+assert.deepEqual(ALL.filter((id) => !has(bare)(id)), ['fotos', 'wetter', 'musik', 'energie', 'kameras', 'flights'], 'skipped without data');
 assert.deepEqual(J(S.pool({}, has(bare))), ['himmel', 'land', 'wort', 'linie', 'woche', 'ruhe', 'kalender'], 'the alternation skips them (no sky stand-in)');
 
 // Music only while something plays (#6): in the alternation as soon as a player plays, gone when it pauses.
@@ -142,4 +146,11 @@ assert.equal(S.sample(ctx({ vars: {}, media: null })).tint, null);
 // The new settings are dashboard settings like the others.
 const vcfg = { views: [{ cards: [{ variables: { casora_screensaver_mix: ['wort'], casora_screensaver_cameras: ['camera.a'], casora_screensaver_calendars: ['calendar.a'], casora_screensaver_tint: false } }] }] };
 assert.deepEqual(J(S.vars(vcfg)), { casora_screensaver_mix: ['wort'], casora_screensaver_cameras: ['camera.a'], casora_screensaver_calendars: ['calendar.a'], casora_screensaver_tint: false });
+
+// The Studio's mix list: every kind is on by default, Flights included; an empty list shows all rows on.
+assert.ok(S.KINDS.every((k) => !('explicit' in k)), 'no kind is opt-in: all are on by default');
+{
+  const studio = read('custom_components/casora/panel/casora-panel-settings.js');
+  assert.ok(!/explicit/.test(studio), 'the mix picker has no opt-in flag left');
+}
 console.log('ok screensaver_mix');
