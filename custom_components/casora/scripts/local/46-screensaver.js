@@ -1182,19 +1182,19 @@
     var X = function (p) { return ((P(p)[1] - w0) * k); }, Y = function (p) { return (s1 - P(p)[0]); };
     var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(W.toFixed(2)) + ' ' + esc(H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
     if (v.origin && v.destination) {
-      svgHtml += '<line class="cs-fl-route" x1="' + esc(X(v.origin).toFixed(2)) + '" y1="' + esc(Y(v.origin).toFixed(2))
+      svgHtml += '<line class="cs-fl-route" vector-effect="non-scaling-stroke" x1="' + esc(X(v.origin).toFixed(2)) + '" y1="' + esc(Y(v.origin).toFixed(2))
         + '" x2="' + esc(X(v.destination).toFixed(2)) + '" y2="' + esc(Y(v.destination).toFixed(2))
         + '" stroke-dasharray="' + esc((r * 0.6).toFixed(2)) + ' ' + esc((r * 0.6).toFixed(2)) + '"/>';
     }
     if (v.trail && v.trail.length > 1) {
-      svgHtml += '<polyline class="cs-fl-trail" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
+      svgHtml += '<polyline class="cs-fl-trail" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
         + esc(v.trail.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')) + '"/>';
     }
     [v.origin, v.destination].forEach(function (p) {
       if (!p) return;
-      svgHtml += '<circle class="cs-fl-ap" cx="' + esc(X(p).toFixed(2)) + '" cy="' + esc(Y(p).toFixed(2)) + '" r="' + esc((r * 0.45).toFixed(2)) + '"/>';
+      svgHtml += '<circle class="cs-fl-ap" vector-effect="non-scaling-stroke" cx="' + esc(X(p).toFixed(2)) + '" cy="' + esc(Y(p).toFixed(2)) + '" r="' + esc((r * 0.45).toFixed(2)) + '"/>';
     });
-    svgHtml += '<path class="cs-fl-ac" transform="translate(' + esc(X(v.cur).toFixed(2)) + ' ' + esc(Y(v.cur).toFixed(2)) + ') rotate(' + esc(v.heading || 0)
+    svgHtml += '<path class="cs-fl-ac" vector-effect="non-scaling-stroke" transform="translate(' + esc(X(v.cur).toFixed(2)) + ' ' + esc(Y(v.cur).toFixed(2)) + ') rotate(' + esc(v.heading || 0)
       + ')" d="M0 ' + esc((-r * 1.3).toFixed(2)) + ' L' + esc((r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' L0 ' + esc((r * 0.4).toFixed(2))
       + ' L' + esc((-r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' Z"/>';
     return svgHtml + '</svg>';
