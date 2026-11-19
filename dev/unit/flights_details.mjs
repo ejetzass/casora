@@ -14,7 +14,7 @@ const T0 = 1800000000000;
 
 // A fresh module per runtime (a page reload). The fake page keeps the window's listeners and the opener's calls.
 let F, ctx, handlers, opened, cfg;
-const runtime = () => {
+const runtime = (extra = {}) => {
   handlers = {}; opened = []; cfg = null;
   ctx = {
     console,
@@ -27,6 +27,7 @@ const runtime = () => {
     _casoraLovelaceCfg: () => cfg,
     casoraLocale: () => 'en-US',
   };
+  Object.assign(ctx, extra);
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(SRC, ctx);
@@ -92,6 +93,10 @@ assert.equal(F.fmt.altitude(31000, 'unknown-unit'), '31,000\u00a0ft', 'an unknow
 ctx.casoraLocale = () => 'de-DE';
 assert.equal(F.fmt.altitude(31000, ''), '31.000\u00a0ft', 'German grouping');
 ctx.casoraLocale = () => 'en-US';
+// The shared number helper (01-basis.js casoraNum) handles the number when the page has it; the local fallback
+// keeps this module loadable on its own (unit tests, no 01-basis.js).
+runtime({ casoraNum: (v, min) => 'N' + Number(v).toFixed(min) });
+assert.equal(F.fmt.speed(450.4, ''), 'N450\u00a0kn', 'the shared casoraNum formats the number');
 
 // The saved units reach the tile and the rows: Studio settings in the hero card's variables (Dashboard scope).
 runtime();
