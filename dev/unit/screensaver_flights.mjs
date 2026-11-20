@@ -281,9 +281,34 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const vb = (h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || []).slice(1).map(Number);
   assert.equal(vb.length, 2, 'a picture with a box');
   assert.ok(vb[0] > 0 && vb[0] < 20, 'the dateline route is drawn across the line, not across the globe: ' + vb);
-  assert.match(h, /<path class="cs-fl-ac"[^>]*vector-effect="non-scaling-stroke"/, 'the aircraft outline stays visible without growing across the saver');
   assert.match(h, /<line class="cs-fl-route"[^>]*vector-effect="non-scaling-stroke"/, 'the route outline does not grow with map scale');
   assert.match(h, /<circle class="cs-fl-ap"[^>]*vector-effect="non-scaling-stroke"/, 'airport outlines do not cover the picture');
+}
+
+// The aircraft marker has one fixed size on every map: a lone flight (a small picture) and a long route (a big one).
+// It is an element in the screen's units, not a part of the picture, so the route's span cannot shrink it.
+{
+  const sizeOf = (h) => (h.match(/<div class="cs-fl-mk"[^>]*style="[^"]*width:([\d.]+)cqmin/) || [])[1];
+  const R1 = runtime();
+  warm(R1);
+  const solo = (step) => [entry('1', step, { airport_origin_latitude: null, airport_origin_longitude: null,
+    airport_destination_latitude: null, airport_destination_longitude: null, coordinates: [] })];
+  move(R1, 1, solo(1));
+  at(R1, SLOT0 + 1000);
+  move(R1, 2, solo(2));
+  const h1 = at(R1, SLOT0 + 2000);
+  const R2 = runtime();
+  warm(R2);
+  const wide = (step) => [entry('1', step, { latitude: 50 + 0.5 * step, longitude: 4 + 9 * step, coordinates: [[40, -20], [45, -10]] })];
+  move(R2, 1, wide(1));
+  at(R2, SLOT0 + 1000);
+  move(R2, 2, wide(2));
+  const h2 = at(R2, SLOT0 + 2000);
+  const lone = sizeOf(h1), route = sizeOf(h2);
+  assert.ok(lone && route, 'both maps draw an aircraft marker with a size in the screen units');
+  assert.equal(lone, route, 'the marker has the same size on a lone flight and on a long route');
+  assert.equal(lone, (40 / 8.2).toFixed(3), 'the marker is u(40) of the saver');
+  assert.ok(!/<path class="cs-fl-ac"/.test(h2), 'the marker is no longer a shape in the picture, which scales with the route');
 }
 
 // Preview: with FlightRadar24 there but nothing qualifying, the preview shows the sky, as at runtime, and no invented flight.

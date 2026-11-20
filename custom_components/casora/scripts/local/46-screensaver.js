@@ -837,7 +837,9 @@
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.45);stroke-width:' + u(2) + ';}'
     + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
-    + '.cs-sv .cs-fl-ac{fill:#FFCC00;stroke:#070D1A;stroke-width:' + u(2) + ';}'
+    + '.cs-sv .cs-fl-pic{position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);}'
+    + '.cs-sv .cs-fl-mk{position:absolute;transform-origin:50% 50%;}.cs-sv .cs-fl-mk svg{width:100%;height:100%;display:block;overflow:visible;}'
+    + '.cs-sv .cs-fl-mk path{fill:#FFCC00;stroke:#070D1A;stroke-width:.14;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-eta{bottom:' + u(72) + ';font-size:' + u(24) + ';font-weight:500;color:rgba(246,239,230,.8);}'
     + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
@@ -1338,8 +1340,10 @@
   // map and the details in turn. A single Flights kind has turn 0: the first flight, always on the map. No timer or
   // count of its own: the native turns and the native update do the rest.
   // The route is plain shapes from the view's points (F.mapView): no tile, image or link is loaded.
-  S.routeSvg = function (v) {
-    if (!v || !v.cur) return '';
+  // The picture's frame: its size in degrees (W × H, longitude shrunk to the latitude) and where one point sits in it.
+  // X and Y give numbers in the picture's units. Null without a position.
+  S.routeFrame = function (v) {
+    if (!v || !v.cur) return null;
     var ref = v.cur[1];
     // The longitude nearest to the aircraft's, so a route over the dateline stays one picture.
     var P = function (p) { return [p[0], ref + ((((p[1] - ref) % 360) + 540) % 360 - 180)]; };
@@ -1349,10 +1353,16 @@
     var padA = Math.max(0.3, (la1 - la0) * 0.15), padO = Math.max(0.3, (lo1 - lo0) * 0.15);
     var s0 = la0 - padA, s1 = la1 + padA, w0 = lo0 - padO, w1 = lo1 + padO;
     var k = Math.cos((s0 + s1) / 2 * Math.PI / 180); // longitude degrees shrink towards the poles
-    var W = (w1 - w0) * k, H = s1 - s0, r = Math.max(W, H) / 60;
-    // Picture coordinates of one [lat, lon] point, as text (escaped where they are written).
-    var X = function (p) { return ((P(p)[1] - w0) * k); }, Y = function (p) { return (s1 - P(p)[0]); };
-    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(W.toFixed(2)) + ' ' + esc(H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    var W = (w1 - w0) * k, H = s1 - s0;
+    return { W: W, H: H, r: Math.max(W, H) / 60,
+      X: function (p) { return ((P(p)[1] - w0) * k); }, Y: function (p) { return (s1 - P(p)[0]); } };
+  };
+  // The route lines and the airports, in the picture's units. The aircraft is not here: see S.routeMarker.
+  S.routeSvg = function (v, fr) {
+    fr = fr || S.routeFrame(v);
+    if (!fr) return '';
+    var X = fr.X, Y = fr.Y, r = fr.r;
+    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
     if (v.origin && v.destination) {
       svgHtml += '<line class="cs-fl-route" vector-effect="non-scaling-stroke" x1="' + esc(X(v.origin).toFixed(2)) + '" y1="' + esc(Y(v.origin).toFixed(2))
         + '" x2="' + esc(X(v.destination).toFixed(2)) + '" y2="' + esc(Y(v.destination).toFixed(2))
@@ -1366,10 +1376,21 @@
       if (!p) return;
       svgHtml += '<circle class="cs-fl-ap" vector-effect="non-scaling-stroke" cx="' + esc(X(p).toFixed(2)) + '" cy="' + esc(Y(p).toFixed(2)) + '" r="' + esc((r * 0.45).toFixed(2)) + '"/>';
     });
-    svgHtml += '<path class="cs-fl-ac" vector-effect="non-scaling-stroke" transform="translate(' + esc(X(v.cur).toFixed(2)) + ' ' + esc(Y(v.cur).toFixed(2)) + ') rotate(' + esc(v.heading || 0)
-      + ')" d="M0 ' + esc((-r * 1.3).toFixed(2)) + ' L' + esc((r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' L0 ' + esc((r * 0.4).toFixed(2))
-      + ' L' + esc((-r * 0.9).toFixed(2)) + ' ' + esc(r.toFixed(2)) + ' Z"/>';
     return svgHtml + '</svg>';
+  };
+  // The aircraft: a marker of 40 saver units, whatever the route's span, placed by its share of the picture. Its size is
+  // not the picture's, so a short route (a small picture) does not make it tiny.
+  S.routeMarker = function (v, fr) {
+    fr = fr || S.routeFrame(v);
+    if (!fr) return '';
+    var left = (fr.X(v.cur) / fr.W * 100).toFixed(2), top = (fr.Y(v.cur) / fr.H * 100).toFixed(2), hd = Number(v.heading) || 0;
+    return '<div class="cs-fl-mk" style="left:' + left + '%;top:' + top + '%;width:' + u(40) + ';height:' + u(40) + ';transform:translate(-50%, -50%) rotate(' + hd + 'deg)">'
+      + '<svg viewBox="-1 -1.4 2 2.5" aria-hidden="true"><path d="M0 -1.3 L0.9 1 L0 0.4 L-0.9 1 Z"/></svg></div>';
+  };
+  // The picture box, as large as fits the map's area (72 units left and right, 230 above, 190 below) at its own proportions.
+  S.routePicStyle = function (fr) {
+    var R = fr.W / fr.H, wb = 'calc(100cqw - ' + u(144) + ')', hb = 'calc(100cqh - ' + u(420) + ')';
+    return 'width:min(' + wb + ', calc(' + hb + ' * ' + R.toFixed(4) + '));height:min(' + hb + ', calc(' + wb + ' / ' + R.toFixed(4) + '))';
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
@@ -1380,7 +1401,8 @@
       var eta = F ? F.times(ctx.hass, f, tzOn).arr.filter(function (x) { return x.kind === 'estimated'; })[0] : null;
       var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
-      bodyHtml = (v ? '<div class="cs-fl-map">' + S.routeSvg(v) + '</div>' : '')
+      var fr = v ? S.routeFrame(v) : null;
+      bodyHtml = (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
         + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
         + (eta ? '<div class="cs-fl-stat cs-fl-eta">' + esc(T('Voraussichtliche Ankunft')) + ': ' + esc(eta.text) + '</div>' : '');
     } else {
