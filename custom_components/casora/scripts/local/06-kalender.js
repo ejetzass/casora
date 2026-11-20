@@ -76,12 +76,15 @@
   };
   // The Agenda tile's pick: the shared event cache when it is ready for a calendar, else the calendar states
   // (Upstream's rule, casoraCalendarNext in 06a). Default order: a running event wins, then the earliest start.
-  K.next = function (states, variables) {
-    var best = null, now = new Date();
+  // skip(ev) (optional) leaves an event out before the order applies: the greeting drops its waste events this way.
+  // at (optional): the time to pick for; the callers' own clock (default: now).
+  K.next = function (states, variables, skip, at) {
+    var best = null, now = at ? new Date(at) : new Date();
     var ha = document.querySelector('home-assistant');
     var cache = loadCache(ha && ha.hass, variables);
     var consider = function (ev, attrs) {
       if (isNaN(ev.start) || !K.allowsTitle(ev.name, attrs) || (!ev.on && ev.end < now)) return;
+      if (skip && skip(ev)) return;
       if (!best || (ev.on && !best.on) || (ev.on === best.on && ev.start < best.start)) best = ev;
     };
     K.cals(variables).forEach(function (c) {

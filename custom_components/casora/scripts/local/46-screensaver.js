@@ -1004,13 +1004,23 @@
   // room), the evening shows tomorrow morning. Cropping 6–24 to now–24 instead would change the scale every hour and
   // end at midnight. S.dayLine is the model: { from, to, now (%), running, next, lead, items: [{ e, x, x2, past, lead }] }.
   var endOf = function (e) { return e.end && e.end > e.start ? e.end : e.start; };
-  S.dayLine = function (events, now) {
+  S.dayLine = function (events, now, cal) {
     var t = +now, h = 3600000, from = t - LINE.back * h, to = t + LINE.ahead * h;
     var pos = function (x) { return (x - from) / (to - from) * 100; };
     var timed = (events || []).filter(function (e) { return e && !e.allDay && isFinite(e.start); }).sort(function (a, b) { return a.start - b.start; });
     // What leads: an appointment that is running (the one that ends first), else the next one.
     var running = timed.filter(function (e) { return e.start <= t && endOf(e) > t; }).sort(function (a, b) { return endOf(a) - endOf(b); })[0] || null;
     var next = timed.filter(function (e) { return e.start > t; })[0] || null;
+    // The calendar tile's pick (06-kalender.js, the shared cache when ready) names the running and the next appointment
+    // when that module is loaded; the day line only shows timed events, so an all-day pick counts for nothing.
+    var calRule = window._casoraCalendar, viaRule = !!(calRule && calRule.next && cal && cal.hass && cal.cals && cal.cals.length);
+    if (viaRule) {
+      var pick = calRule.next(cal.hass.states || {}, { calendars: cal.cals.map(function (id) { return { entity: id }; }) }, null, t);
+      var pickEv = pick && !pick.allDay ? (timed.filter(function (e) { return e.start === +pick.start && e.title === pick.name; })[0]
+        || { title: pick.name, start: +pick.start, end: +pick.end, allDay: false, on: pick.on }) : null;
+      running = pickEv && pickEv.on ? pickEv : null;
+      next = pickEv && !pickEv.on ? pickEv : null;
+    }
     var lead = running || next;
     var items = timed.filter(function (e) { return e.start < to && endOf(e) > from; }).slice(0, 24).map(function (e) {
       return { e: e, x: pos(e.start), x2: pos(endOf(e)), past: endOf(e) <= t, lead: e === lead };
@@ -1041,7 +1051,7 @@
   };
   DRAW.linie = function (ctx) {
     // By the whole minute: the line moves on with the clock's digits, not with every repaint in between.
-    var now = Math.floor(+ctx.now / 60000) * 60000, m = S.dayLine(ctx.events, now), cals = ctx.cals || [];
+    var now = Math.floor(+ctx.now / 60000) * 60000, m = S.dayLine(ctx.events, now, { hass: ctx.hass, cals: ctx.cals }), cals = ctx.cals || [];
     var d0 = new Date(now), tomorrow = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 1);
     var tone = function (e) { var i = cals.indexOf(e.cal); return TONES[(i < 0 ? 0 : i) % TONES.length]; };
     // The headline: what is running leads (until when), else the next one (in how long; tomorrow or a later day

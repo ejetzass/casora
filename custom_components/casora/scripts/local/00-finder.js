@@ -1676,7 +1676,15 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     // The calendars that count, as on the calendar tile and the screensaver (V26, casoraCalendars); one shown only in
     // the popup (tile: false) is no appointment.
     var cals = window.casoraCalendars ? window.casoraCalendars(hass, null) : [];
-    cals.forEach(function (c) {
+    var calRule = window._casoraCalendar;
+    if (calRule && calRule.next && cals.length) {
+      // The shared cache pick of the calendar tile (06-kalender.js), so the greeting names the same appointment.
+      // The calendars are passed in: the pick would otherwise read them from the page's Home Assistant.
+      var pick = calRule.next(S, { calendars: cals }, function (ev) {
+        return bins.length && (isWasteCalendar(hass, ev.cal.entity, W && W.calendar) || sameBin(ev.name, ev.start));
+      }, now);
+      if (pick) best = { d: pick.start, title: pick.name, allDay: pick.allDay, on: pick.on };
+    } else cals.forEach(function (c) {
       var id = c.entity;
       if (c.tile === false || !S[id]) return;
       if (bins.length && isWasteCalendar(hass, id, W && W.calendar)) return;
