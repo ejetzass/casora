@@ -44,6 +44,33 @@ class CalendarSettingsTest(unittest.IsolatedAsyncioTestCase):
         await command(hass, connection, {"id": 2, "settings": {"calendar_filter": ""}})
         self.assertNotIn("calendar_filter", await settings.async_load_settings(hass))
 
+    async def test_timed_first_survives_readback_and_off_is_read_as_off(self):
+        data = {}
+
+        async def save(value):
+            nonlocal data
+            data = value
+
+        store = SimpleNamespace(async_save=save, async_load=AsyncMock(side_effect=lambda: data))
+        hass = SimpleNamespace(data={"casora": {"settings_store": store}})
+        results = []
+        connection = SimpleNamespace(send_result=lambda mid, result: results.append(result))
+        command = inspect.unwrap(settings.ws_set)
+        calendars = [{"entity": "calendar.mock_day"}]
+        await command(hass, connection, {"id": 1, "settings": {
+            "calendar_filter": {"words": "Termin-bbbbbb ffffff", "timed_first": True}, "calendars": calendars,
+        }})
+        self.assertEqual((await settings.async_load_settings(hass))["calendar_filter"],
+                         {"words": "Termin-bbbbbb ffffff", "timed_first": True})
+        self.assertEqual((await settings.async_load_settings(hass))["calendars"], calendars)
+        await command(hass, connection, {"id": 2, "settings": {
+            "calendar_filter": {"words": "Termin-bbbbbb ffffff", "timed_first": False}, "calendars": calendars,
+        }})
+        stored = (await settings.async_load_settings(hass))["calendar_filter"]
+        self.assertFalse(stored.get("timed_first", False))
+        self.assertEqual(stored["words"], "Termin-bbbbbb ffffff")
+        self.assertEqual((await settings.async_load_settings(hass))["calendars"], calendars)
+
 
 if __name__ == "__main__":
     unittest.main()
