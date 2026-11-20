@@ -33,4 +33,14 @@ literals.forEach((k) => assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|trac
   assert.ok(literals.includes(k), 'the denial text is in the module: ' + k.slice(0, 30));
 });
 
+// The Manage tile name may wrap onto a second line: names are one line with an ellipsis everywhere else, and on a phone
+// (about 110 px for the name) "Vluchten beheren" was cut to "Vluchten be…". The template keeps the word and wraps it.
+{
+  const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json')).casora_flights;
+  const name = Object.assign({}, ...(tpl.styles.name || []));
+  assert.equal(name['white-space'], 'normal !important', 'the name wraps');
+  assert.match(String(name['-webkit-line-clamp']), /^2$/, 'at most two lines, then the ellipsis');
+  assert.equal(tpl.variables.casora_default_name, 'Flüge verwalten', 'the German label is unchanged');
+}
+
 console.log('ok flights_texts');
