@@ -182,7 +182,7 @@ Casora replaces Hemma. Once your dashboards have moved, Hemma is no longer neede
 
 ## Tracked flights (FlightRadar24)
 
-Casora can show the flights you track in the [FlightRadar24](https://github.com/AlexandrErohin/home-assistant-flightradar24) integration on a Flights tile, in its popup and in the screensaver. FlightRadar24 is an optional HACS integration: Casora works without it, and the flight features appear once it is installed. Casora needs only Home Assistant, Casora and FlightRadar24 (tested with FlightRadar24 2.5.0). No calendar, template sensor, helper or script is required.
+Casora can show the flights you track in the [FlightRadar24](https://github.com/AlexandrErohin/home-assistant-flightradar24) integration on a Flights tile, in its popup and in the screensaver. FlightRadar24 is an optional HACS integration: Casora works without it, and the flight features appear once it is installed. Casora needs only Home Assistant, Casora and FlightRadar24 (tested with FlightRadar24 2.6.0). No calendar, template sensor, helper or script is required.
 
 **Setup**
 
