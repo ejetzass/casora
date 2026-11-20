@@ -62,4 +62,17 @@ assert.equal((src.match(/var tr = /g) || []).length, 1, 'one tr helper in 49-fli
   assert.equal(tpl.variables.casora_default_name, 'Flüge verwalten', 'the German label is unchanged');
 }
 
+// The Studio's unit names: nb has a Norwegian word for the statute mile (engelske mil), not the English "Miles". The
+// Studio's tracked-flights line is the long sentence (settings_map.mjs); the short one is not rendered any more.
+{
+  const panel = (l) => JSON.parse(read('custom_components/casora/translations/panel/' + l + '.json')).exact;
+  assert.equal(panel('nb')['Miles per hour'], 'Engelske mil per time', 'nb: the statute mile is not the English word');
+  const SHORT = 'The FlightRadar24 source that every flight display on this dashboard reads.';
+  const LONG = 'The FlightRadar24 source that every flight display on this dashboard reads, and the units its tile and popups show.';
+  ['de', 'es', 'fr', 'it', 'nb', 'nl', 'pl', 'pt'].forEach((l) => {
+    assert.ok(!(SHORT in panel(l)), l + ': the short settings text is no longer rendered');
+    assert.ok(LONG in panel(l), l + ': the settings text the Studio renders is translated');
+  });
+}
+
 console.log('ok flights_texts');

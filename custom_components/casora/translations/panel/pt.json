@@ -3219,7 +3219,6 @@
     "FlightRadar24 is missing a part Casora needs: {name}": "Falta ao FlightRadar24 uma parte de que o Casora precisa: {name}",
     "source sensor": "sensor de origem",
     "Manage flights": "Gerir voos",
-    "The FlightRadar24 source that every flight display on this dashboard reads.": "A fonte do FlightRadar24 usada por todas as vistas de voos deste painel.",
     "Appears once FlightRadar24 is installed.": "Aparece assim que o FlightRadar24 estiver instalado.",
     "Flights": "Voos",
     "Altitude": "Altitude",

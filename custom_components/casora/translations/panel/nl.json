@@ -3219,7 +3219,6 @@
     "FlightRadar24 is missing a part Casora needs: {name}": "FlightRadar24 mist een onderdeel dat Casora nodig heeft: {name}",
     "source sensor": "bronsensor",
     "Manage flights": "Vluchten beheren",
-    "The FlightRadar24 source that every flight display on this dashboard reads.": "De FlightRadar24-bron waaruit alle vluchtweergaven van dit dashboard lezen.",
     "Appears once FlightRadar24 is installed.": "Verschijnt zodra FlightRadar24 is geïnstalleerd.",
     "Flights": "Vluchten",
     "Altitude": "Hoogte",
