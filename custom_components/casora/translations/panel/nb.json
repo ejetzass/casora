@@ -7,6 +7,8 @@
     "Camera detections": "Kameradeteksjoner",
     "Detection from": "Deteksjon fra",
     "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Sensorer eller hendelser som regnes som deteksjon ved dette kameraet. Navnet kommer fra Home Assistant.",
+    "Agenda tile: timed events today first": "Agendaflis: først avtaler med klokkeslett i dag",
+    "Shows a timed event later today before an all-day event that is running.": "Viser en avtale med klokkeslett som starter senere i dag, før en pågående heldagsavtale.",
     "Copy diagnostics…": "Kopier diagnostikk…",
     "Diagnostics": "Diagnostikk",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Lim den inn i GitHub-saken din. Den inneholder bare antall, versjoner og integrasjoner – ingen navn på enheter, rom eller personer, ingen adresser.",

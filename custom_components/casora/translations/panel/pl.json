@@ -7,6 +7,8 @@
     "Camera detections": "Wykrycia kamery",
     "Detection from": "Wykrycie z",
     "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.": "Czujniki lub zdarzenia oznaczające detekcję przy tej kamerze. Nazwa pochodzi z Home Assistant.",
+    "Agenda tile: timed events today first": "Kafelek agendy: najpierw wydarzenia z godziną na dziś",
+    "Shows a timed event later today before an all-day event that is running.": "Pokazuje wydarzenie z godziną, które zaczyna się później dziś, przed trwającym wydarzeniem całodniowym.",
     "Copy diagnostics…": "Kopiuj diagnostykę…",
     "Diagnostics": "Diagnostyka",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Wklej ją do swojego zgłoszenia na GitHubie. Zawiera tylko liczby, wersje i integracje – żadnych nazw urządzeń, pokoi ani osób, żadnych adresów.",
