@@ -39,9 +39,17 @@ assert pb.notify_of({"views": []}) == {}
 # Flights for the phone twin: the hero card's values (first view that has one), a switch as 'true'/'false', no empty values.
 fl = {"views": [{"cards": [{"variables": {"casora_flights_source": "sensor.fr24_b", "casora_flights_source_x": 1}}]},
                 {"cards": [{"variables": {"casora_flights_source": "sensor.other", "casora_flights_altitude_unit": "m"}}]}]}
-assert pb.flights_of(fl) == {"casora_flights_source": "sensor.fr24_b"}, pb.flights_of(fl)
+# Per key, the first view that holds a value: the altitude unit from the second view, the source from the first.
+assert pb.flights_of(fl) == {"casora_flights_source": "sensor.fr24_b", "casora_flights_altitude_unit": "m"}, pb.flights_of(fl)
 assert pb.flights_of({"views": []}) == {}
-assert pb.flights_of({"views": [{"cards": []}, {"cards": [{"variables": {"casora_flights_altitude_unit": "m"}}]}]}) == {}
+assert pb.flights_of({"views": [{"cards": []}, {"cards": [{"variables": {"casora_flights_altitude_unit": ""}}]}]}) == {}
+# The same settings as the desktop (46-screensaver.js FLIGHT_KEYS): the three units and the timezone switch. A Python
+# bool becomes 'true' / 'false', the words 49-flights.js reads (F.tz compares with 'true'), never 'True'.
+units = {"views": [{"cards": [{"variables": {"casora_flights_source": "sensor.a", "casora_flights_altitude_unit": "ft",
+    "casora_flights_speed_unit": "kn", "casora_flights_vspeed_unit": "fpm", "casora_flights_timezones": True}}]}]}
+assert pb.flights_of(units) == {"casora_flights_source": "sensor.a", "casora_flights_altitude_unit": "ft",
+    "casora_flights_speed_unit": "kn", "casora_flights_vspeed_unit": "fpm", "casora_flights_timezones": "true"}, pb.flights_of(units)
+assert pb.flights_of({"views": [{"cards": [{"variables": {"casora_flights_timezones": False}}]}]}) == {"casora_flights_timezones": "false"}
 # Startseiten-Variablen haben Vorrang
 cfg2 = json.loads(json.dumps(cfg)); cfg2["views"][0]["cards"].insert(0, {"variables": {"scenes": ["scene.z"]}})
 assert pb.scenes_of(cfg2)["scenes"] == ["scene.z"]
