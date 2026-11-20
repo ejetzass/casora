@@ -130,6 +130,21 @@ assert.equal(c.note, 'missing');
 assert.equal(c.labels['sensor.gone'], null, 'the missing one is labelled by the Studio, not by data');
 assert.equal(F.choices(h, 'sensor.a').note, null);
 
+// ── The picker offers tracked-flights sensors only: a registered entry without a flights list (the integration-level
+// "FlightRadar24" entry) is not an option and is not picked as the one source. A pinned one stays, as before.
+{
+  const g = house();
+  g.add('sensor.flight_tracker_one', tracked(null, 'd1', []));
+  g.add('sensor.flightradar24', { dev: 'dGhost', key: 'additional_tracked', state: 'unavailable', attrs: {} });
+  eq(F.choices(g, '').options, ['', 'sensor.flight_tracker_one'], 'only the tracked-flights sensor is offered');
+  assert.equal(F.resolve(g, '').state, 'auto', 'the entry without a list does not make a second source');
+  assert.equal(F.resolve(g, '').id, 'sensor.flight_tracker_one');
+  g.add('sensor.flight_tracker_two', tracked(null, 'd2', []));
+  eq(F.choices(g, '').options, ['', 'sensor.flight_tracker_one', 'sensor.flight_tracker_two'], 'two tracked sensors: a choice, no ghost');
+  eq(F.choices(g, 'sensor.flightradar24').options, ['', 'sensor.flight_tracker_one', 'sensor.flight_tracker_two', 'sensor.flightradar24'],
+    'a pinned entry without a list stays selectable, as before');
+}
+
 // ── Controls resolve by device_id, not by name ──
 h = house();
 h.add('sensor.a', tracked(null, 'd1', []));
