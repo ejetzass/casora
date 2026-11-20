@@ -48,6 +48,8 @@ const context = vm.createContext({
   location: { search: '', pathname: '/' },
 });
 vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js'), context);
+// Save asks the flights module whether a tracked-flights source is still undecided: load the real one.
+vm.runInContext(read('custom_components/casora/scripts/local/49-flights.js'), context);
 // Rendering the animated preview is a separate seam; keep the real selection/vars APIs.
 win._casoraSaver.mount = () => ({ update() {}, destroy() {} });
 vm.runInContext(read('custom_components/casora/panel/casora-panel-settings.js'), context);
