@@ -7,9 +7,18 @@
   // its settings draft); omitted, the saved settings. attrs: the calendar state's attributes; a recorded
   // decision there (casora_filter_match.message, from the mock's replay) counts only for the entries that are
   // still in the filter: its matches name the entries that hit the title when it was recorded.
+  // calendar_filter is a section: { words, timed_first }. The old form (a plain text) still counts as the words.
+  var filterOf = function (settings) {
+    var all = settings || (window.casoraSettings ? window.casoraSettings() : {});
+    var f = all && all.calendar_filter;
+    return f && typeof f === 'object' ? f : { words: f };
+  };
+  // Timed first (Studio switch, off by default): the Agenda tile ranks a timed event above an all-day one.
+  window.casoraCalendarTimedFirst = function (settings) {
+    return filterOf(settings).timed_first === true;
+  };
   window.casoraCalendarAllows = function (title, settings, attrs) {
-    var words = settings || (window.casoraSettings ? window.casoraSettings() : {});
-    var entries = String(words.calendar_filter || '').split(',').map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
+    var entries = String(filterOf(settings).words || '').split(',').map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
     var decided = attrs && attrs.casora_filter_match && attrs.casora_filter_match.message;
     if (decided && Array.isArray(decided.matches)) {
       return !decided.matches.some(function (m) { return entries.indexOf(String(m).trim().toLowerCase()) !== -1; });
