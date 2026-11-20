@@ -3,6 +3,8 @@
   "exact": {
     "Hide when the title contains": "Verbergen als de titel bevat",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Scheid items met een komma; een item mag uit meerdere woorden bestaan. Het agendavenster toont ze nog steeds.",
+    "Agenda tile: timed events today first": "Agendategel: eerst afspraken met tijd van vandaag",
+    "Shows a timed event later today before an all-day event that is running.": "Toont een afspraak met tijd die later vandaag begint, vóór een lopende hele-dagafspraak.",
     "Copy diagnostics…": "Diagnose kopiëren…",
     "Diagnostics": "Diagnose",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Plak het in je GitHub-issue. Het bevat alleen aantallen, versies en integraties – geen namen van apparaten, kamers of personen, geen adressen.",
