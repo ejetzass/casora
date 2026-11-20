@@ -78,8 +78,10 @@
       out.id = p; out.source = hit; out.state = hit ? 'pinned' : 'missing';
       return out;
     }
-    if (list.length === 1) { out.state = 'auto'; out.id = list[0].id; out.source = list[0]; }
-    else if (list.length > 1) out.state = 'choose';
+    // Automatic and the prompt count only tracked-flights sensors (a flights list): an entry without one is not a source.
+    var live = list.filter(function (s) { return s.ok; });
+    if (live.length === 1) { out.state = 'auto'; out.id = live[0].id; out.source = live[0]; }
+    else if (live.length > 1) out.state = 'choose';
     else if (F.present(hass)) out.missing = ['source'];
     return out;
   };
@@ -413,7 +415,8 @@
   // selectable. Words come from the Studio (labels hold only data names; null = the Studio words it).
   F.choices = function (hass, pin) {
     var r = F.resolve(hass, pin), options = [''], labels = {};
-    r.sources.forEach(function (s) { options.push(s.id); labels[s.id] = s.name; });
+    // The options are the tracked-flights sensors, plus the pinned entry when it is there (even without a list).
+    r.sources.forEach(function (s) { if (s.ok || s.id === r.id) { options.push(s.id); labels[s.id] = s.name; } });
     if (r.state === 'missing') { options.push(r.id); labels[r.id] = null; }
     var note = r.state === 'missing' ? 'missing' : r.state === 'choose' ? 'choose' : r.missing.length ? 'parts' : null;
     return { options: options, labels: labels, empty: r.state === 'choose' ? 'choose' : 'auto', note: note, missing: r.missing,
