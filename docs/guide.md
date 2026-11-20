@@ -182,13 +182,22 @@ Casora replaces Hemma. Once your dashboards have moved, Hemma is no longer neede
 
 ## Tracked flights (FlightRadar24)
 
-Casora can show the flights you track in the [FlightRadar24](https://github.com/AlexandrErohin/home-assistant-flightradar24) integration on a Flights tile, in its popup and in the screensaver. It needs nothing else: Home Assistant, Casora and FlightRadar24 (tested with FlightRadar24 2.5.0). No calendar, template sensor, helper or script is required.
+Casora can show the flights you track in the [FlightRadar24](https://github.com/AlexandrErohin/home-assistant-flightradar24) integration on a Flights tile, in its popup and in the screensaver. FlightRadar24 is an optional HACS integration: Casora works without it, and the flight features appear once it is installed. Casora needs only Home Assistant, Casora and FlightRadar24 (tested with FlightRadar24 2.5.0). No calendar, template sensor, helper or script is required.
 
 **Setup**
 
 1. Install the FlightRadar24 integration and add its tracked-flights part in Home Assistant. It creates the sensor that lists your tracked flights, the two text fields for adding and removing a flight, and its switch for data fetching.
 2. In Casora Studio, open the **Tracked flights** setting. If FlightRadar24 is the only source, Casora selects it by itself. If there are several FlightRadar24 instances, pick one; a source you picked that disappears is not replaced by another one, so nothing shows until you pick again. Casora finds the parts by their role in the integration, not by their names, so renamed entities keep working.
 3. Choose the units under the same setting: altitude in feet (default) or metres, speed in knots (default), km/h or mph, vertical speed in ft/min (default) or m/s. Times show the departure and arrival airport's local time and Home Assistant's local time. A time zone suffix is off by default and can be switched on there.
+
+**Which part each feature needs**
+
+The parts are the ones the setup above creates in FlightRadar24.
+
+- The Flights tile, its popup and the screensaver: the tracked-flights sensor.
+- The Manage flights list: the tracked-flights sensor.
+- Adding a flight: the sensor, the add field and the API data fetching switch.
+- Stop tracking: the sensor and the remove field.
 
 **Adding and stopping flights**
 
@@ -209,6 +218,8 @@ Your own automations may use the same tracked list, for example to notify you wh
 | Message | What to do |
 |---|---|
 | *Select a tracked-flights source* | More than one FlightRadar24 source exists. Pick one in the Tracked flights setting. |
+| *FlightRadar24 is missing a part Casora needs: {name}* | The name says which part is missing (for example *source sensor*). Add or enable that part in FlightRadar24; features that need only other parts keep working. |
+| *Data fetching in FlightRadar24 is off* | Turn on the API data fetching switch of that FlightRadar24 instance, then add the flight again. |
 | *Source unavailable* | The chosen source is missing or unavailable. Check the FlightRadar24 integration. |
 | *No field found to add a flight* / *No control found to stop tracking* | The integration does not show the add or remove field for this source. Check that it is the tracked-flights part of FlightRadar24 and that its entities are enabled. |
 | *The add field is not available* / *The control to stop tracking is not available* | The field exists but is unavailable. Check FlightRadar24 and Home Assistant's entity state. |
