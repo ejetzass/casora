@@ -20910,6 +20910,20 @@
           "--casora-icon-inactive-color": "var(--casora-tone-general, var(--casora-color-green, #30D158))"
         }
       ],
+      "name": [
+        {
+          "white-space": "normal !important"
+        },
+        {
+          "display": "-webkit-box !important"
+        },
+        {
+          "-webkit-box-orient": "vertical"
+        },
+        {
+          "-webkit-line-clamp": 2
+        }
+      ],
       "state": [
         {
           "text-transform": "none"
