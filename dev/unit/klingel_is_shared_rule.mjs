@@ -1,7 +1,7 @@
 // KL.is (Reolink doorbell, 24-klingel.js) asks the shared visitor rule of 00-finder.js (window.casoraIsReolinkVisitor)
 // for each entity of the camera's device. Made-up devices and names.   node dev/unit/klingel_is_shared_rule.mjs
 // @deckt: custom_components/casora/scripts/local/24-klingel.js#KL.is
-// @deckt: custom_components/casora/scripts/local/00-finder.js#isReolinkVisitor,casoraIsReolinkVisitor
+// @deckt: custom_components/casora/scripts/local/00-finder.js#isVisitor,casoraIsReolinkVisitor
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 

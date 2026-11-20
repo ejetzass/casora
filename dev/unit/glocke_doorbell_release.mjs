@@ -2,7 +2,7 @@
 // by name and for a Reolink visitor sensor.
 //   node dev/unit/glocke_doorbell_release.mjs
 // @deckt: custom_components/casora/scripts/casora-core.js#_casoraNotify,isDoorbell
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraIsDoorbell,isReolinkVisitor
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraIsDoorbell,isVisitor
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { phrases } from './lib/i18n_phrases.mjs';
