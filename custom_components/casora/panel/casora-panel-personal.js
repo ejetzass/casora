@@ -86,6 +86,9 @@
     w.sensors = w.sensors || {};
     w.duty_months = Array.isArray(w.duty_months) ? w.duty_months : [];
     s.calendars = Array.isArray(s.calendars) ? s.calendars : [];
+    // calendar_filter is a section { words, timed_first }; the old form was a plain text (the words).
+    const cf = s.calendar_filter;
+    s.calendar_filter = cf && typeof cf === "object" ? cf : { words: typeof cf === "string" ? cf : "" };
     const n = s.notify = s.notify || {};
     n.zone_phrases = n.zone_phrases || {};
     n.battery_exclude = Array.isArray(n.battery_exclude) ? n.battery_exclude : [];
@@ -479,8 +482,11 @@
           ], i ? undefined : "Calendar, name, color and whether it shows on the tile.").classList.add("casora-calrow");
         });
         addRow(g, "Add calendar", () => { S.calendars.push({ entity: "", name: "", color: CAL_DEFAULT }); redrawCalendar(); });
-        row(g, "Hide when the title contains", [txt(S.calendar_filter, "", (v) => { S.calendar_filter = v; redrawCalendar(); })],
+        row(g, "Hide when the title contains", [txt(S.calendar_filter.words, "", (v) => { S.calendar_filter.words = v; redrawCalendar(); })],
           "Separate entries with commas; an entry may have several words. The calendar popup still shows them.");
+        // Timed first (#345): the Agenda tile ranks a timed event above a running all-day one. Off by default.
+        swRow(g, "Agenda tile: timed events today first", !!S.calendar_filter.timed_first, (on) => { S.calendar_filter.timed_first = on; redrawCalendar(); },
+          "Shows a timed event later today before an all-day event that is running.");
       }
 
       if (want("contacts")) {
