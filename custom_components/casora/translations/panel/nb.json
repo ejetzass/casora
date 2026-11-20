@@ -3,6 +3,8 @@
   "exact": {
     "Hide when the title contains": "Skjul når tittelen inneholder",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Skill oppføringene med komma; en oppføring kan ha flere ord. Kalender-popupen viser dem fortsatt.",
+    "Agenda tile: timed events today first": "Agendaflis: først avtaler med klokkeslett i dag",
+    "Shows a timed event later today before an all-day event that is running.": "Viser en avtale med klokkeslett som starter senere i dag, før en pågående heldagsavtale.",
     "Copy diagnostics…": "Kopier diagnostikk…",
     "Diagnostics": "Diagnostikk",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Lim den inn i GitHub-saken din. Den inneholder bare antall, versjoner og integrasjoner – ingen navn på enheter, rom eller personer, ingen adresser.",

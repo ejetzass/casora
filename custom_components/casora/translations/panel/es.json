@@ -3,6 +3,8 @@
   "exact": {
     "Hide when the title contains": "Ocultar si el título contiene",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Separa las entradas con comas; una entrada puede tener varias palabras. La ventana del calendario sigue mostrándolas.",
+    "Agenda tile: timed events today first": "Tarjeta de la agenda: primero las citas con hora de hoy",
+    "Shows a timed event later today before an all-day event that is running.": "Muestra una cita con hora de hoy que empieza más tarde antes que un evento de día completo en curso.",
     "Copy diagnostics…": "Copiar diagnóstico…",
     "Diagnostics": "Diagnóstico",
     "Paste it into your GitHub issue. It contains only counts, versions and integrations – no names of devices, rooms or people, no addresses.": "Pégalo en tu issue de GitHub. Solo contiene recuentos, versiones e integraciones – ningún nombre de dispositivos, habitaciones ni personas, ninguna dirección.",

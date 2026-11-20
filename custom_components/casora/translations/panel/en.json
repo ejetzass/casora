@@ -3,6 +3,8 @@
   "exact": {
     "Hide when the title contains": "Hide when the title contains",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Separate entries with commas; an entry may have several words. The calendar popup still shows them.",
+    "Agenda tile: timed events today first": "Agenda tile: timed events today first",
+    "Shows a timed event later today before an all-day event that is running.": "Shows a timed event later today before an all-day event that is running.",
     "Casora": "Casora",
     "Welcome to Casora": "Welcome to Casora",
     "Leave Casora?": "Leave Casora?",
