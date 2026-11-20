@@ -186,7 +186,8 @@ const make = (ctx, win) => new Function('window', 'return {' + methodSrc() + '}'
     return { dataset: {}, classList: { add() {}, toggle() {} }, style: { setProperty() {} },
       appendChild() {}, setAttribute() {}, querySelector: selector => children[selector] || (children[selector] = element()) };
   };
-  globalThis.document = { createElement: tag => { const el = element(); elements.push({ tag, el }); return el; } };
+  globalThis.document = { createElement: tag => { const el = element(); elements.push({ tag, el }); return el; },
+    createTextNode: text => ({ textContent: text }) };
   Object.assign(globalThis, makeWindow({ waste: 'calendar.waste' }));
   new Function(read('custom_components/casora/panel/casora-panel-personal.js'))();
   new Function(read('custom_components/casora/panel/casora-panel-settings.js'))();
