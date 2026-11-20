@@ -1,7 +1,8 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
-// Flights kind with no turn (the first flight, on the map), updates that do not reset the turn, removal and reconnection,
+// Flights kind (one flight per native turn, in a fixed order, always on the map; the next start moves on too), updates
+// that do not reset the turn, removal and reconnection,
 // the local route picture (no tiles, no links), the preview with nothing to show (the sky, no invented flight), mount and
 // unmount. Controlled clock; synthetic flights; no browser.
 //   node dev/unit/screensaver_flights.mjs
@@ -151,22 +152,141 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.equal(R.timers.filter((t) => t.live).length, 1, 'only the screensaver\'s own update timer (no flight timer)');
 }
 
-// A single Flights kind has no turn, as the other single kinds have none: the first flight, on the map, at every time.
+// A single Flights kind: one flight per native five-minute turn, in a fixed order (scheduled departure, then the flight ID),
+// round and round, always on the map. No timer of its own: the native turn (TURN_MS) moves it on.
 {
   const R = runtime();
-  warm(R);
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0);
   const seen = [];
-  for (let i = 0; i < 8; i++) {
-    move(R, 1 + i); // the flights keep moving: both stay on the list
+  for (let i = 0; i < 5; i++) {
+    move(R, 1 + i, three(1 + i));
     const h = at(R, SLOT0 + i * TURN + 1000);
     seen.push({ kind: kindOf(h), flight: flightOf(h), layout: /cs-fl-map/.test(h) ? 'map' : /cs-fl-rows/.test(h) ? 'detail' : '?' });
   }
-  assert.deepEqual(seen, Array.from({ length: 8 }, () => ({ kind: 'flights', flight: '1', layout: 'map' })),
-    'every turn: flight 1 on the map, no clock in it');
+  assert.deepEqual(seen.map((x) => x.flight), ['1', '456', '789', '1', '456'], 'one flight per turn, in order, wrapping round');
+  assert.ok(seen.every((x) => x.kind === 'flights' && x.layout === 'map'), 'always the map, never the details');
   assert.equal(R.S.turnOf('flights', SLOT0), R.S.turnOf('flights', SLOT0 + 3 * TURN), 'a single kind has no turn of its own');
+  assert.equal(R.timers.filter((t) => t.live).length, 1, 'only the screensaver\'s own update timer (no flight timer)');
 }
 
-// A routine position update keeps the flight and its layout; a single kind keeps its flight at the next turn too.
+// The order is the scheduled departure, then the flight ID: an earlier departure first, equal departures by ID.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const dep = (t) => ({ time_scheduled_departure: SLOT0 / 1000 + t });
+  const list = (step) => [entry('1', step, dep(3600)), entry('456', step, { ...dep(600), flight_number: 'XY456' }), entry('789', step, dep(3600))];
+  move(R, 0, list(0));
+  at(R, SLOT0);
+  const seen = [];
+  for (let i = 0; i < 4; i++) {
+    move(R, 1 + i, list(1 + i));
+    seen.push(flightOf(at(R, SLOT0 + i * TURN + 1000)));
+  }
+  assert.deepEqual(seen, ['456', '1', '789', '456'], 'departure first, then ID, then round again');
+}
+
+// One flight in the list: it stays, turn after turn.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  move(R, 0, [entry('1', 0)]);
+  at(R, SLOT0);
+  for (let i = 0; i < 3; i++) {
+    move(R, 1 + i, [entry('1', 1 + i)]);
+    const h = at(R, SLOT0 + i * TURN + 1000);
+    assert.equal(flightOf(h), '1', 'turn ' + i + ': the only flight stays');
+    assert.match(h, /cs-fl-map/, 'turn ' + i + ': on the map');
+  }
+}
+
+// No flight: the sky, every turn. When one comes back, it shows at its next turn with no empty turn in between.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  move(R, 0, [entry('1', 0)]);
+  at(R, SLOT0);
+  for (let i = 1; i <= 2; i++) {
+    move(R, i, []);
+    assert.equal(kindOf(at(R, SLOT0 + i * TURN + 1000)), 'himmel', 'turn ' + i + ': no flight, the sky');
+  }
+  move(R, 3, [entry('1', 3)]); // first sight is a baseline
+  assert.equal(kindOf(at(R, SLOT0 + 3 * TURN + 1000)), 'himmel', 'the returning flight is a baseline first');
+  move(R, 4, [entry('1', 4)]);
+  assert.equal(flightOf(at(R, SLOT0 + 3 * TURN + 2000)), '1', 'then it shows, in the same turn');
+}
+
+// A flight lands during its turn: the next flight in the order takes the rest of the turn (no blank), and the turn after
+// that moves on from it.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0); // the first sight is a baseline
+  move(R, 1, three(1));
+  assert.equal(flightOf(at(R, SLOT0 + 1000)), '1', 'turn 0: flight 1');
+  move(R, 2, three(2));
+  assert.equal(flightOf(at(R, SLOT0 + TURN + 1000)), '456', 'turn 1: flight 456');
+  move(R, 3, [entry('1', 3), entry('789', 3)]); // 456 lands, mid-turn
+  const landed = at(R, SLOT0 + TURN + 2000);
+  assert.equal(flightOf(landed), '789', 'the next flight takes the rest of the turn');
+  assert.match(landed, /cs-fl-map/, 'and it is drawn, not a blank');
+  move(R, 4, [entry('1', 4), entry('789', 4)]);
+  assert.equal(flightOf(at(R, SLOT0 + 2 * TURN + 1000)), '1', 'the next turn wraps round from 789');
+}
+
+// The list changes between turns (landings, new flights): every turn shows a flight that qualifies now, and never the same
+// flight twice in a row while another flight is there. A new flight first shows once it has moved (its baseline first).
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const lists = [['1', '456'], ['1', '456', '789'], ['456', '789'], ['0', '456', '789'], ['0', '789'], ['789'], ['456', '789'],
+    ['0', '1', '456', '789'], ['1', '456', '789']];
+  const shownAll = new Set();
+  let prev = null;
+  move(R, 0, lists[0].map((id) => entry(id, 0)));
+  at(R, SLOT0);
+  lists.forEach((ids, i) => {
+    move(R, 1 + i, ids.map((id) => entry(id, 1 + i)));
+    const now = SLOT0 + i * TURN + 1000;
+    const h = at(R, now);
+    const qual = R.S.flightRows(R.hass, R.vars, new Date(now)).map((r) => r.key);
+    if (!qual.length) { assert.equal(kindOf(h), 'himmel', 'turn ' + i + ': nothing qualifies, the sky'); prev = null; return; }
+    const shown = flightOf(h);
+    assert.ok(qual.includes(shown), 'turn ' + i + ': the flight on show qualifies now');
+    if (qual.length > 1 && prev !== null) assert.notEqual(shown, prev, 'turn ' + i + ': not the same flight twice in a row');
+    shownAll.add(shown);
+    prev = shown;
+  });
+  assert.ok(shownAll.size >= 3, 'over the changes, several flights are shown: ' + [...shownAll]);
+}
+
+// Each start of the saver moves on to the next flight; a preview (Studio) reads the choice without moving the saver on.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  move(R, 0);
+  at(R, SLOT0);
+  move(R, 1);
+  assert.equal(flightOf(at(R, SLOT0 + 1000)), '1', 'the first flight on the first turn');
+  const sample = { host: { innerHTML: '', getRootNode: () => R.host.getRootNode() } };
+  sample.api = R.S.mount(sample.host, null, { sample: true, every: 3600000, kind: () => 'flights',
+    context: () => ({ hass: R.hass, vars: R.vars, now: new Date(SLOT0 + TURN + 1000) }) });
+  assert.equal(flightOf(sample.host.innerHTML), '456', 'the preview shows the flight the next turn would');
+  assert.equal(flightOf(at(R, SLOT0 + TURN + 2000)), '456', 'the saver itself is still on its first flight, so it moves on now');
+  move(R, 2);
+  const h = at(R, SLOT0 + 2 * TURN + 1000);
+  assert.equal(flightOf(h), '1', 'and the turn after wraps round');
+  sample.api.destroy();
+  const second = { innerHTML: '', getRootNode: () => R.host.getRootNode() };
+  R.S.mount(second, null, { every: 3600000, kind: () => 'flights', context: () => ({ hass: R.hass, vars: R.vars, now: new Date(SLOT0 + 2 * TURN + 2000) }) });
+  assert.equal(flightOf(second.innerHTML), '456', 'the next time the saver starts, it shows the next flight');
+}
+
+// A routine position update keeps the flight and its layout within its turn.
 {
   const R = runtime();
   warm(R);
@@ -177,7 +297,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.equal(flightOf(again), flightOf(first), 'a routine position update keeps the flight on show');
   assert.match(again, /cs-fl-map/, 'and its layout');
   const later = at(R, SLOT0 + TURN + 1000);
-  assert.equal(flightOf(later), '1', 'a single kind has no turn: the first flight is still on show');
+  assert.equal(flightOf(later), '456', 'the next turn: the next flight');
   assert.match(later, /cs-fl-map/, 'and on the map');
 }
 

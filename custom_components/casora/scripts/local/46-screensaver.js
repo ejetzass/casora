@@ -4,9 +4,9 @@
 // casora_screensaver_kind (which one, „mix“ = one after the other) and the ones listed below. Like
 // casora_idle_home they ride in the hero card of each view.
 // Thirteen screensavers: sky, drawn landscapes, room photos, word clock, weather, day line, week, music, energy flow,
-// the house at rest, cameras, a month calendar and the tracked flights (a map and the details, one flight per turn;
-// only with FlightRadar24, the shared rule of 49-flights.js). Every one is drawn from what the house knows (time, sun, weather and its forecast, calendars,
-// waste dates, the playing media player, the energy settings, the bell, the dashboard's room photos); nothing is
+// the house at rest, cameras, a month calendar and the tracked flights (a map and the details, one flight per turn in
+// „mix“; alone, one flight per turn on the map; only with FlightRadar24, the shared rule of 49-flights.js). Every one is
+// drawn from what the house knows (time, sun, weather and its forecast, calendars, waste dates, the playing media player, the energy settings, the bell, the dashboard's room photos); nothing is
 // loaded from another server. One that has nothing to show (no music playing, energy not set up) shows the sky; in the
 // alternation („mix“, the kinds picked in casora_screensaver_mix) it is skipped instead. The same drawing serves the Studio's preview (mount into any box): all sizes are
 // container units, so it looks the same small and full screen. On the tablet the content wanders a few pixels three
@@ -579,11 +579,37 @@
   };
   // The turn of „mix“: five minutes each. A kind's own turn number is the count of its turns so far (the cycle of the
   // pool), so the flights step through every flight and both layouts, one per turn. A single kind has no turn: 0.
+  // (A single Flights kind takes its flight from S.flightPick instead.)
   S.turnOf = function (kind, now, pool) {
     if (kind !== 'mix') return 0;
     var slot = Math.floor(+now / TURN_MS);
     var n = Array.isArray(pool) && pool.length ? pool.length : S.KINDS.length;
     return Math.floor(slot / n);
+  };
+  // A single Flights kind: one flight per native turn (TURN_MS), in a fixed order (scheduled departure, then the flight
+  // ID), round and round. The page keeps the last flight it showed: the next turn moves on from it (wherever it sits now
+  // in the list), an earlier-landed flight takes the rest of its turn, and a fresh start of the saver moves on too.
+  // Returns the flight to draw, or null with none. peek: the choice only, nothing kept (the Studio preview).
+  var FLIGHT_TURN = { slot: null, key: null, pos: 0 };
+  var flightOrder = function (a, b) {
+    var da = Number(a.entry.time_scheduled_departure) || Infinity, db = Number(b.entry.time_scheduled_departure) || Infinity;
+    if (da !== db) return da < db ? -1 : 1;
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  };
+  S.flightPick = function (rows, now, start, peek) {
+    if (!rows || !rows.length) return null;
+    var order = rows.slice().sort(flightOrder), n = order.length;
+    var st = peek ? Object.assign({}, FLIGHT_TURN) : FLIGHT_TURN;
+    var slot = Math.floor(+now / TURN_MS), at = -1, i;
+    for (i = 0; i < n; i++) if (order[i].key === st.key) { at = i; break; }
+    var before = ((st.pos % n) + n) % n; // where the last flight was (or, if it has gone, the one that took its place)
+    var moveOn = start || st.slot !== slot, pos;
+    if (st.key === null) pos = 0; // the first flight the page shows
+    else if (!moveOn && at > -1) pos = at;
+    else if (!moveOn) pos = before;
+    else pos = at > -1 ? (at + 1) % n : before;
+    if (!peek) { FLIGHT_TURN.slot = slot; FLIGHT_TURN.key = order[pos].key; FLIGHT_TURN.pos = pos; }
+    return order[pos];
   };
   // The kinds that take turns: the picked ones the house has something for; never empty (then the sky).
   S.pool = function (vars, has) {
@@ -1337,8 +1363,8 @@
   };
   // ── Flights: a map and the details, one flight per turn ─────────────────────────────────────────────────────────────
   // In „mix“, turn t (see S.turnOf) shows flight t mod n; the layout changes once every n turns, so each flight gets the
-  // map and the details in turn. A single Flights kind has turn 0: the first flight, always on the map. No timer or
-  // count of its own: the native turns and the native update do the rest.
+  // map and the details in turn. A single Flights kind gets its one flight from S.flightPick (ctx.flights holds only that
+  // one), so turn 0 here, always on the map. No timer or count of its own: the native turns and the native update do the rest.
   // The route is plain shapes from the view's points (F.mapView): no tile, image or link is loaded.
   // The picture's frame: its size in degrees (W × H, longitude shrunk to the latitude) and where one point sits in it.
   // X and Y give numbers in the picture's units. Null without a position.
@@ -1514,7 +1540,7 @@
   S.wanders = function (vars) { var v = vars && vars.casora_screensaver_wander; return !(v === false || v === 'false' || v === 0 || v === '0'); };
   S.mount = function (host, kind, o) {
     o = o || {};
-    var last = '', timer = 0, step = null, minute = null, moved = false;
+    var last = '', timer = 0, step = null, minute = null, moved = false, n = 0, fresh = true; // fresh: this saver has not shown a flight yet (its start)
     if (!document.getElementById('cs-sv-css')) {
       var st = document.createElement('style');
       st.id = 'cs-sv-css';
@@ -1553,6 +1579,11 @@
       var k = S.kindAt(want, now, pool);
       var ctx = S.context(Object.assign({}, base, { kind: k }));
       ctx.turn = S.turnOf(want, now, pool);
+      if (want === 'flights') {
+        var row = S.flightPick(ctx.flights, now, fresh && !o.sample, !!o.sample);
+        ctx.flights = row ? [row] : [];
+        if (row && !o.sample) fresh = false;
+      }
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
       api.kind = k;
