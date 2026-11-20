@@ -12,6 +12,8 @@ custom_components/casora/scripts/local/46-screensaver.js | re:^\(?wx(?: && wx)?\
 custom_components/casora/scripts/local/46-screensaver.js | re:^(?:base|x|y|new|pct\(X\(i(?:Hi|Lo)\)\))$ | number: position computed by the code (new Date(day).getDate() is the day of the month) | 9
 custom_components/casora/scripts/local/46-screensaver.js | re:^(?:color|TONES\[\(i \+ j\) % TONES\.length\]|TONE_C\[r\.tone\])$ | colour from the fixed tables of the module | 4
 custom_components/casora/scripts/local/46-screensaver.js | re:^(?:cls|side|GLYPH\[glyph\])$ | fixed class name or glyph of the module | 5
-custom_components/casora/scripts/local/46-screensaver.js | re:^(?:pic|out|title|when|ticks|segs|wide|tall|week|rain|curve|cols|bar2|clock\(ctx\)|items\.join\(\'\'\)|head\(ctx.*\)|node\(.*\)|flow\(.*\))$ | markup built by the module itself: numbers and fixed values, every text through esc() | 26
+custom_components/casora/scripts/local/46-screensaver.js | re:^(?:pic|out|title|when|ticks|segs|wide|tall|week|rain|curve|cols|bar2|clock\(ctx\)|items\.join\(\'\'\)|head\(ctx.*\)|node\(.*\)|flow\(.*\))$ | markup built by the module itself: numbers and fixed values, every text through esc() | 27
 custom_components/casora/scripts/local/46-screensaver.js | re:^pct\(.*\)$ | number: a position on the day line in percent, clamped and rounded by the code | 7
 custom_components/casora/scripts/local/46-screensaver.js | re:^mmss\(m\.(?:pos|dur)\)$ | minutes:seconds built from a number | 2
+custom_components/casora/scripts/local/46-screensaver.js | re:^(?:left|top|hd|u\(40\))$ | number or CSS length of the aircraft marker, computed by the code (position in %, heading in degrees, size in saver units) | 5
+custom_components/casora/scripts/local/46-screensaver.js | re:^S\.route(?:PicStyle\(fr\)|Marker\(v, fr\))$ | CSS and markup built by the module itself from numbers (the route picture's box and the aircraft marker) | 2
