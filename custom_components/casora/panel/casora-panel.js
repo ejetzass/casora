@@ -2597,6 +2597,9 @@ const IDLE_CHOICES = {
     "5": "After 5 minutes", "10": "After 10 minutes" },
 };
 
+// Screensaver kinds for the Dashboard setting, in the chips' order; Flights is filtered by its live list.
+const SAVER_KIND_OPTIONS = ["", "himmel", "land", "fotos", "wort", "wetter", "linie", "woche", "musik", "energie", "ruhe", "kameras", "flights", "kalender"];
+
 const SECTIONS = [
   {
     label: "Appearance", icon: "home", iconColor: studioIcon("appearance"), group: "rooms",
@@ -2694,9 +2697,16 @@ const SECTIONS = [
           "10": "After 10 minutes", "15": "After 15 minutes", "30": "After 30 minutes" },
         hint: "Tablets only. After this time without a touch the screensaver covers the dashboard. A touch brings it back." },
       { key: "casora_screensaver_kind", sub: "chrome", label: "Screensaver", type: "select", auto: true, scope: "dashboard",
-        options: ["", "himmel", "land", "fotos", "wort", "wetter", "linie", "woche", "musik", "energie", "ruhe", "kameras", "kalender"],
+        options: SAVER_KIND_OPTIONS,
         optionLabels: { "": "One after the other", himmel: "Sky", land: "Landscapes", fotos: "Photos", wort: "Word clock", wetter: "Weather",
-          linie: "Day line", woche: "Week", musik: "Music", energie: "Energy flow", ruhe: "House at rest", kameras: "Cameras", kalender: "Calendar" },
+          linie: "Day line", woche: "Week", musik: "Music", energie: "Energy flow", ruhe: "House at rest", kameras: "Cameras", flights: "Flights", kalender: "Calendar" },
+        // Flights only where FlightRadar24 is: the same rule as the Studio chips (46-screensaver.js S.offered). A saved
+        // Flights stays selectable. live(hass, value) → {options}; the module not loaded yet offers no Flights.
+        live: (hass, cur) => {
+          const SV = window._casoraSaver;
+          const on = !!(SV && SV.offered && SV.offered(hass).some((k) => k.id === "flights"));
+          return { options: SAVER_KIND_OPTIONS.filter((o) => o !== "flights" || on || cur === "flights") };
+        },
         when: (v) => v.casora_screensaver != null && v.casora_screensaver !== "",
         hint: "Sky follows the sun and the weather. Landscapes are drawn, nothing is loaded. Photos shows this dashboard's room photos." },
       // What the Calendar screensaver shows (#231): "" = the month (as before), "2w" = this week and the next from the
