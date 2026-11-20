@@ -355,7 +355,9 @@ def notify_of(cfg: dict) -> dict:
     return {}
 
 
-FLIGHT_KEYS = ("casora_flights_source",)
+# The same keys as the desktop's (46-screensaver.js FLIGHT_KEYS): the source, the three units and the timezone switch.
+FLIGHT_KEYS = ("casora_flights_source", "casora_flights_altitude_unit", "casora_flights_speed_unit",
+               "casora_flights_vspeed_unit", "casora_flights_timezones")
 
 
 def flights_of(cfg: dict) -> dict:
@@ -370,7 +372,8 @@ def flights_of(cfg: dict) -> dict:
             v = variables.get(k)
             if k in out or v is None or v == "":
                 continue
-            out[k] = str(v)
+            # A switch is read as 'true' / 'false' by the phone (49-flights.js), not as Python's 'True' / 'False'.
+            out[k] = ("true" if v else "false") if isinstance(v, bool) else str(v)
     return out
 
 
