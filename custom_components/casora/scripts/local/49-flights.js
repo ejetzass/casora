@@ -137,7 +137,6 @@
     denied: 'Keine Berechtigung, den Flug hinzuzufügen. Bitte einen Administrator, dir die Berechtigung zu geben.',
     missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: 'Die Datenabfrage in FlightRadar24 ist ausgeschaltet. Schalte sie ein, dann füge den Flug erneut hinzu.',
     ambiguous: 'Mehrere Eingabefelder zum Hinzufügen gefunden.', unavailable: 'Das Eingabefeld zum Hinzufügen ist nicht verfügbar.' };
-  var tr = function (s) { return window.casoraTr ? window.casoraTr(s) : s; };
   var esc = window.casoraEsc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   // German puts a narrow no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that
   // knows both; the DOM pass only rewrites text for other languages, not for German.
