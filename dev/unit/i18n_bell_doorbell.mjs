@@ -80,7 +80,7 @@ const GERMAN = /Hat geklingelt|hat geklingelt|vor \d+ Min\.|Gestern|Gerade eben/
 
 for (const kind of Object.keys(KINDS)) for (const lang of LANGS) {
   const K = KINDS[kind], SRC = K.id;
-  const text = fromFile(lang, K.text), rel = fromFile(lang, 'vor 50 Min.'), day = fromFile(lang, 'Gestern');
+  const text = fromFile(lang, K.text), rel = fromFile(lang, 'vor 5 Min.'), day = fromFile(lang, 'Gestern');
   delete window._casoraNotify;
   hass = {
     user: { id: 'u', is_admin: false }, locale: { language: lang, time_format: '24' }, language: lang,
@@ -109,6 +109,7 @@ for (const kind of Object.keys(KINDS)) for (const lang of LANGS) {
   const tl = n.timeline(card.stackKey);
   const shown = tl.map((e) => e.text).join(' | ');
   assert.ok(tl.some((e) => e.text === text), `${kind} ${lang}: stack entry reads "${text}" (phrase file), got: ${shown}`);
+  // A doorbell stack lists its newest ring too (House: 1687ff129), so the first timeline entry is the 5-minute ring.
   const newest = tl.find((e) => e.rel);
   assert.equal(newest && newest.rel, rel, `${kind} ${lang}: relative time`);
   assert.ok(tl.some((e) => e.day === day), `${kind} ${lang}: day heading "${day}"`);
