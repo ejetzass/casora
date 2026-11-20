@@ -6,6 +6,7 @@
 """
 import asyncio
 import json
+import os
 from datetime import timedelta
 from pathlib import Path
 import subprocess
@@ -83,8 +84,9 @@ if (window.casoraCalendarAllows) {
 }
 process.exit(0);
 """
+        # The state's times are naive local times: Node reads them in the zone the test runs in.
         subprocess.run(["node", "-e", script], input=json.dumps([state, now.isoformat()]),
-                       text=True, cwd=ROOT, check=True)
+                       text=True, cwd=ROOT, check=True, env={**os.environ, "TZ": str(dt_util.DEFAULT_TIME_ZONE)})
 
     def test_empty_replay_drops_old_calendar_fields_and_message_decision(self):
         calendar = self.calendar([], {"message": "Naam-old", "start_time": "Naam-start",
