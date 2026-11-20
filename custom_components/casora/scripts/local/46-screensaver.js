@@ -932,9 +932,14 @@
     var from = +new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), 6), to = +new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 1);
     var pos = function (t) { return Math.max(0, Math.min(100, (t - from) / (to - from) * 100)); };
     var today = (ctx.events || []).filter(function (e) { return !e.allDay && sameDay(e.start, now) && e.start >= from; }).slice(0, 6);
-    var next = (ctx.events || []).filter(function (e) { return !e.allDay && e.start > now; })[0] || null;
+    // The next appointment: the shared cache pick of the calendar tile (06-kalender.js) when that module is loaded.
+    var calRule = window._casoraCalendar, viaRule = !!(calRule && calRule.next && ctx.hass && ctx.cals && ctx.cals.length), next = null;
+    if (viaRule) {
+      var pick = calRule.next(ctx.hass.states || {}, { calendars: ctx.cals.map(function (id) { return { entity: id }; }) }, null, ctx.now);
+      next = pick ? { title: pick.name, start: +pick.start, end: +pick.end, allDay: pick.allDay, on: pick.on } : null;
+    } else next = (ctx.events || []).filter(function (e) { return !e.allDay && e.start > now; })[0] || null;
     var mins = next ? Math.round((next.start - now) / 60000) : null;
-    var inText = next ? (mins >= 60 ? T('in {h} Std. {m} Min.'.replace('{h}', Math.floor(mins / 60)).replace('{m}', mins % 60)) : T('in {m} Min.'.replace('{m}', mins))) : '';
+    var inText = next ? (next.on && !next.allDay ? T('Jetzt') : mins >= 60 ? T('in {h} Std. {m} Min.'.replace('{h}', Math.floor(mins / 60)).replace('{m}', mins % 60)) : T('in {m} Min.'.replace('{m}', mins))) : '';
     var whenNext = next && !sameDay(next.start, now) ? dayName(next.start) + ' ' + clockOf(next.start) : inText;
     var out = '<div class="cs-in">' + head(ctx, next ? next.title : T('Heute nichts mehr'), next ? whenNext : '', true)
       + '<div class="cs-body"><div class="cs-line"><u style="width:' + pos(now).toFixed(1) + '%"></u></div>';
