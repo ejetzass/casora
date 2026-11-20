@@ -78,14 +78,27 @@
   // (Upstream's rule, casoraCalendarNext in 06a). Default order: a running event wins, then the earliest start.
   // skip(ev) (optional) leaves an event out before the order applies: the greeting drops its waste events this way.
   // at (optional): the time to pick for; the callers' own clock (default: now).
-  K.next = function (states, variables, skip, at) {
+  // timedFirst (optional, the Agenda tile's Studio switch): running timed, then timed later today, then running
+  // all-day, then the rest; each group by the earliest start. Off: the default order above.
+  K.next = function (states, variables, skip, at, timedFirst) {
     var best = null, now = at ? new Date(at) : new Date();
     var ha = document.querySelector('home-assistant');
     var cache = loadCache(ha && ha.hass, variables);
+    var rank = function (ev) {
+      if (!ev.allDay && ev.on) return 0;
+      if (!ev.allDay && ev.start > now && day0(ev.start).getTime() === day0(now).getTime()) return 1;
+      if (ev.allDay && ev.on) return 2;
+      return 3;
+    };
+    var before = function (ev) {
+      if (!best) return true;
+      if (timedFirst) return rank(ev) < rank(best) || (rank(ev) === rank(best) && ev.start < best.start);
+      return (ev.on && !best.on) || (ev.on === best.on && ev.start < best.start);
+    };
     var consider = function (ev, attrs) {
       if (isNaN(ev.start) || !K.allowsTitle(ev.name, attrs) || (!ev.on && ev.end < now)) return;
       if (skip && skip(ev)) return;
-      if (!best || (ev.on && !best.on) || (ev.on === best.on && ev.start < best.start)) best = ev;
+      if (before(ev)) best = ev;
     };
     K.cals(variables).forEach(function (c) {
       if (c.tile === false) return;
@@ -108,7 +121,7 @@
     return best;
   };
   K.tile = function (states, variables) {
-    var n = K.next(states, variables);
+    var n = K.next(states, variables, null, null, window.casoraCalendarTimedFirst ? window.casoraCalendarTimedFirst() : false);
     if (!n) return 'Keine Termine';
     if (n.on && !n.allDay) return 'Jetzt · ' + n.name;
     var w = n.on ? 'Heute' : dayWord(n.start, false);
