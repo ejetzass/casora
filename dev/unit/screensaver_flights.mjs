@@ -357,4 +357,72 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.equal(R.S.flightRows(R.hass, { casora_flights_source: 'sensor.gone' }, new Date(SLOT0 + 2000)).length, 0);
 }
 
+// A tap on the Flights saver wakes the dashboard: the saver goes at once, and the tap does not reach the tile underneath.
+// The boot code of 46-screensaver.js runs only in a real document, so this case has a small fake DOM (a node tree, a
+// queue of timeouts) and a document node type 9. Controlled hass states; no browser.
+{
+  class Fake {
+    constructor(tag) { this.tagName = tag; this.children = []; this.attrs = {}; this.listeners = {}; this.style = {}; this.className = ''; this.textContent = ''; this.parent = null; }
+    get isConnected() { let n = this; while (n.parent) n = n.parent; return n.tagName === 'body' || n.tagName === 'head'; }
+    appendChild(c) { this.children.push(c); c.parent = this; return c; }
+    remove() { if (this.parent) { this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; } }
+    setAttribute(k, v) { this.attrs[k] = String(v); }
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+    addEventListener(t, fn) { (this.listeners[t] || (this.listeners[t] = [])).push(fn); }
+    dispatch(t) { (this.listeners[t] || []).forEach((fn) => fn({ type: t, target: this, currentTarget: this, composedPath: () => [this], preventDefault() {}, stopPropagation() {} })); }
+    closest() { return null; }
+    querySelector() { return null; }
+    querySelectorAll() { return []; }
+  }
+  const timers = [];
+  const ha = { hass: null };
+  let clock = SLOT0 + 1000; // a controlled clock, as in runtime(): the fixture times are the test's own
+  class ClockDate extends Date {
+    constructor(...a) { if (a.length) super(...a); else super(clock); }
+    static now() { return clock; }
+  }
+  const body = new Fake('body'), head = new Fake('head');
+  const doc = { nodeType: 9, hidden: false, head, body, createElement: (t) => new Fake(t), getElementById: () => null,
+    querySelector: (sel) => (sel === 'home-assistant' ? ha : null), querySelectorAll: () => [], addEventListener() {} };
+  const box = {
+    console, Intl, Date: ClockDate, Math, parseFloat, isFinite, isNaN, parseInt, String, Number, JSON, Array, Object, Promise, Set, Map, Error, RegExp,
+    setInterval: (fn, ms) => { timers.push({ fn, ms, live: true }); return timers.length; },
+    clearInterval: (id) => { if (timers[id - 1]) timers[id - 1].live = false; },
+    setTimeout: (fn, ms) => { timers.push({ fn, ms, live: true, once: true }); return timers.length; },
+    clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].live = false; },
+    location: { search: '', pathname: '/' }, addEventListener() {}, localStorage: { getItem: () => null, setItem() {} },
+    HTMLElement: class {}, customElements: { get: () => undefined, define() {} }, casoraLocale: () => 'en-US',
+  };
+  box.window = box;
+  box.document = doc;
+  vm.createContext(box);
+  vm.runInContext(FLIGHTS_SRC, box);
+  vm.runInContext(SAVER_SRC, box);
+  const S = box._casoraSaver;
+  const conn = { addEventListener() {} }; // one connection: a new one would restart the movement evidence
+  const hassAt = (step) => house({ step, conn });
+  ha.hass = hassAt(1);
+  clock = SLOT0 + 1000;
+  const cfg = { views: [{ cards: [{ variables: { casora_screensaver: '5', casora_screensaver_kind: 'flights', casora_flights_source: SRC } }] }] };
+  const mark = timers.length; // the page's own boot interval (no hui-root here) is not this saver's
+  S.show(cfg);
+  const layer = body.children.find((c) => c.className === 'cs-sv-layer');
+  assert.ok(layer, 'the saver layer is on the page');
+  const mine = () => timers.slice(mark).filter((t) => t.live && !t.once && t.ms === 5000);
+  const tick = () => mine().forEach((t) => t.fn());
+  tick(); // the baseline of the flight
+  clock = SLOT0 + 2000;
+  ha.hass = hassAt(2); // the aircraft has moved: seen at this update, shown at the next
+  tick();
+  clock = SLOT0 + 3000;
+  tick();
+  assert.match(layer.children[0].innerHTML, /data-kind="flights"/, 'the Flights saver is what shows');
+  layer.dispatch('pointerdown');
+  assert.equal(layer.style.opacity, '0', 'the layer fades at once on a tap');
+  timers.filter((t) => t.live && t.once && t.ms === 1500).forEach((t) => { t.live = false; t.fn(); });
+  assert.equal(body.children.filter((c) => c.className === 'cs-sv-layer').length, 0, 'and is gone when the tap is over');
+  assert.equal(S.shown(), false, 'the saver reports it is not shown');
+  assert.equal(mine().length, 0, 'its update timer is stopped');
+}
+
 console.log('ok screensaver_flights');
