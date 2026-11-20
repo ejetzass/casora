@@ -33,6 +33,9 @@ literals.forEach((k) => assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|trac
   assert.ok(literals.includes(k), 'the denial text is in the module: ' + k.slice(0, 30));
 });
 
+// One translation helper in the module: a second `var tr` in the same closure hides the first (a reading slip, not a bug today).
+assert.equal((src.match(/var tr = /g) || []).length, 1, 'one tr helper in 49-flights.js');
+
 // The Manage tile name may wrap onto a second line: names are one line with an ellipsis everywhere else, and on a phone
 // (about 110 px for the name) "Vluchten beheren" was cut to "Vluchten be…". The template keeps the word and wraps it.
 {
