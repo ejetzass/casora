@@ -27,6 +27,8 @@ const makeElement = (tag) => {
 const document = { createElement: makeElement };
 const window = { casoraI18n: { t: (text) => text } };
 new Function('window', 'document', fs.readFileSync(new URL('../../custom_components/casora/scripts/local/25-camera-popup.js', import.meta.url), 'utf8'))(window, document);
+// Save asks the flights module whether a tracked-flights source is still undecided: load the real one.
+new Function('window', 'document', fs.readFileSync(new URL('../../custom_components/casora/scripts/local/49-flights.js', import.meta.url), 'utf8'))(window, document);
 const Panel = function () {};
 Panel.prototype._isDirty = function () { return JSON.stringify(this._state) !== JSON.stringify(this.dashboardSaved); };
 Panel.prototype._markDirty = function () { this._lastPrint = JSON.stringify(this._state); };
