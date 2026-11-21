@@ -7,7 +7,8 @@
 // The source is one setting for every flight surface: the hero card variable casora_flights_source (Dashboard settings
 // scope, Save/Discard in the Studio). Empty = Automatic, allowed only while exactly one source exists.
 // Reads, plus two writes: F.submit (adding a flight, Add button or Enter in its field) and F.stop (stopping a row, its
-// Stop tracking button). Neither runs from rendering.
+// Stop tracking button). Neither runs from rendering. Both read the scanning switch of the source's device first: is it
+// off, nothing is sent and the switch is named.
 //   window._casoraFlights.present(hass)              → FlightRadar24 entries in the registry?
 //   window._casoraFlights.sources(hass)              → [{id, device, name, ok}] usable source sensors
 //   window._casoraFlights.resolve(hass, pin)         → {state: none|auto|choose|pinned|missing|loading, id, source, sources, missing}
@@ -26,6 +27,13 @@
   F.KEY = KEY;
 
   var tr = function (s) { return window.casoraTr ? window.casoraTr(s) : s; };
+  // The name goes into the text after the translation: the table is a plain lookup, so {name} is part of the key.
+  var fillName = function (s, name) { return String(s == null ? '' : s).replace(/\{name\}/g, name == null ? '' : String(name)); };
+  // The parts of FlightRadar24 that Casora needs, by name (the missing-part text names the one that is missing).
+  var PARTS = { add: 'das Eingabefeld zum Hinzufügen', remove: 'das Steuerelement zum Beenden', scanning: 'der Schalter für die Datenabfrage' };
+  var T_MISSING_PART = 'In FlightRadar24 fehlt, was Casora braucht: {name}';
+  // The text of a missing part, with the name of the part in it.
+  var missingText = function (role) { return fillName(tr(T_MISSING_PART), tr(PARTS[role])); };
 
   var bad = function (s) { return !s || s.state === 'unavailable' || s.state === 'unknown'; };
   var isList = function (v) { return Array.isArray(v); };
@@ -51,6 +59,16 @@
   var nameOf = function (hass, id) {
     var R = hass.entities || {}, S = hass.states || {}, d = R[id] && R[id].device_id && (hass.devices || {})[R[id].device_id];
     return (d && (d.name_by_user || d.name)) || ((S[id] || {}).attributes || {}).friendly_name || id;
+  };
+  // The name the user sees for an entity (its friendly name), the device name as the fallback.
+  var friendlyOf = function (hass, id) {
+    var st = ((hass && hass.states) || {})[id];
+    return (st && (st.attributes || {}).friendly_name) || nameOf(hass, id);
+  };
+  // The scanning switch of the source's device: off means the integration ignores every command.
+  var scanOff = function (hass, ctl) {
+    var st = ctl && ctl.scanning && (hass.states || {})[ctl.scanning];
+    return !!(st && st.state === 'off');
   };
   // The state is read on every call (it changes with each poll); only the registry part is cached.
   F.sources = function (hass) {
@@ -129,19 +147,22 @@
   // registration). No such flight within ADD_WAIT gives "not confirmed"; a later list update still confirms it. One
   // attempt at a time, no retry. A change of source drops the attempt; the list stays as the integration reports it.
   var ADD_WAIT = 30000;
-  var add = null; // {source, key, state, base: flight keys before the call, timer}
+  var add = null; // {source, key, state, name, base: flight keys before the call, timer}
   F.draft = '';
+  // One wording for both commands: the scanning switch is off, so the integration would ignore the command. The text names
+  // the switch ({name} is filled in after the translation).
+  var T_SCANNING = '{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.';
   var MSG = { empty: 'Bitte eine Flugkennung eingeben.', pending: 'Wird hinzugefügt …', confirmed: 'Flug wird verfolgt',
     tracked: 'Flug wird bereits verfolgt', unconfirmed: 'Hinzufügen nicht bestätigt. Prüfe die Verfolgung, bevor du es erneut versuchst.',
     failed: 'Hinzufügen fehlgeschlagen. Prüfe die Flugkennung und die Verbindung zu FlightRadar24, dann versuche es erneut.',
     denied: 'Keine Berechtigung, den Flug hinzuzufügen. Bitte einen Administrator, dir die Berechtigung zu geben.',
-    missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: 'Die Datenabfrage in FlightRadar24 ist ausgeschaltet. Schalte sie ein, dann füge den Flug erneut hinzu.',
+    missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: T_SCANNING,
     ambiguous: 'Mehrere Eingabefelder zum Hinzufügen gefunden.', unavailable: 'Das Eingabefeld zum Hinzufügen ist nicht verfügbar.' };
   var esc = window.casoraEsc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   // German puts a narrow no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that
   // knows both; the DOM pass only rewrites text for other languages, not for German.
   var pctText = function (n) { return tr(n + ' %'); };
-  var msgOf = function (a) { return a && MSG[a.state] ? tr(MSG[a.state]) : ''; };
+  var msgOf = function (a) { return a && MSG[a.state] ? fillName(tr(MSG[a.state]), a.name) : ''; };
   // A call HA refuses (the user may not use the control) is named apart from a failed call: the fix is a permission.
   var refused = function (e) { return !!e && (e.code === 'unauthorized' || /unauthori[sz]ed/i.test(String(e.message || ''))); };
   var inStudio = function () { return !!(window.casoraInStudio && window.casoraInStudio()); };
@@ -178,8 +199,8 @@
     else if (bad((hass.states || {})[ctl.add])) st = 'unavailable';
     else if (flightsOf(hass, id).some(function (f) { return sameAs(f, key); })) st = 'tracked';
     // The switch is off: the integration would ignore the add, so say so now instead of waiting for a confirmation.
-    else if (ctl.scanning && (hass.states || {})[ctl.scanning] && hass.states[ctl.scanning].state === 'off') st = 'scanning';
-    if (st) { add = { source: id, key: key, state: st, base: [], timer: null }; F.paint(); return add; }
+    else if (scanOff(hass, ctl)) st = 'scanning';
+    if (st) { add = { source: id, key: key, state: st, name: st === 'scanning' ? friendlyOf(hass, ctl.scanning) : '', base: [], timer: null }; F.paint(); return add; }
     var a = add = { source: id, key: key, state: 'pending', base: flightsOf(hass, id).map(keyOf), timer: null };
     a.timer = setTimeout(function () { if (a.state === 'pending') settle(a, 'unconfirmed'); }, ADD_WAIT);
     F.paint();
@@ -206,11 +227,11 @@
   // ── Stopping a flight: the one removal, from a row's Stop tracking button only ─────────────────────────────────────
   // The integration removes by identifier (flight number, callsign or registration), not by FR24 ID, and its remove
   // control can also return normally on failure. So before the command: the row must still be listed under its FR24
-  // ID, its identifier must match exactly one entry (else nothing is sent), and the control must be unambiguous and
-  // available. Confirmed only when the row is gone and no entry is left with that identifier. Same bounded wait and no
-  // retry as adding; a list update that re-lists the flight drops a confirmed result.
+  // ID, no other entry may share one of its identifiers (else nothing is sent), the control must be unambiguous and
+  // available, and the scanning switch must be on. Confirmed only when the row is gone and no entry is left with that
+  // identifier. Same bounded wait and no retry as adding; a list update that re-lists the flight drops a confirmed result.
   var REMOVE_WAIT = 30000;
-  var rm = null; // {source, row, key, state, timer}
+  var rm = null; // {source, row, key, state, name, timer}
   var RMMSG = { pending: 'Verfolgung wird beendet …', confirmed: 'Verfolgung beendet',
     unconfirmed: 'Beenden nicht bestätigt. Prüfe die Verfolgung, bevor du es erneut versuchst.',
     failed: 'Beenden fehlgeschlagen.', stale: 'Dieser Eintrag ist nicht mehr in der Liste.',
@@ -218,15 +239,28 @@
     ambiguous: 'Mehrere Einträge haben diese Kennung. Es wurde nichts beendet.',
     missing_ctl: 'Kein Steuerelement zum Beenden gefunden.', ambiguous_ctl: 'Mehrere Steuerelemente zum Beenden gefunden.',
     unavailable_ctl: 'Das Steuerelement zum Beenden ist nicht verfügbar.', source: 'Quelle nicht verfügbar',
+    scanning: T_SCANNING,
     denied: 'Keine Berechtigung, die Verfolgung zu beenden. Bitte einen Administrator, dir die Berechtigung zu geben.' };
   var rmBusy = function () { return !!rm && rm.state === 'pending'; };
-  var rmMsgOf = function (a) { return a && RMMSG[a.state] ? tr(RMMSG[a.state]) : ''; };
+  var rmMsgOf = function (a) { return a && RMMSG[a.state] ? fillName(tr(RMMSG[a.state]), a.name) : ''; };
   var settleRm = function (a, state) { if (rm !== a) return; a.state = state; if (a.timer) { clearTimeout(a.timer); a.timer = null; } F.paint(); };
   var dropRm = function () { if (rm && rm.timer) clearTimeout(rm.timer); rm = null; };
   var idOf = function (f) { return f && typeof f === 'object' ? str(f.id) : ''; };
   var listed = function (flights, row) { return flights.some(function (f) { return idOf(f) === row; }); };
   var sameIdent = function (flights, key) { return flights.filter(function (f) { return sameAs(f, key); }); };
   var identOf = function (f) { return [f.flight_number, f.callsign, f.aircraft_registration].map(str).filter(Boolean)[0] || ''; };
+  // The identifiers of an entry: flight number, callsign and registration (what the integration matches).
+  var identsOf = function (f) {
+    return [f && f.flight_number, f && f.callsign, f && f.aircraft_registration]
+      .map(function (v) { return str(v).toUpperCase(); }).filter(Boolean);
+  };
+  // The integration removes the FIRST entry whose flight number, callsign or registration matches. So the row must be
+  // the only entry its identifiers name: an aircraft stub and a flight on the same airframe share the registration, and
+  // then the command could take the other entry. Nothing is sent in that case.
+  var sharedIdent = function (flights, row) {
+    var mine = identsOf(row);
+    return flights.some(function (f) { return f !== row && identsOf(f).some(function (v) { return mine.indexOf(v) >= 0; }); });
+  };
   // Returns the attempt; null in Studio or without a source. The attempt is only sent when every check passes.
   F.stop = function (hass, id, row) {
     if (inStudio() || !hass || !id) return null;
@@ -243,9 +277,11 @@
       else if (ctl.ambiguous.indexOf('remove') >= 0) state = 'ambiguous_ctl';
       else if (!ctl.remove) state = 'missing_ctl';
       else if (bad((hass.states || {})[ctl.remove])) state = 'unavailable_ctl';
-      else if (sameIdent(flights, key).length !== 1) state = 'ambiguous';
+      else if (sharedIdent(flights, found[0])) state = 'ambiguous';
+      // The switch is off: the integration would ignore the command, so say so now instead of waiting for a confirmation.
+      else if (scanOff(hass, ctl)) state = 'scanning';
     }
-    if (state) { rm = { source: id, row: row0, key: key, state: state, timer: null }; F.paint(); return rm; }
+    if (state) { rm = { source: id, row: row0, key: key, state: state, name: state === 'scanning' ? friendlyOf(hass, ctl.scanning) : '', timer: null }; F.paint(); return rm; }
     var a = rm = { source: id, row: row0, key: key, state: 'pending', timer: null, refocus: false, at: 0 };
     // A Stop button with the keyboard focus is disabled below: its place is remembered for the focus to come back to.
     deepAll('[data-flights-stop]').forEach(function (b, i) { if (b.getRootNode && b.getRootNode().activeElement === b) { a.refocus = true; a.at = i; } });
@@ -454,6 +490,10 @@
     if (part === 'add') {
       var r = F.resolve(h, c && c.pin);
       if (!r.source || (r.state !== 'pinned' && r.state !== 'auto')) return '';
+      // A missing part (the add field or the scanning switch) hides only Add: the list and its rows stay.
+      var ctlAdd = F.controls(h, r.id);
+      var miss = ctlAdd.missing.indexOf('add') >= 0 ? 'add' : (ctlAdd.missing.indexOf('scanning') >= 0 ? 'scanning' : null);
+      if (miss) return '<p data-flights-missing style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(missingText(miss)) + '</p>';
       var a = F.addView(h, r.id);
       // The label names the input (axe: label). The focus ring is a rule here: the popup's own styles remove outlines.
       return '<style>[data-flights-in]:focus-visible,[data-flights-add-btn]:focus-visible{outline:2px solid var(--casora-popup-ui-action,var(--casora-accent,#276B64));outline-offset:2px}</style>'
@@ -475,17 +515,23 @@
       // The complete list (airborne or not): a row's Stop tracking button needs only the source and the row's FR24 ID.
       var rs = F.resolve(h, c && c.pin), live = !!rs.source && (rs.state === 'pinned' || rs.state === 'auto');
       var sa = live ? F.stopView(h, rs.id) : null, busy = rmBusy() || inStudio();
+      // A missing remove control hides only the Stop buttons: the rows stay, the missing part is named. Two controls on
+      // the device are not a missing part: the button stays and names the ambiguity when it is pressed.
+      var ctlList = live ? F.controls(h, rs.id) : null, noStop = !!(ctlList && !ctlList.remove && ctlList.ambiguous.indexOf('remove') < 0);
+      var missHtml = '<p data-flights-missing style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(missingText('remove')) + '</p>';
+      var noteHtml = live ? (noStop ? missHtml
+        : '<p id="flights-stop-help" style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Beendet die Verfolgung in FlightRadar24 und kann zugehörige Benachrichtigungen stoppen. Automationen können den Flug erneut hinzufügen.')) + '</p>') : '';
       refocusSoon(); // a stop from the keyboard: the focus comes back after this draw
       var msgHtml = '<p data-flights-rm-msg role="status" tabindex="-1" aria-live="polite" style="margin:8px 0 0;font-size:14px;font-weight:600;min-height:1em;white-space:normal;overflow-wrap:anywhere">' + esc(rmMsgOf(sa)) + '</p>';
-      if (!m.rows.length) return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY }) + msgHtml; // the feedback outlives the last row
+      if (!m.rows.length) return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY }) + noteHtml + msgHtml; // the feedback outlives the last row
       var rowsHtml = m.rows.map(function (e, i) {
         return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '')
-          + '<div style="display:flex;align-items:center;gap:12px;min-height:52px;box-sizing:border-box;padding:8px 16px">'
+          + '<div' + (e.key ? ' data-flights-row="' + esc(e.key) + '"' : '') + ' style="display:flex;align-items:center;gap:12px;min-height:52px;box-sizing:border-box;padding:8px 16px">'
           + '<div style="flex:1;min-width:0">'
           + '<div style="font-size:17px;white-space:normal;overflow-wrap:anywhere">' + esc(e.label) + '</div>'
           + (e.detail ? '<div style="font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(e.detail) + '</div>' : '')
           + '</div>'
-          + (live && e.key
+          + (live && e.key && !noStop
             ? '<button type="button" data-flights-stop data-flights-src="' + esc(rs.id) + '" data-flights-row="' + esc(e.key) + '"'
             + ' aria-describedby="flights-stop-help" aria-label="' + esc(tr('Verfolgung beenden')) + ': ' + esc(e.label) + '"'
             + (busy ? ' disabled' : '')
@@ -495,7 +541,7 @@
           + '</div>';
       }).join('');
       return '<style>[data-flights-stop]:focus-visible{outline:2px solid var(--casora-popup-ui-action,var(--casora-accent,#276B64));outline-offset:2px}</style>'
-        + (live ? '<p id="flights-stop-help" style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Beendet die Verfolgung in FlightRadar24 und kann zugehörige Benachrichtigungen stoppen. Automationen können den Flug erneut hinzufügen.')) + '</p>' : '')
+        + noteHtml
         + '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">' + rowsHtml + '</div>'
         + msgHtml;
     }

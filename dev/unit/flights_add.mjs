@@ -217,18 +217,49 @@ assert.doesNotMatch(field, /id="flights-add-help"[^>]*opacity:\.75/, 'the help t
 fire(); // an attempt left pending by the touch test above expires first
 // ── Scanning off: the field says so at once, nothing is sent and nothing waits 30 s ──
 h = base();
-h.states['switch.a'] = { entity_id: 'switch.a', state: 'off', attributes: {} };
+h.states['switch.a'] = { entity_id: 'switch.a', state: 'off', attributes: { friendly_name: 'Datenabfrage' } };
 const off = F.submit(h, 'sensor.a', 'XY123');
 assert.equal(h.calls.length, 0, 'scanning off: no add command');
 assert.equal(off.state, 'scanning', 'scanning off: its own state');
 assert.equal(timers.filter((t) => t.live).length, 0, 'scanning off: no 30 s wait');
-assert.match(sec('add'), /Datenabfrage in FlightRadar24 ist ausgeschaltet/, 'scanning off: the field names the switch');
+assert.match(sec('add'), /Datenabfrage ist in FlightRadar24 ausgeschaltet/, 'scanning off: the field names the switch');
 // A missing or unavailable scanning switch does not block the add (the integration decides).
 h = base();
 h.states['switch.a'] = { entity_id: 'switch.a', state: 'unavailable', attributes: {} };
 F.submit(h, 'sensor.a', 'XY123');
 assert.equal(h.calls.length, 1, 'scanning unavailable: the add is still sent');
 fire();
+
+// ── One wording for both commands: Add and Stop name the switch the same way ──
+h = base([flight('fr-1', 'XY123')]);
+h.add('text.remove_a', { dev: 'd1', key: 'remove_track', cat: 'config', state: '' });
+h.states['switch.a'] = { entity_id: 'switch.a', state: 'off', attributes: { friendly_name: 'Datenabfrage' } };
+F.submit(h, 'sensor.a', 'XY999');
+const addMsg = sec('add');
+const stop = F.stop(h, 'sensor.a', 'fr-1');
+assert.equal(stop.state, 'scanning', 'scanning off: the stop says so too');
+assert.equal(h.calls.length, 0, 'scanning off: no stop command');
+const stopMsg = F.sec('list', { pin: 'sensor.a' }, h.states, h);
+const wording = /Datenabfrage ist in FlightRadar24 ausgeschaltet\. Schalte den Schalter ein, dann versuche es erneut\./;
+assert.match(addMsg, wording, 'the add feedback names the switch');
+assert.match(stopMsg, wording, 'the stop feedback says the same');
+fire();
+
+// ── A missing part hides only Add: the list stays, the missing part is named ──
+h = base([flight('fr-1', 'XY123')]);
+delete h.entities['text.add_a'];
+let missAdd = sec('add');
+assert.doesNotMatch(missAdd, /data-flights-in/, 'no Add field without the control');
+assert.doesNotMatch(missAdd, /data-flights-add-btn/, 'no Add button without the control');
+assert.match(missAdd, /fehlt, was Casora braucht: das Eingabefeld zum Hinzufügen/, 'the missing part is named');
+assert.match(F.sec('list', { pin: 'sensor.a' }, h.states, h), /data-flights-row="fr-1"/, 'the list and its rows stay');
+
+h = base([flight('fr-1', 'XY123')]);
+delete h.entities['switch.a'];
+missAdd = sec('add');
+assert.doesNotMatch(missAdd, /data-flights-add-btn/, 'no Add button without the scanning switch');
+assert.match(missAdd, /fehlt, was Casora braucht: der Schalter für die Datenabfrage/, 'the missing part is named');
+assert.match(F.sec('list', { pin: 'sensor.a' }, h.states, h), /data-flights-row="fr-1"/, 'the list and its rows stay');
 
 // ── Failure names a next step, in Casora\'s own words ──
 h = base();
