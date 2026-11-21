@@ -3035,6 +3035,7 @@
     "Kein Steuerelement zum Beenden gefunden.": "Geen bedieningselement gevonden om het volgen te stoppen.",
     "Mehrere Steuerelemente zum Beenden gefunden.": "Meerdere bedieningselementen gevonden om het volgen te stoppen.",
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "Het bedieningselement om het volgen te stoppen is niet beschikbaar.",
+    "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "FlightRadar24 mist twee onderdelen die Casora nodig heeft: het invoerveld om een vlucht toe te voegen en de schakelaar voor het ophalen van gegevens",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "FlightRadar24 mist een onderdeel dat Casora nodig heeft: {name}",
     "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} staat uit in FlightRadar24. Zet de schakelaar aan en probeer het opnieuw.",
     "das Eingabefeld zum Hinzufügen": "het invoerveld om toe te voegen",

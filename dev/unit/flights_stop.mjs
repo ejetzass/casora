@@ -134,12 +134,17 @@ assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'ambiguous', 'two entries share 
 assert.equal(h.calls.length, 0, 'no guess');
 
 // An aircraft stub and a flight on the same airframe share the registration. The integration removes the first entry
-// whose registration matches, so the row would not be the one that goes: the removal is ambiguous, nothing is sent.
+// whose identifier matches the one sent. The flight's identifier is its flight number, which the stub does not carry:
+// the flight goes, and the registration is not the sent identifier, so the shared registration does not block it.
 h = base([{ id: 'a1', flight_number: '', callsign: '', aircraft_registration: 'T-AAAA', tracked_type: 'aircraft', on_ground: 1 },
   flight('f1', 'XY123', { aircraft_registration: 'T-AAAA' })]);
-assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'ambiguous', 'the flight shares its registration with the aircraft entry');
-assert.equal(h.calls.length, 0, 'no guess');
-assert.equal(F.stop(h, 'sensor.a', 'a1').state, 'ambiguous', 'the aircraft entry shares its registration with the flight');
+assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'pending', 'a unique flight number is sent although the registration is shared');
+assert.deepEqual(plain(h.calls[0].data), { value: 'XY123' }, 'the flight number is the identifier sent');
+fire();
+// The aircraft stub's identifier is its registration, which the flight carries: the command could take the flight instead.
+h = base([{ id: 'a1', flight_number: '', callsign: '', aircraft_registration: 'T-AAAA', tracked_type: 'aircraft', on_ground: 1 },
+  flight('f1', 'XY123', { aircraft_registration: 'T-AAAA' })]);
+assert.equal(F.stop(h, 'sensor.a', 'a1').state, 'ambiguous', 'the aircraft entry\'s registration is carried by the flight');
 assert.equal(h.calls.length, 0, 'nothing is sent');
 
 h = base([flight('f1', 'XY123'), flight('f2', '', { callsign: 'XY123' })]);
@@ -384,6 +389,20 @@ const nl = JSON.parse(read('custom_components/casora/translations/dashboard/phra
   'Für diesen Eintrag gibt es keine Kennung zum Beenden.'].forEach((k) => {
   assert.equal(typeof nl.exact[k], 'string', 'nl has the phrase');
   assert.doesNotMatch(nl.exact[k], /\bitems?\b/i, 'nl: no "item" in "' + k.slice(0, 30) + '"');
+});
+
+// Last: the outcome line of a stop stays until the next action, so this block runs after the others.
+// ── Scanning switch missing, unavailable or unknown: it cannot be confirmed, so nothing is sent (as with Add) ──
+['missing', 'unavailable', 'unknown'].forEach((kind) => {
+  h = base([flight('f1', 'XY123')]);
+  if (kind === 'missing') delete h.entities['switch.a'];
+  else h.states['switch.a'].state = kind;
+  const cut = F.stop(h, 'sensor.a', 'f1');
+  assert.equal(cut.state, 'noscan', kind + ': its own state');
+  assert.equal(h.calls.length, 0, kind + ': no stop command');
+  assert.equal(timers.filter((t) => t.live).length, 0, kind + ': no 30 s wait');
+  assert.match(list(h), /In FlightRadar24 fehlt, was Casora braucht: der Schalter für die Datenabfrage/, kind + ': the missing part is named');
+  fire();
 });
 
 console.log('ok flights_stop');

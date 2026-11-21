@@ -261,6 +261,14 @@ assert.doesNotMatch(missAdd, /data-flights-add-btn/, 'no Add button without the 
 assert.match(missAdd, /fehlt, was Casora braucht: der Schalter für die Datenabfrage/, 'the missing part is named');
 assert.match(F.sec('list', { pin: 'sensor.a' }, h.states, h), /data-flights-row="fr-1"/, 'the list and its rows stay');
 
+// Both parts missing: the one note names both, not only the first one found.
+h = base([flight('fr-1', 'XY123')]);
+delete h.entities['text.add_a'];
+delete h.entities['switch.a'];
+const bothMissing = sec('add');
+assert.doesNotMatch(bothMissing, /data-flights-add-btn/, 'no Add button without the add field and the switch');
+assert.match(bothMissing, /In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage/, 'the note names both missing parts');
+
 // ── Failure names a next step, in Casora\'s own words ──
 h = base();
 h.reply = () => Promise.reject(new Error('service failed'));
