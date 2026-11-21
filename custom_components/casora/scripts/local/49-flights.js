@@ -1098,7 +1098,7 @@
     }
     if (part === 'fmove') return pairs([[tr('Höhe'), r.altitude], [tr('Geschwindigkeit über Grund'), r.speed],
       [tr('Vertikalgeschwindigkeit'), r.vspeed], [tr('Kurs'), r.heading]]);
-    if (part === 'fair') return pairs([[tr('Fluggesellschaft'), str(f.airline_short) || str(f.airline)], [tr('Flugzeugmodell'), str(f.aircraft_model)],
+    if (part === 'fair') return pairs([[tr('Fluggesellschaft'), str(f.airline_short) || str(f.airline)], [tr('Flugzeugmodell'), str(f.aircraft_model) || str(f.aircraft_code)],
       [tr('Registrierung'), str(f.aircraft_registration)], [tr('Rufzeichen'), str(f.callsign)]]);
     if (part === 'fplaces') return pairs([[tr('Abflug'), place(f, 'origin')], [tr('Ankunft'), place(f, 'destination')]]);
     if (part === 'ftimes') {

@@ -188,6 +188,30 @@ assert.equal(F.sec('fplaces', sc, hass.states, hass), '', 'no airports: no plate
 assert.equal(F.sec('fair', sc, hass.states, hass), '', 'no aircraft details: no plate');
 assert.equal(F.sec('fstage', sc, hass.states, hass), '', 'no route: no stage text');
 
+// ── The aircraft row: the model, or the aircraft code when FR24 gives no model ──
+runtime(); hass = house();
+const noModel = (extra) => fl('ac1', { aircraft_model: undefined, aircraft_code: 'B738', ...extra });
+hass.source('sensor.a', [noModel()]); F.airborne(hass, '', T0);
+hass.source('sensor.a', [{ ...noModel(), latitude: 10.05 }]);
+const ac1 = { src: 'sensor.a', flight: 'ac1' };
+assert.match(F.sec('fair', ac1, hass.states, hass), /B738/, 'the aircraft code stands in for a missing model');
+assert.match(F.sec('fair', ac1, hass.states, hass), /Flugzeugmodell/, 'the code stands in the model row');
+assert.doesNotMatch(F.sec('fair', ac1, hass.states, hass), /Example 900/, 'no model, no model text');
+
+runtime(); hass = house();
+hass.source('sensor.a', [fl('ac2', { aircraft_code: 'B738' })]); F.airborne(hass, '', T0);
+hass.source('sensor.a', [{ ...fl('ac2', { aircraft_code: 'B738' }), latitude: 10.05 }]);
+const ac2 = { src: 'sensor.a', flight: 'ac2' };
+assert.match(F.sec('fair', ac2, hass.states, hass), /Example 900/, 'the model wins over the aircraft code');
+assert.doesNotMatch(F.sec('fair', ac2, hass.states, hass), /B738/, 'the code is left out when the model is there');
+
+runtime(); hass = house();
+hass.source('sensor.a', [fl('ac3', { aircraft_model: undefined, aircraft_code: undefined })]); F.airborne(hass, '', T0);
+hass.source('sensor.a', [{ ...fl('ac3', { aircraft_model: undefined, aircraft_code: undefined }), latitude: 10.05 }]);
+const ac3 = F.sec('fair', { src: 'sensor.a', flight: 'ac3' }, hass.states, hass);
+assert.doesNotMatch(ac3, /Flugzeugmodell/, 'no model and no code: the row is left out');
+assert.match(ac3, /Testair/, 'the other rows stay');
+
 // Texts from the source are escaped (a name cannot inject markup into the popup).
 runtime(); hass = house();
 hass.source('sensor.a', [fl('e1', { airline_short: '<b>X</b>' })]); F.airborne(hass, '', T0);
