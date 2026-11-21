@@ -33,6 +33,21 @@ literals.forEach((k) => assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|trac
   assert.ok(literals.includes(k), 'the denial text is in the module: ' + k.slice(0, 30));
 });
 
+// The texts of the missing parts and of the scanning switch: they start with an article or a placeholder, so the scan
+// above skips them. Every language needs them anyway.
+const NEW_TEXTS = ['In FlightRadar24 fehlt, was Casora braucht: {name}',
+  '{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.',
+  'das Eingabefeld zum Hinzufügen', 'das Steuerelement zum Beenden', 'der Schalter für die Datenabfrage'];
+NEW_TEXTS.forEach((k) => {
+  assert.ok(src.includes(k), 'the text is in the module: ' + k.slice(0, 30));
+  LANGS.forEach((l) => assert.equal(typeof phrases[l][k], 'string', l + ' has the phrase: ' + k.slice(0, 30)));
+  assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|tracking|stop|status)\b/i, 'nl: no English loan in "' + k.slice(0, 30) + '"');
+});
+// The name goes into the text after the translation: the placeholder is in the key, not a pattern.
+NEW_TEXTS.filter((k) => k.includes('{name}')).forEach((k) => {
+  LANGS.forEach((l) => assert.match(phrases[l][k], /\{name\}/, l + ' keeps the placeholder: ' + k.slice(0, 30)));
+});
+
 // One translation helper in the module: a second `var tr` in the same closure hides the first (a reading slip, not a bug today).
 assert.equal((src.match(/var tr = /g) || []).length, 1, 'one tr helper in 49-flights.js');
 

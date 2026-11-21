@@ -133,6 +133,15 @@ h = base([flight('f1', 'XY123'), flight('f2', 'XY123')]);
 assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'ambiguous', 'two entries share the identifier: the command could remove the other one');
 assert.equal(h.calls.length, 0, 'no guess');
 
+// An aircraft stub and a flight on the same airframe share the registration. The integration removes the first entry
+// whose registration matches, so the row would not be the one that goes: the removal is ambiguous, nothing is sent.
+h = base([{ id: 'a1', flight_number: '', callsign: '', aircraft_registration: 'T-AAAA', tracked_type: 'aircraft', on_ground: 1 },
+  flight('f1', 'XY123', { aircraft_registration: 'T-AAAA' })]);
+assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'ambiguous', 'the flight shares its registration with the aircraft entry');
+assert.equal(h.calls.length, 0, 'no guess');
+assert.equal(F.stop(h, 'sensor.a', 'a1').state, 'ambiguous', 'the aircraft entry shares its registration with the flight');
+assert.equal(h.calls.length, 0, 'nothing is sent');
+
 h = base([flight('f1', 'XY123'), flight('f2', '', { callsign: 'XY123' })]);
 assert.equal(F.stop(h, 'sensor.a', 'f1').state, 'ambiguous', 'a callsign that equals the number of another entry is ambiguous too');
 assert.equal(h.calls.length, 0);
@@ -193,6 +202,31 @@ assert.match(list(h), /data-flights-stop[^>]*disabled/, 'Studio preview: disable
 assert.equal(F.stop(h, 'sensor.a', 'f1'), null, 'Studio: no stop');
 assert.equal(h.calls.length, 0);
 ctx.window.casoraInStudio = undefined;
+
+// ── Scanning off: the stop says so at once, nothing is sent and nothing waits 30 s ──
+h = base([flight('f1', 'XY123')]);
+h.states['switch.a'] = { entity_id: 'switch.a', state: 'off', attributes: { friendly_name: 'Datenabfrage' } };
+const off = F.stop(h, 'sensor.a', 'f1');
+assert.equal(off.state, 'scanning', 'scanning off: its own state');
+assert.equal(h.calls.length, 0, 'scanning off: no stop command');
+assert.equal(timers.filter((t) => t.live).length, 0, 'scanning off: no 30 s wait');
+assert.match(list(h), /Datenabfrage ist in FlightRadar24 ausgeschaltet/, 'the feedback names the switch');
+
+// ── A missing remove control hides only the Stop buttons: the rows stay, the missing part is named ──
+h = base([flight('f1', 'XY123')]);
+delete h.entities['text.remove_a'];
+html = list(h);
+assert.doesNotMatch(html, /<button[^>]*data-flights-stop/, 'no Stop button without the control');
+assert.match(html, /data-flights-row="f1"/, 'the row stays');
+assert.match(html, /fehlt, was Casora braucht: das Steuerelement zum Beenden/, 'the missing part is named');
+assert.doesNotMatch(html, /flights-stop-help/, 'no explanation of a button that is not there');
+
+// Two controls on the device are not a missing part: the button stays and the press names the ambiguity.
+h = base([flight('f1', 'XY123')]);
+h.add('text.remove_x', { dev: 'd1', key: 'remove_track', cat: 'config', state: '' });
+html = list(h);
+assert.match(html, /data-flights-stop/, 'the Stop button stays with two controls');
+assert.doesNotMatch(html, /fehlt, was Casora braucht/, 'no missing-part text: the part is there');
 
 // ── No flight ID: no button, because a row without an ID cannot be told apart from its neighbours ──
 h = base([{ flight_number: 'XY700', tracked_type: 'live', on_ground: 0 }]);
