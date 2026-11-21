@@ -37,6 +37,7 @@ literals.forEach((k) => assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|trac
 // above skips them. Every language needs them anyway.
 const NEW_TEXTS = ['In FlightRadar24 fehlt, was Casora braucht: {name}',
   '{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.',
+  'In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage',
   'das Eingabefeld zum Hinzufügen', 'das Steuerelement zum Beenden', 'der Schalter für die Datenabfrage'];
 NEW_TEXTS.forEach((k) => {
   assert.ok(src.includes(k), 'the text is in the module: ' + k.slice(0, 30));
