@@ -3035,6 +3035,7 @@
     "Kein Steuerelement zum Beenden gefunden.": "Nie znaleziono elementu sterującego do zakończenia śledzenia.",
     "Mehrere Steuerelemente zum Beenden gefunden.": "Znaleziono kilka elementów sterujących do zakończenia śledzenia.",
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "Element sterujący do zakończenia śledzenia jest niedostępny.",
+    "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "W FlightRadar24 brakuje dwóch elementów, których potrzebuje Casora: pola do dodawania lotu i przełącznika pobierania danych",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "W FlightRadar24 brakuje elementu, którego potrzebuje Casora: {name}",
     "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} jest wyłączony w FlightRadar24. Włącz przełącznik i spróbuj ponownie.",
     "das Eingabefeld zum Hinzufügen": "pole do dodawania",

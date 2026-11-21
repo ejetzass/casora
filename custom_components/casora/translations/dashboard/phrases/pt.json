@@ -3035,6 +3035,7 @@
     "Kein Steuerelement zum Beenden gefunden.": "Nenhum controlo encontrado para parar de acompanhar.",
     "Mehrere Steuerelemente zum Beenden gefunden.": "Vários controlos encontrados para parar de acompanhar.",
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "O controlo para parar de acompanhar não está disponível.",
+    "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "Faltam ao FlightRadar24 duas partes de que o Casora precisa: o campo para adicionar um voo e o interruptor de obtenção de dados",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "Falta ao FlightRadar24 uma parte de que o Casora precisa: {name}",
     "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} está desligado no FlightRadar24. Ligue o interruptor e tente novamente.",
     "das Eingabefeld zum Hinzufügen": "o campo para adicionar",
