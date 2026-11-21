@@ -162,7 +162,7 @@
     tracked: 'Flug wird bereits verfolgt', unconfirmed: 'Hinzufügen nicht bestätigt. Prüfe die Verfolgung, bevor du es erneut versuchst.',
     failed: 'Hinzufügen fehlgeschlagen. Prüfe die Flugkennung und die Verbindung zu FlightRadar24, dann versuche es erneut.',
     denied: 'Keine Berechtigung, den Flug hinzuzufügen. Bitte einen Administrator, dir die Berechtigung zu geben.',
-    missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: T_SCANNING,
+    missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: T_SCANNING, noscan: T_MISSING_PART,
     ambiguous: 'Mehrere Eingabefelder zum Hinzufügen gefunden.', unavailable: 'Das Eingabefeld zum Hinzufügen ist nicht verfügbar.' };
   var esc = window.casoraEsc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   // German puts a narrow no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that
@@ -204,9 +204,12 @@
     else if (!ctl.add) st = 'missing';
     else if (bad((hass.states || {})[ctl.add])) st = 'unavailable';
     else if (flightsOf(hass, id).some(function (f) { return sameAs(f, key); })) st = 'tracked';
+    // The switch must be readable and on, as for Stop: missing, unavailable or unknown means nothing is sent.
+    else if (scanUnknown(hass, ctl)) st = 'noscan';
     // The switch is off: the integration would ignore the add, so say so now instead of waiting for a confirmation.
     else if (scanOff(hass, ctl)) st = 'scanning';
-    if (st) { add = { source: id, key: key, state: st, name: st === 'scanning' ? friendlyOf(hass, ctl.scanning) : '', base: [], timer: null }; F.paint(); return add; }
+    var nameOfState = st === 'scanning' ? friendlyOf(hass, ctl.scanning) : st === 'noscan' ? tr(PARTS.scanning) : '';
+    if (st) { add = { source: id, key: key, state: st, name: nameOfState, base: [], timer: null }; F.paint(); return add; }
     var a = add = { source: id, key: key, state: 'pending', base: flightsOf(hass, id).map(keyOf), timer: null };
     a.timer = setTimeout(function () { if (a.state === 'pending') settle(a, 'unconfirmed'); }, ADD_WAIT);
     F.paint();
