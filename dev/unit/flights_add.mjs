@@ -223,12 +223,15 @@ assert.equal(h.calls.length, 0, 'scanning off: no add command');
 assert.equal(off.state, 'scanning', 'scanning off: its own state');
 assert.equal(timers.filter((t) => t.live).length, 0, 'scanning off: no 30 s wait');
 assert.match(sec('add'), /Datenabfrage ist in FlightRadar24 ausgeschaltet/, 'scanning off: the field names the switch');
-// A missing or unavailable scanning switch does not block the add (the integration decides).
-h = base();
-h.states['switch.a'] = { entity_id: 'switch.a', state: 'unavailable', attributes: {} };
-F.submit(h, 'sensor.a', 'XY123');
-assert.equal(h.calls.length, 1, 'scanning unavailable: the add is still sent');
-fire();
+// A scanning switch that cannot be confirmed on blocks the add like Stop: nothing is sent, the missing part is named.
+for (const st of ['unavailable', 'unknown']) {
+  h = base();
+  h.states['switch.a'] = { entity_id: 'switch.a', state: st, attributes: {} };
+  const unk = F.submit(h, 'sensor.a', 'XY123');
+  assert.equal(h.calls.length, 0, `scanning ${st}: no add command`);
+  assert.equal(unk.state, 'noscan', `scanning ${st}: its own state`);
+  assert.match(sec('add'), /fehlt, was Casora braucht: der Schalter für die Datenabfrage/, `scanning ${st}: the missing part is named`);
+}
 
 // ── One wording for both commands: Add and Stop name the switch the same way ──
 h = base([flight('fr-1', 'XY123')]);
