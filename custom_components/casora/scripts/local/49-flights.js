@@ -32,6 +32,8 @@
   // The parts of FlightRadar24 that Casora needs, by name (the missing-part text names the one that is missing).
   var PARTS = { add: 'das Eingabefeld zum Hinzufügen', remove: 'das Steuerelement zum Beenden', scanning: 'der Schalter für die Datenabfrage' };
   var T_MISSING_PART = 'In FlightRadar24 fehlt, was Casora braucht: {name}';
+  // Both parts missing: one note names both (the same parts as PARTS, written out in full).
+  var T_MISSING_BOTH = 'In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage';
   // The text of a missing part, with the name of the part in it.
   var missingText = function (role) { return fillName(tr(T_MISSING_PART), tr(PARTS[role])); };
 
@@ -69,6 +71,10 @@
   var scanOff = function (hass, ctl) {
     var st = ctl && ctl.scanning && (hass.states || {})[ctl.scanning];
     return !!(st && st.state === 'off');
+  };
+  // Stop needs the switch to be readable: missing, unavailable or unknown means scanning cannot be confirmed, so nothing is sent.
+  var scanUnknown = function (hass, ctl) {
+    return !ctl.scanning || bad((hass.states || {})[ctl.scanning]);
   };
   // The state is read on every call (it changes with each poll); only the registry part is cached.
   F.sources = function (hass) {
@@ -227,8 +233,8 @@
   // ── Stopping a flight: the one removal, from a row's Stop tracking button only ─────────────────────────────────────
   // The integration removes by identifier (flight number, callsign or registration), not by FR24 ID, and its remove
   // control can also return normally on failure. So before the command: the row must still be listed under its FR24
-  // ID, no other entry may share one of its identifiers (else nothing is sent), the control must be unambiguous and
-  // available, and the scanning switch must be on. Confirmed only when the row is gone and no entry is left with that
+  // ID, no other entry may carry the identifier sent (else nothing is sent), the control must be unambiguous and
+  // available, and the scanning switch must be readable and on. Confirmed only when the row is gone and no entry is left with that
   // identifier. Same bounded wait and no retry as adding; a list update that re-lists the flight drops a confirmed result.
   var REMOVE_WAIT = 30000;
   var rm = null; // {source, row, key, state, name, timer}
@@ -239,7 +245,7 @@
     ambiguous: 'Mehrere Einträge haben diese Kennung. Es wurde nichts beendet.',
     missing_ctl: 'Kein Steuerelement zum Beenden gefunden.', ambiguous_ctl: 'Mehrere Steuerelemente zum Beenden gefunden.',
     unavailable_ctl: 'Das Steuerelement zum Beenden ist nicht verfügbar.', source: 'Quelle nicht verfügbar',
-    scanning: T_SCANNING,
+    scanning: T_SCANNING, noscan: T_MISSING_PART,
     denied: 'Keine Berechtigung, die Verfolgung zu beenden. Bitte einen Administrator, dir die Berechtigung zu geben.' };
   var rmBusy = function () { return !!rm && rm.state === 'pending'; };
   var rmMsgOf = function (a) { return a && RMMSG[a.state] ? fillName(tr(RMMSG[a.state]), a.name) : ''; };
@@ -254,12 +260,12 @@
     return [f && f.flight_number, f && f.callsign, f && f.aircraft_registration]
       .map(function (v) { return str(v).toUpperCase(); }).filter(Boolean);
   };
-  // The integration removes the FIRST entry whose flight number, callsign or registration matches. So the row must be
-  // the only entry its identifiers name: an aircraft stub and a flight on the same airframe share the registration, and
-  // then the command could take the other entry. Nothing is sent in that case.
+  // The integration removes the FIRST entry whose flight number, callsign or registration matches the identifier sent.
+  // Casora sends the row's first identifier (identOf). So the row is blocked only when another entry carries that same
+  // identifier: a unique flight number with a registration shared by an aircraft stub is still removed.
   var sharedIdent = function (flights, row) {
-    var mine = identsOf(row);
-    return flights.some(function (f) { return f !== row && identsOf(f).some(function (v) { return mine.indexOf(v) >= 0; }); });
+    var key = identOf(row).toUpperCase();
+    return flights.some(function (f) { return f !== row && identsOf(f).indexOf(key) >= 0; });
   };
   // Returns the attempt; null in Studio or without a source. The attempt is only sent when every check passes.
   F.stop = function (hass, id, row) {
@@ -278,10 +284,13 @@
       else if (!ctl.remove) state = 'missing_ctl';
       else if (bad((hass.states || {})[ctl.remove])) state = 'unavailable_ctl';
       else if (sharedIdent(flights, found[0])) state = 'ambiguous';
+      // The switch is missing or cannot be read: scanning is not confirmed, so the command is not sent.
+      else if (scanUnknown(hass, ctl)) state = 'noscan';
       // The switch is off: the integration would ignore the command, so say so now instead of waiting for a confirmation.
       else if (scanOff(hass, ctl)) state = 'scanning';
     }
-    if (state) { rm = { source: id, row: row0, key: key, state: state, name: state === 'scanning' ? friendlyOf(hass, ctl.scanning) : '', timer: null }; F.paint(); return rm; }
+    var name = state === 'scanning' ? friendlyOf(hass, ctl.scanning) : state === 'noscan' ? tr(PARTS.scanning) : '';
+    if (state) { rm = { source: id, row: row0, key: key, state: state, name: name, timer: null }; F.paint(); return rm; }
     var a = rm = { source: id, row: row0, key: key, state: 'pending', timer: null, refocus: false, at: 0 };
     // A Stop button with the keyboard focus is disabled below: its place is remembered for the focus to come back to.
     deepAll('[data-flights-stop]').forEach(function (b, i) { if (b.getRootNode && b.getRootNode().activeElement === b) { a.refocus = true; a.at = i; } });
@@ -492,8 +501,9 @@
       if (!r.source || (r.state !== 'pinned' && r.state !== 'auto')) return '';
       // A missing part (the add field or the scanning switch) hides only Add: the list and its rows stay.
       var ctlAdd = F.controls(h, r.id);
-      var miss = ctlAdd.missing.indexOf('add') >= 0 ? 'add' : (ctlAdd.missing.indexOf('scanning') >= 0 ? 'scanning' : null);
-      if (miss) return '<p data-flights-missing style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(missingText(miss)) + '</p>';
+      var noAdd = ctlAdd.missing.indexOf('add') >= 0, noScan = ctlAdd.missing.indexOf('scanning') >= 0;
+      var missTxt = noAdd && noScan ? tr(T_MISSING_BOTH) : noAdd ? missingText('add') : noScan ? missingText('scanning') : null;
+      if (missTxt) return '<p data-flights-missing style="margin:0 0 8px;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(missTxt) + '</p>';
       var a = F.addView(h, r.id);
       // The label names the input (axe: label). The focus ring is a rule here: the popup's own styles remove outlines.
       return '<style>[data-flights-in]:focus-visible,[data-flights-add-btn]:focus-visible{outline:2px solid var(--casora-popup-ui-action,var(--casora-accent,#276B64));outline-offset:2px}</style>'
