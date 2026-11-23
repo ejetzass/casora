@@ -1,6 +1,5 @@
-// #167: "Automatic" is the device's own clock, whatever sensor.time does (missing, usable, unavailable,
-// unknown, empty). A time sensor chosen in the Studio stays the clock; without a usable state it shows
-// nothing, never the device clock (#112).   node dev/unit/uhr_zeitquelle.mjs
+// Automatic prefers a usable sensor.time and otherwise uses the device clock in the profile zone.
+// A sensor chosen in Studio retains its existing behavior.   node dev/unit/uhr_zeitquelle.mjs
 // @deckt: dashboards/casora/button_card_templates.json#casora_time,casora_room, custom_components/casora/scripts/casora-core.js#casoraClockText,casoraClockHtml
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
@@ -45,8 +44,9 @@ const withState = (state) => (state === undefined ? {} : { 'sensor.time': { stat
 assert.equal(roomTimeEntity({}), '', 'no entry in the Studio: Automatic');
 assert.equal(roomTimeEntity({ time_entity: 'sensor.time' }), 'sensor.time', 'a chosen sensor is passed on');
 
-// Automatic, profile "server": the device's clock in Home Assistant's zone, whatever sensor.time holds.
-for (const state of [undefined, '08:13', 'unavailable', 'unknown', '']) {
+// Automatic, profile "server": sensor time when usable, otherwise the device clock in the server zone.
+assert.equal(name(withState('08:13'), { use_12h: false }), '08:13', 'Automatic uses a usable sensor');
+for (const state of [undefined, 'unavailable', 'unknown', '']) {
   const shown = name(withState(state), { use_12h: false });
   assert.match(shown, CLOCK, `Automatic with sensor.time "${state}": the device clock`);
   assert.equal(shown, '<casora-clock data-h12="" data-suffix="">22:05</casora-clock>',
@@ -59,7 +59,7 @@ assert.match(name({}, { time_suffix: 'Uhr' }), /data-suffix="Uhr"/, 'Automatic: 
 // Automatic, profile "local": the device's zone (Berlin, 14:05), through the tile and the 12-hour option.
 root.hass = LOCAL;
 assert.equal(name({ 'sensor.time': { state: '08:13' } }, { use_12h: false }),
-  '<casora-clock data-h12="" data-suffix="">14:05</casora-clock>', 'profile "local": the device zone, sensor.time ignored');
+  '08:13', 'profile "local": usable sensor.time wins');
 assert.equal(name({}, { use_12h: true }),
   '<casora-clock data-h12="1" data-suffix="">2:05 PM</casora-clock>', 'profile "local": 12-hour clock in the device zone');
 root.hass = SERVER;
