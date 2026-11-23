@@ -29,7 +29,7 @@ const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json')).cas
 const js = (s) => s.trim().replace(/^\[\[\[/, '').replace(/\]\]\]$/, '');
 const name = (states, variables) => new Function('window', 'states', 'hass', 'variables', js(tpl.name))(window, states, {}, variables);
 assert.match(name({}, { use_12h: false }), /^<casora-clock /, 'nothing chosen: the device clock');
-assert.match(name({ 'sensor.time': { state: '08:13' } }, { use_12h: false }), /^<casora-clock /, 'Automatic ignores sensor.time (#167)');
+assert.equal(name({ 'sensor.time': { state: '08:13' } }, { use_12h: false }), '08:13', 'Automatic uses sensor.time');
 assert.equal(name({}, { time_entity: 'sensor.gone_clock' }), '', 'a chosen sensor that is gone: empty as before');
 assert.equal(name({ 'sensor.time': { state: '08:13' } }, { time_entity: 'sensor.time', use_12h: false }), '08:13', 'a chosen sensor stays the clock');
 console.log('uhr_ohne_zeit_datum: ok');
