@@ -1,6 +1,5 @@
-// #172: Home Assistant no longer adds the Time & Date integration; without sensor.time the top bar clock stayed
-// empty, with no hint. On "Automatic" the device's time stands in now (in HA's time zone when the profile says
-// "server"); a time sensor chosen in the Studio that is gone still shows nothing.   node dev/unit/uhr_ohne_zeit_datum.mjs
+// Automatic uses a usable sensor.time; if missing or unusable, it uses the device clock in the profile zone.
+// A time sensor chosen in the Studio that is gone still shows nothing.   node dev/unit/uhr_ohne_zeit_datum.mjs
 // @deckt: dashboards/casora/button_card_templates.json#casora_time, custom_components/casora/scripts/casora-core.js#casoraClockText,casoraClockHtml
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
