@@ -22,12 +22,12 @@ const DEVICE = /^<casora-clock data-h12="" data-suffix="">\d\d:\d\d<\/casora-clo
 
 // Red before the fix: Automatic with an unusable sensor.time printed the state.
 for (const state of ['unavailable', 'unknown', '']) {
-  const out = clock({ 'sensor.time': { state } }, { time_entity: 'sensor.time', use_12h: false });
+  const out = clock({ 'sensor.time': { state } }, { use_12h: false });
   assert.match(out, DEVICE, 'sensor.time state "' + state + '": the device clock');
   assert.notEqual(out, state.toUpperCase(), 'sensor.time state "' + state + '": never the state text');
 }
 // The same with a suffix and 12-hour form: the device clock keeps both.
-assert.match(clock({ 'sensor.time': { state: 'unavailable' } }, { time_entity: 'sensor.time', use_12h: true, time_suffix: 'Uhr' }),
+assert.match(clock({ 'sensor.time': { state: 'unavailable' } }, { use_12h: true, time_suffix: 'Uhr' }),
   /^<casora-clock data-h12="1" data-suffix="Uhr">\d{1,2}:\d\d [AP]M<\/casora-clock>$/, 'unusable sensor.time with suffix and 12-hour form');
 
 // Keep: a usable sensor.time shows its own text.
@@ -35,12 +35,12 @@ assert.equal(clock({ 'sensor.time': { state: '08:13' } }, { time_entity: 'sensor
 assert.equal(clock({ 'sensor.time': { state: 'Mon, 08:13' } }, { time_entity: 'sensor.time', use_12h: false }), '08:13', 'usable sensor.time with a date: the time part');
 
 // Keep: no sensor.time at all shows the device clock.
-assert.match(clock({}, { time_entity: 'sensor.time', use_12h: false }), DEVICE, 'missing sensor.time: the device clock');
+assert.match(clock({}, { use_12h: false }), DEVICE, 'missing sensor.time: the device clock');
 assert.match(clock({}, { use_12h: false }), DEVICE, 'no entry at all: the same');
 
 // The date line (show_date) on the device clock: the same markup as the device-clock path builds.
 {
-  const out = clock({ 'sensor.time': { state: 'unavailable' } }, { time_entity: 'sensor.time', use_12h: false, show_date: true });
+  const out = clock({ 'sensor.time': { state: 'unavailable' } }, { use_12h: false, show_date: true });
   assert.match(out, /^<casora-clock data-h12="" data-suffix="" data-date="1"><span class="casora-clock-date"/, 'unusable sensor.time with show_date: date lines');
   const hhmm = (x) => x.replace(/\d\d:\d\d/, 'HH:MM');
   assert.equal(hhmm(out), hhmm(window.casoraClockHtml(false, '', true)), 'unusable sensor.time with show_date: same as the device-clock path');
@@ -59,9 +59,9 @@ assert.match(clock({}, { use_12h: false }), DEVICE, 'no entry at all: the same')
   }
 }
 
-// Keep: a sensor chosen in the Studio is not changed by the fix.
+// A sensor chosen in the Studio that is unusable shows no time, never its state text (#320: House behaviour, no fallback).
 assert.equal(clock({ 'sensor.kitchen_clock': { state: 'unavailable' } }, { time_entity: 'sensor.kitchen_clock', use_12h: false }),
-  'UNAVAILABLE', 'chosen sensor with state unavailable: unchanged (state text)');
+  '', 'chosen sensor with state unavailable: empty, not the state text');
 assert.equal(clock({}, { time_entity: 'sensor.kitchen_clock', use_12h: false }), '', 'chosen sensor that is gone: empty as before');
 
 console.log('clock_unusable_sensor: ok');
