@@ -243,9 +243,11 @@ const stop = F.stop(h, 'sensor.a', 'fr-1');
 assert.equal(stop.state, 'scanning', 'scanning off: the stop says so too');
 assert.equal(h.calls.length, 0, 'scanning off: no stop command');
 const stopMsg = F.sec('list', { pin: 'sensor.a' }, h.states, h);
-const wording = /Datenabfrage ist in FlightRadar24 ausgeschaltet\. Schalte den Schalter ein, dann versuche es erneut\./;
+const wording = /Datenabfrage ist in FlightRadar24 ausgeschaltet(?!\.)/;
 assert.match(addMsg, wording, 'the add feedback names the switch');
 assert.match(stopMsg, wording, 'the stop feedback says the same');
+assert.doesNotMatch(addMsg, /Schalte den Schalter/, 'the add feedback has no second sentence');
+assert.doesNotMatch(stopMsg, /Schalte den Schalter/, 'the stop feedback has no second sentence');
 fire();
 
 // ── A missing part hides only Add: the list stays, the missing part is named ──

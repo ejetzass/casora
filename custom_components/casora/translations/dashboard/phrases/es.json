@@ -3037,7 +3037,7 @@
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "El control para dejar de seguir no está disponible.",
     "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "A FlightRadar24 le faltan dos partes que Casora necesita: el campo para añadir un vuelo y el interruptor de consulta de datos",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "A FlightRadar24 le falta una parte que Casora necesita: {name}",
-    "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} está desactivado en FlightRadar24. Enciende el interruptor y vuelve a intentarlo.",
+    "{name} ist in FlightRadar24 ausgeschaltet": "{name} está desactivado en FlightRadar24",
     "das Eingabefeld zum Hinzufügen": "el campo para añadir",
     "das Steuerelement zum Beenden": "el control para dejar de seguir",
     "der Schalter für die Datenabfrage": "el interruptor de obtención de datos",

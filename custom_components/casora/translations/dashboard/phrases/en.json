@@ -3019,7 +3019,7 @@
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "The control to stop tracking is not available.",
     "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "FlightRadar24 is missing two parts Casora needs: the field to add a flight and the data fetching switch",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "FlightRadar24 is missing a part Casora needs: {name}",
-    "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} is off in FlightRadar24. Turn the switch on, then try again.",
+    "{name} ist in FlightRadar24 ausgeschaltet": "{name} is off in FlightRadar24",
     "das Eingabefeld zum Hinzufügen": "the field to add a flight",
     "das Steuerelement zum Beenden": "the control to stop tracking",
     "der Schalter für die Datenabfrage": "the data fetching switch",

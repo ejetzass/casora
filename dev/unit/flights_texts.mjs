@@ -36,7 +36,7 @@ literals.forEach((k) => assert.doesNotMatch(phrases.nl[k] || '', /\b(items?|trac
 // The texts of the missing parts and of the scanning switch: they start with an article or a placeholder, so the scan
 // above skips them. Every language needs them anyway.
 const NEW_TEXTS = ['In FlightRadar24 fehlt, was Casora braucht: {name}',
-  '{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.',
+  '{name} ist in FlightRadar24 ausgeschaltet',
   'In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage',
   'das Eingabefeld zum Hinzufügen', 'das Steuerelement zum Beenden', 'der Schalter für die Datenabfrage'];
 NEW_TEXTS.forEach((k) => {
