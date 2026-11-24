@@ -15,11 +15,15 @@ const SRC = read('custom_components/casora/scripts/local/49-flights.js');
 // Minimal DOM: elements with attributes, a tabIndex that follows the HTML defaults, parents, and shadow roots.
 const STOP = 'a[href],button,input,select,textarea,[tabindex]';
 const ATTRIB = '.maplibregl-ctrl-attrib';
+// Both renderers: MapLibre's attribution, and Leaflet's (HA's ha-map draws with Leaflet in the Test HA).
+const ATTRIB_ANY = '.maplibregl-ctrl-attrib, .leaflet-control-attribution';
 const el = (tag, attrs = {}, kids = []) => {
   const n = { tag, attrs: { ...attrs }, children: kids, shadowRoot: null, style: {},
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); },
+    removeAttribute(k) { delete this.attrs[k]; },
     matches(sel) {
+      if (sel === 'a[href]') return this.tag === 'a' && 'href' in this.attrs;
       if (sel !== STOP) throw new Error('unexpected selector ' + sel);
       return (this.tag === 'a' && 'href' in this.attrs) || this.tag === 'button' || ['input', 'select', 'textarea'].includes(this.tag) || 'tabindex' in this.attrs;
     },
@@ -29,8 +33,9 @@ const el = (tag, attrs = {}, kids = []) => {
     },
     appendChild() {}, remove() {},
     closest(sel) {
-      if (sel !== ATTRIB) throw new Error('unexpected selector ' + sel);
-      for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').includes(ATTRIB.slice(1))) return x;
+      if (sel !== ATTRIB && sel !== ATTRIB_ANY) throw new Error('unexpected selector ' + sel);
+      const names = sel === ATTRIB ? [ATTRIB] : ATTRIB_ANY.split(', ');
+      for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').some((c) => names.includes('.' + c))) return x;
       return null;
     },
   };
@@ -140,5 +145,64 @@ assert.ok(size >= 12, 'attribution text is 12 px or more (was ' + size + ' px)')
 assert.match(attribRule[1], /pointer-events:auto/, 'the attribution takes pointer input');
 assert.doesNotMatch(attribRule[1], /background:transparent/, 'the attribution has an opaque background');
 assert.match(css[1], /\.maplibregl-ctrl-attrib a:focus-visible\{[^}]*outline/, 'the attribution link shows a focus ring');
+
+// Leaflet (HA's ha-map in the Test HA): the zoom links are the map's own stops and leave the tab order; the attribution link
+// stays reachable. Both the poll path and the MutationObserver path are checked.
+const leafletShadow = () => el('div', {}, [
+  el('div', { class: 'leaflet-container', tabindex: '0' }),
+  el('div', { class: 'leaflet-control-zoom' }, [el('a', { href: '#', 'aria-label': 'Zoom in' }), el('a', { href: '#', 'aria-label': 'Zoom out' })]),
+  el('div', { class: 'leaflet-control-attribution' }, [el('a', { href: 'https://www.openstreetmap.org/copyright' })]),
+]);
+const leafletMap = () => {
+  const host = el('ha-map');
+  host.shadowRoot = leafletShadow();
+  ctx.document.createElement = () => host;
+  const m = new Cls();
+  Object.assign(m, { _since: Date.now(), _tiles: 0, _ml: null, _timer: null, _layers: false, _ok: false, _sent: null, _ident: null });
+  m._conn = true;
+  m._build({ connection: {}, hassUrl: (u) => u });
+  return { host, map: m, mo: FakeObserver.last };
+};
+const zoomStops = (root) => root.querySelectorAll('*').filter((x) => x.tag === 'a' && !x.closest(ATTRIB_ANY) && x.tabIndex >= 0);
+const attribLinks = (root) => root.querySelectorAll('*').filter((x) => x.tag === 'a' && !!x.closest(ATTRIB_ANY));
+
+// MutationObserver path: the map adds a zoom link later; the observer runs; no zoom link stays a stop, the attribution does.
+{
+  const lf = leafletMap();
+  assert.equal(lf.mo.target, lf.host.shadowRoot, 'Leaflet: the observer watches the map shadow root');
+  lf.host.shadowRoot.children.push(el('a', { href: '#', 'aria-label': 'Zoom added later' }));
+  lf.mo.cb([]);
+  const left = zoomStops(lf.host.shadowRoot).map((x) => x.getAttribute('aria-label'));
+  assert.deepEqual(left, [], 'Leaflet, observer path: zoom links are out of the tab order: ' + left.join(', '));
+  const links = attribLinks(lf.host.shadowRoot);
+  assert.equal(links.length, 1, 'Leaflet, observer path: the attribution link is there');
+  assert.ok(links[0].tabIndex >= 0, 'Leaflet, observer path: the attribution link can be reached by Tab (tabindex ' + links[0].tabIndex + ')');
+}
+
+// Poll path: after a poll the zoom links are out, and the attribution link is the only stop left.
+{
+  const lf = leafletMap();
+  lf.map._poll();
+  const left = zoomStops(lf.host.shadowRoot).map((x) => x.getAttribute('aria-label'));
+  assert.deepEqual(left, [], 'Leaflet, poll path: zoom links are out of the tab order: ' + left.join(', '));
+  const links = attribLinks(lf.host.shadowRoot);
+  assert.equal(links.length, 1, 'Leaflet, poll path: the attribution link is there');
+  assert.ok(links[0].tabIndex >= 0, 'Leaflet, poll path: the attribution link can be reached by Tab (tabindex ' + links[0].tabIndex + ')');
+  const stray = stopsOf(lf.host.shadowRoot).filter((x) => !x.closest(ATTRIB_ANY));
+  assert.deepEqual(stray.map((x) => x.tag), [], 'Leaflet, poll path: no stop outside the attribution is left');
+}
+
+// Leaflet stylesheet: zoom and scale hidden as in 12-tanken.js; the attribution styled like the MapLibre one.
+{
+  const leafRule = css[1].match(/\.leaflet-control-attribution\{([^}]*)\}/);
+  assert.ok(leafRule, 'Leaflet: the attribution has its own rule in MAP_CSS');
+  const leafSize = Number((leafRule[1].match(/font-size:(\d+)px/) || [])[1]);
+  assert.ok(leafSize >= 12, 'Leaflet: attribution text is 12 px or more (was ' + leafSize + ' px)');
+  assert.match(leafRule[1], /pointer-events:auto/, 'Leaflet: the attribution takes pointer input');
+  assert.match(leafRule[1], /background:var\(--card-background-color,#fff\)/, 'Leaflet: the attribution has an opaque card background');
+  assert.match(css[1], /\.leaflet-control-attribution a\{[^}]*text-decoration:underline/, 'Leaflet: the attribution link is underlined');
+  assert.match(css[1], /\.leaflet-control-attribution a:focus-visible\{[^}]*outline/, 'Leaflet: the attribution link shows a focus ring');
+  assert.match(css[1], /\.leaflet-control-zoom,\.leaflet-control-scale\{display:none!important\}/, 'Leaflet: zoom and scale controls are hidden');
+}
 
 console.log('ok: flights map tab stops');
