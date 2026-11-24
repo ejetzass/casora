@@ -1118,7 +1118,9 @@
           var st = document.createElement('style'); st.setAttribute('data-flights-tile', ''); st.textContent = TILE_CSS; root.appendChild(st);
         }
         var card = root.querySelector('#card');
-        if (card) { card.setAttribute('role', 'group'); card.setAttribute('aria-label', this.getAttribute('data-name') || ''); }
+        // The label is the name the card shows: its own config name when set, else the default name from the markup.
+        var own = root.host && root.host._config ? String(root.host._config.name || '').trim() : '';
+        if (card) { card.setAttribute('role', 'group'); card.setAttribute('aria-label', own || this.getAttribute('data-name') || ''); }
       }
     }
     customElements.define('casora-flight-list', FlightList);
