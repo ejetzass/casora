@@ -355,7 +355,7 @@ def notify_of(cfg: dict) -> dict:
     return {}
 
 
-# The same keys as the desktop's (46-screensaver.js FLIGHT_KEYS): the source, the three units and the timezone switch.
+# The Flights settings the phone dashboard reads from its desktop twin: the source, the three units and the timezone switch.
 FLIGHT_KEYS = ("casora_flights_source", "casora_flights_altitude_unit", "casora_flights_speed_unit",
                "casora_flights_vspeed_unit", "casora_flights_timezones")
 
