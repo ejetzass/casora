@@ -413,11 +413,18 @@
       var path = (ev.composedPath && ev.composedPath()) || [], t = path[0] || ev.target;
       if (path.some(function (n) { return n && n.tagName === 'CASORA-POPUP'; })) return; // the popup has the focus: keep the row
       var back = backRow; backRow = null;
-      if (!back || !t || t.tagName !== 'HA-CARD') return;
+      if (!back || !t) return;
       var row = deepAll('[data-flights-row]').filter(function (x) {
         return x.getAttribute('data-flights-src') === back.src && x.getAttribute('data-flights-key') === back.key && x.isConnected;
       })[0];
-      if (row && row.focus) row.focus();
+      // Only the card of the tile that holds the row (its #card) takes the redirect; another card keeps its focus.
+      var rowRoot = row && row.getRootNode ? row.getRootNode() : null;
+      var tile = rowRoot && rowRoot.querySelector ? rowRoot.querySelector('#card') : null;
+      if (row && row.focus && tile && t === tile) row.focus();
+    });
+    // The popup is closed: a focus after this is no longer the popup's to hand back to a row.
+    window.addEventListener('casora-popup-closed', function () {
+      if (!document.querySelector('casora-popup[open]')) backRow = null;
     });
     // Space opens on the key down; its release would click the button again, so the release is cancelled too.
     window.addEventListener('keyup', function (ev) { if (ev.key === ' ' && hit(ev, 'data-flights-row')) ev.preventDefault(); }, true);
