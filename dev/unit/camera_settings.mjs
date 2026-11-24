@@ -642,3 +642,27 @@ window.casoraCameraPopup = loadedPopupModule;
     assert.doesNotMatch(panelText('pt')[key], /janela/i, `PT says popup: ${key.slice(0, 50)}`);
   }
 }
+
+// The old per-dashboard popup choice (variables.casora_camera_settings[camera].open) is no longer read.
+// A Studio save drops it from the written config; the popup's own settings stay, and the draft keeps it until save.
+{
+  const panelJs = fs.readFileSync(new URL('../../custom_components/casora/panel/casora-panel.js', import.meta.url), 'utf8');
+  const start = panelJs.indexOf('\nfunction dropCameraPopupOpen(');
+  assert.ok(start > 0, 'dropCameraPopupOpen is defined next to dropRetiredVars');
+  const dropCameraPopupOpen = new Function('return ' + panelJs.slice(start + 1, panelJs.indexOf('\n}\n', start) + 2))();
+  const draftBefore = structuredClone(panel._state);
+  const cfg = { views: [
+    { cards: [{ template: 'casora_room', variables: { casora_camera_settings: {
+      garden: { popup: { alert_window_minutes: 14 }, open: { ring: 'always' } },
+      'only-open': { open: { ring: 'never' } },
+    } } }] },
+    { cards: [{ variables: { casora_camera_settings: { attic: { open: { motion: 'always' }, popup: { talk: true } } } } }] },
+  ] };
+  dropCameraPopupOpen(cfg);
+  assert.deepEqual(cfg.views[0].cards[0].variables.casora_camera_settings, { garden: { popup: { alert_window_minutes: 14 } } },
+    'open is gone, the popup settings stay, an entry left empty is dropped');
+  assert.deepEqual(cfg.views[1].cards[0].variables.casora_camera_settings, { attic: { popup: { talk: true } } },
+    'every view is cleaned, not only the first');
+  assert.deepEqual(panel._state, draftBefore, 'the draft is not touched: nothing changes before Save settings');
+  console.log('ok camera_settings: a save drops the old open choice and keeps the popup settings');
+}

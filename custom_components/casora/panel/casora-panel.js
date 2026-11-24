@@ -3897,6 +3897,25 @@ function dropRetiredVars(cfg) {
   })((cfg || {}).views);
 }
 
+// The old per-dashboard popup choice (open: always/never) is no longer read (24.11.2026). A save drops it
+// from the written config; the popup's own settings stay. An entry left empty goes too (as prune does).
+function dropCameraPopupOpen(cfg) {
+  (function walk(o) {
+    if (Array.isArray(o)) { o.forEach(walk); return; }
+    if (!o || typeof o !== "object") return;
+    const all = o.variables && o.variables.casora_camera_settings;
+    if (all && typeof all === "object" && !Array.isArray(all)) {
+      Object.keys(all).forEach((id) => {
+        const entry = all[id];
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+        delete entry.open;
+        if (!Object.keys(entry).length) delete all[id];
+      });
+    }
+    Object.keys(o).forEach((k) => { if (k !== "variables") walk(o[k]); });
+  })((cfg || {}).views);
+}
+
 function applyKiosk(cfg, rooms) {
   const v = (((rooms || [])[0] || {}).variables) || {};
   const hide = v.casora_hide_header !== false;
@@ -17608,6 +17627,7 @@ class CasoraPanel extends HTMLElement {
     }
     applyKiosk(cfg, s.compact.rooms);
     dropRetiredVars(cfg);
+    dropCameraPopupOpen(cfg);
     if (!mobile) {
       (s.compact.rooms || []).forEach((r) => { r.variables.casora_ui_managed = true; });
       (cfg.views || []).forEach((v) => {
@@ -17674,6 +17694,7 @@ class CasoraPanel extends HTMLElement {
         applyMotion(mcfg, s.compact.rooms);
         applyKiosk(mcfg, s.compact.rooms);
         dropRetiredVars(mcfg);
+        dropCameraPopupOpen(mcfg);
       } catch (e) {
         this._status("Phone layout could not be rebuilt: " + e.message, "err");
         this._log("phone layout not saved: " + e.message, "err");
