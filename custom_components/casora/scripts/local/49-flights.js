@@ -840,7 +840,7 @@
       + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
       + esc(pct) + '%;background:currentColor"></span></span>';
   };
-  F.liveHtml = function (hass, pin, now) {
+  F.liveHtml = function (hass, pin, now, name) {
     var rowsHtml = F.airborne(hass, pin, now).map(function (r) {
       var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
       var eta = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
@@ -854,11 +854,9 @@
     }).join('');
     if (!rowsHtml) return '';
     // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
-    return '<style>#container{height:100%;min-height:0;grid-template-rows:min-content min-content minmax(0,1fr)!important}'
-      + '#state{height:100%;min-height:0;align-self:stretch!important;overflow:hidden!important}'
-      + '@media (max-width:767px) and (orientation:portrait),(max-height:500px) and (orientation:portrait),(max-height:500px) and (orientation:landscape),(max-height:600px) and (orientation:landscape) and (hover:hover){#container{grid-template-rows:min-content minmax(0,1fr)!important}}'
-      + '[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
-      + '<div style="height:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain">' + rowsHtml + '</div>';
+    // The tile's CSS is not in this text (it would reach the card's accessible name): casora-flight-list puts it in the card.
+    return '<casora-flight-list data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain">'
+      + rowsHtml + '</casora-flight-list>';
   };
   F.liveHidden = function (hass, now) { return !F.airborne(hass, F.setting(), now).length; };
 
@@ -1081,6 +1079,24 @@
     customElements.define('casora-flight-map', FlightMap);
   };
   defineMap();
+  // The Flights tile's rows sit in casora-flight-list. On connect it puts the tile's styles into its card (once per card).
+  var TILE_CSS = '#container{height:100%;min-height:0;grid-template-rows:min-content min-content minmax(0,1fr)!important}'
+    + '#state{height:100%;min-height:0;align-self:stretch!important;overflow:hidden!important}'
+    + '@media (max-width:767px) and (orientation:portrait),(max-height:500px) and (orientation:portrait),(max-height:500px) and (orientation:landscape),(max-height:600px) and (orientation:landscape) and (hover:hover){#container{grid-template-rows:min-content minmax(0,1fr)!important}}'
+    + '[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}';
+  F._tileCss = TILE_CSS; // for the tests only (not part of the API)
+  var defineTileList = function () {
+    if (!window.customElements || customElements.get('casora-flight-list')) return;
+    class FlightList extends HTMLElement {
+      connectedCallback() {
+        var root = this.getRootNode && this.getRootNode();
+        if (!root || !root.querySelector || root.querySelector('style[data-flights-tile]')) return;
+        var st = document.createElement('style'); st.setAttribute('data-flights-tile', ''); st.textContent = TILE_CSS; root.appendChild(st);
+      }
+    }
+    customElements.define('casora-flight-list', FlightList);
+  };
+  defineTileList();
   // The progress line: a track with the fill and the value as text (not by colour alone).
   var progressHtml = function (pct) {
     var label = tr('Ungefährer Fortschritt'), value = pctText(pct);
