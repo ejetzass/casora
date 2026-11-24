@@ -157,7 +157,7 @@
   F.draft = '';
   // One wording for both commands: the scanning switch is off, so the integration would ignore the command. The text names
   // the switch ({name} is filled in after the translation).
-  var T_SCANNING = '{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.';
+  var T_SCANNING = '{name} ist in FlightRadar24 ausgeschaltet';
   var MSG = { empty: 'Bitte eine Flugkennung eingeben.', pending: 'Wird hinzugefügt …', confirmed: 'Flug wird verfolgt',
     tracked: 'Flug wird bereits verfolgt', unconfirmed: 'Hinzufügen nicht bestätigt. Prüfe die Verfolgung, bevor du es erneut versuchst.',
     failed: 'Hinzufügen fehlgeschlagen. Prüfe die Flugkennung und die Verbindung zu FlightRadar24, dann versuche es erneut.',
