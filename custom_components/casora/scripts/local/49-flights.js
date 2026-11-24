@@ -377,9 +377,12 @@
     var ha = document.querySelector('home-assistant');
     F.stop(ha && ha.hass, el.getAttribute('data-flights-src'), el.getAttribute('data-flights-row'));
   };
+  // The row whose flight popup is open. The tile redraws its rows on every state change, so the row the popup saved can be
+  // gone when it closes; then the focus is moved to the new row of the same flight (see the focusin handler below).
+  var backRow = null;
   var rowFrom = function (el) {
-    var ha = document.querySelector('home-assistant');
-    F.open(ha && ha.hass, el.getAttribute('data-flights-src'), el.getAttribute('data-flights-key'));
+    var ha = document.querySelector('home-assistant'), src = el.getAttribute('data-flights-src'), key = el.getAttribute('data-flights-key');
+    if (F.open(ha && ha.hass, src, key)) backRow = { src: src, key: key };
   };
   var pressed = function (el) {
     if (el.hasAttribute('data-flights-stop')) stopFrom(el);
@@ -404,6 +407,18 @@
     }, true);
     // The user moved the focus after a stop: the pending refocus is dropped, so a later settle does not take it back.
     window.addEventListener('focusin', function () { if (rm && rm.refocus && !focusLost(activeEl())) rm.refocus = false; });
+    // The popup gives the focus back to the element it saved. If that row was redrawn, the core falls back to the tile
+    // card; the focus then goes to the row of the same flight, so keyboard users stay in the list.
+    window.addEventListener('focusin', function (ev) {
+      var path = (ev.composedPath && ev.composedPath()) || [], t = path[0] || ev.target;
+      if (path.some(function (n) { return n && n.tagName === 'CASORA-POPUP'; })) return; // the popup has the focus: keep the row
+      var back = backRow; backRow = null;
+      if (!back || !t || t.tagName !== 'HA-CARD') return;
+      var row = deepAll('[data-flights-row]').filter(function (x) {
+        return x.getAttribute('data-flights-src') === back.src && x.getAttribute('data-flights-key') === back.key && x.isConnected;
+      })[0];
+      if (row && row.focus) row.focus();
+    });
     // Space opens on the key down; its release would click the button again, so the release is cancelled too.
     window.addEventListener('keyup', function (ev) { if (ev.key === ' ' && hit(ev, 'data-flights-row')) ev.preventDefault(); }, true);
     // A tile row is the whole tap: it does not also reach the tile's own tap action (its popup or its more-info).
