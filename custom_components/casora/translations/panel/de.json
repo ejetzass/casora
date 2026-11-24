@@ -1,4 +1,5 @@
 {
+  "_comment": "Casora-Panel-Übersetzung. Schlüssel = englischer Originaltext im Panel. Neue Sprache: Datei <code>.json anlegen, dann tools/build-panel-i18n.py.",
   "exact": {
     "Hide when the title contains": "Ausblenden, wenn der Titel enthält",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Einträge mit Komma trennen; ein Eintrag darf mehrere Wörter haben. Das Kalender-Popup zeigt sie weiter.",
@@ -3238,7 +3239,13 @@
     "Flights map": "Flugkarte",
     "Flat": "Flach",
     "Globe": "Globus",
-    "Choose cameras": "Kameras auswählen"
+    "Choose cameras": "Kameras auswählen",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensoren oder Ereignisse, die als Klingeln oder Erkennung an einer Kamera zählen. Der Name kommt aus Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Ein gelistetes Klingeln öffnet das Popup dieser Kamera.",
+    "Triggers": "Auslöser",
+    "Open camera popup by itself": "Kamera-Popup von selbst öffnen",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Nur für gelistete Auslöser. Nichts, was älter als 2 Minuten ist, höchstens einmal pro Minute je Auslöser. Nur auf Wand-Tablets; schließt mit „Bei Inaktivität Popups schließen“.",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensoren oder Ereignisse, die als Klingeln an dieser Kamera zählen. Der Name kommt aus Home Assistant."
   },
   "patterns": [
     [
@@ -3962,7 +3969,6 @@
       "{1} verfügbar"
     ]
   ],
-  "_comment": "Casora-Panel-Übersetzung. Schlüssel = englischer Originaltext im Panel. Neue Sprache: Datei <code>.json anlegen, dann tools/build-panel-i18n.py.",
   "The dashboard of this suggestion is gone. Discard it and ask your assistant again.": "Das Dashboard dieses Vorschlags gibt es nicht mehr. Verwirf ihn und frag deinen Assistenten noch einmal.",
   "The dashboard could not be loaded. Reload the page, then try again.": "Das Dashboard ließ sich nicht laden. Lade die Seite neu und versuche es dann noch einmal.",
   "Finish or close the open step first.": "Schließe zuerst den offenen Schritt ab oder schließe ihn."

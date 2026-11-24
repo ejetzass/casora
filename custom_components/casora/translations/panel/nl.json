@@ -1,4 +1,5 @@
 {
+  "_comment": "Vertaling van het Casora-paneel. Sleutel = originele Engelse tekst in het paneel. Nieuwe taal: maak het bestand <code>.json aan en voer dan tools/build-panel-i18n.py uit.",
   "exact": {
     "Hide when the title contains": "Verbergen als de titel bevat",
     "Separate entries with commas; an entry may have several words. The calendar popup still shows them.": "Scheid items met een komma; een item mag uit meerdere woorden bestaan. Het agendavenster toont ze nog steeds.",
@@ -3238,7 +3239,13 @@
     "Flights map": "Vluchtenkaart",
     "Flat": "Plat",
     "Globe": "Globe",
-    "Choose cameras": "Camera’s kiezen"
+    "Choose cameras": "Camera’s kiezen",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensoren of gebeurtenissen die gelden als deurbel of detectie bij een camera. De naam komt uit Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Een gekozen signaal opent de popup van deze camera.",
+    "Triggers": "Triggers",
+    "Open camera popup by itself": "Camerapopup vanzelf openen",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Alleen voor gekozen triggers. Niets ouder dan 2 minuten, hoogstens één keer per minuut per trigger. Alleen op wandtablets; sluit met \"Bij inactiviteit popups sluiten\".",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensoren of gebeurtenissen die gelden als aanbellen bij deze camera. De naam komt uit Home Assistant."
   },
   "patterns": [
     [
@@ -3962,7 +3969,6 @@
       "{1} beschikbaar"
     ]
   ],
-  "_comment": "Vertaling van het Casora-paneel. Sleutel = originele Engelse tekst in het paneel. Nieuwe taal: maak het bestand <code>.json aan en voer dan tools/build-panel-i18n.py uit.",
   "The dashboard of this suggestion is gone. Discard it and ask your assistant again.": "Het dashboard van dit voorstel bestaat niet meer. Verwerp het en vraag je assistent opnieuw.",
   "The dashboard could not be loaded. Reload the page, then try again.": "Het dashboard kon niet worden geladen. Laad de pagina opnieuw en probeer het dan nog eens.",
   "Finish or close the open step first.": "Rond eerst de open stap af of sluit hem."
