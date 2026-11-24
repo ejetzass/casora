@@ -3037,7 +3037,7 @@
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "Il comando per interrompere il monitoraggio non è disponibile.",
     "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "A FlightRadar24 mancano due parti di cui Casora ha bisogno: il campo per aggiungere un volo e l'interruttore di recupero dei dati",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "A FlightRadar24 manca una parte di cui Casora ha bisogno: {name}",
-    "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} è disattivato in FlightRadar24. Accendi l'interruttore e riprova.",
+    "{name} ist in FlightRadar24 ausgeschaltet": "{name} è disattivato in FlightRadar24",
     "das Eingabefeld zum Hinzufügen": "il campo di aggiunta",
     "das Steuerelement zum Beenden": "il comando per interrompere il monitoraggio",
     "der Schalter für die Datenabfrage": "l'interruttore di recupero dei dati",

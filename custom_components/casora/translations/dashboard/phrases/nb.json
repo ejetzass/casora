@@ -3030,7 +3030,7 @@
     "Das Steuerelement zum Beenden ist nicht verfügbar.": "Kontrollen for å stoppe sporing er ikke tilgjengelig.",
     "In FlightRadar24 fehlen zwei Teile, die Casora braucht: das Eingabefeld zum Hinzufügen und der Schalter für die Datenabfrage": "FlightRadar24 mangler to deler som Casora trenger: feltet for å legge til en flytur og bryteren for datahenting",
     "In FlightRadar24 fehlt, was Casora braucht: {name}": "FlightRadar24 mangler en del som Casora trenger: {name}",
-    "{name} ist in FlightRadar24 ausgeschaltet. Schalte den Schalter ein, dann versuche es erneut.": "{name} er av i FlightRadar24. Slå på bryteren, og prøv igjen.",
+    "{name} ist in FlightRadar24 ausgeschaltet": "{name} er av i FlightRadar24",
     "das Eingabefeld zum Hinzufügen": "feltet for å legge til",
     "das Steuerelement zum Beenden": "kontrollen for å stoppe sporingen",
     "der Schalter für die Datenabfrage": "bryteren for datahenting",
