@@ -105,7 +105,6 @@
       key: key,
       kind: family,
       popup: Object.assign({}, popup),
-      open: Object.assign({}, record && record.open && typeof record.open === 'object' ? record.open : {}),
       legacy: {
         alert_window_minutes: has(legacy, 'alert_window_minutes') ? legacy.alert_window_minutes : undefined,
         show_stream_variants: has(legacy, 'show_stream_variants') ? legacy.show_stream_variants : undefined,

@@ -426,8 +426,8 @@
     "Camera": "Câmara",
     "Cameras": "Câmaras",
     "Cameras, popups and user interface": "Câmaras, popups e interface do utilizador",
-    "Open popup on a ring": "Abrir popup quando a campainha tocar",
-    "Open popup on a detection": "Abrir popup quando houver uma deteção",
+    "Open popup on a ring": "Abrir a janela quando a campainha toca",
+    "Open popup on a detection": "Abrir a janela ao detetar algo",
     "As all dashboards (off)": "Como todos os painéis (desligado)",
     "As all dashboards (on)": "Como todos os painéis (ligado)",
     "When two cameras want to open at the same time, a ring goes first, otherwise the order of this list.": "Se duas câmaras quiserem abrir ao mesmo tempo, a campainha tem prioridade; caso contrário, segue-se a ordem desta lista.",
@@ -3264,7 +3264,13 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Com o Fully Kiosk Browser: liga também o ecrã do tablet. À noite só atenuado, ou nada.",
     "Weather effects on the dashboard": "Efeitos do tempo no painel",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "A chuva, a neve, o nevoeiro e o vento lá fora passam suavemente sobre a foto da divisão.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "A chuva, a neve, o nevoeiro e o vento do tempo aparecem suavemente sobre a foto da divisão. Com tempo limpo não aparece nada."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "A chuva, a neve, o nevoeiro e o vento do tempo aparecem suavemente sobre a foto da divisão. Com tempo limpo não aparece nada.",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensores ou eventos que contam como campainha ou deteção numa câmara. O nome vem do Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Uma campainha escolhida abre a janela desta câmara.",
+    "Triggers": "Disparadores",
+    "Open camera popup by itself": "Abrir a janela da câmara automaticamente",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Apenas para os disparadores escolhidos. Nada com mais de 2 minutos, no máximo uma vez por minuto e por disparador. Apenas em tablets de parede; fecha com «Fechar janelas quando inativo».",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensores ou eventos que contam como campainha nesta câmara. O nome vem do Home Assistant."
   },
   "patterns": [
     [

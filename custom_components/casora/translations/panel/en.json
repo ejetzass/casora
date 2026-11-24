@@ -44,7 +44,13 @@
     "Add a camera to change its popup settings.": "Add a camera to change its popup settings.",
     "All cameras are already added.": "All cameras are already added.",
     "Doorbell from": "Doorbell from",
-    "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.": "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first."
+    "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.": "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.",
+    "A listed ring opens the popup of this camera.": "A listed ring opens the popup of this camera.",
+    "Triggers": "Triggers",
+    "Open camera popup by itself": "Open camera popup by itself",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensors or events that count as a ring at this camera. The name comes from Home Assistant."
   },
   "patterns": [
     [

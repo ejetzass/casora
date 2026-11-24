@@ -3264,7 +3264,13 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Met Fully Kiosk Browser: zet ook het scherm van de tablet aan. 's Nachts alleen gedimd, of helemaal niet.",
     "Weather effects on the dashboard": "Weereffecten op het dashboard",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Regen, sneeuw, mist en wind van buiten bewegen licht over de kamerfoto.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regen, sneeuw, mist en wind uit het weer zie je licht over de kamerfoto. Bij helder weer zie je niets."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regen, sneeuw, mist en wind uit het weer zie je licht over de kamerfoto. Bij helder weer zie je niets.",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensoren of gebeurtenissen die gelden als deurbel of detectie bij een camera. De naam komt uit Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Een gekozen signaal opent de popup van deze camera.",
+    "Triggers": "Triggers",
+    "Open camera popup by itself": "Camerapopup vanzelf openen",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Alleen voor gekozen triggers. Niets ouder dan 2 minuten, hoogstens één keer per minuut per trigger. Alleen op wandtablets; sluit met \"Bij inactiviteit popups sluiten\".",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensoren of gebeurtenissen die gelden als aanbellen bij deze camera. De naam komt uit Home Assistant."
   },
   "patterns": [
     [

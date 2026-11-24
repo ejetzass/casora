@@ -426,8 +426,8 @@
     "Camera": "Kamera",
     "Cameras": "Kamery",
     "Cameras, popups and user interface": "Kamery, popupy i interfejs użytkownika",
-    "Open popup on a ring": "Otwórz popup po sygnale dzwonka",
-    "Open popup on a detection": "Otwórz popup po wykryciu",
+    "Open popup on a ring": "Otwórz okno przy dzwonku",
+    "Open popup on a detection": "Otwórz okno po wykryciu",
     "As all dashboards (off)": "Jak we wszystkich pulpitach (wył.)",
     "As all dashboards (on)": "Jak we wszystkich pulpitach (wł.)",
     "When two cameras want to open at the same time, a ring goes first, otherwise the order of this list.": "Jeśli dwie kamery chcą otworzyć popup w tym samym czasie, pierwszeństwo ma dzwonek, a potem kolejność na tej liście.",
@@ -3264,7 +3264,13 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Z Fully Kiosk Browser: włącza też ekran tabletu. W nocy tylko przyciemniony albo wcale.",
     "Weather effects on the dashboard": "Efekty pogody na pulpicie",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Deszcz, śnieg, mgła i wiatr z zewnątrz lekko przesuwają się po zdjęciu pokoju.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Deszcz, śnieg, mgła i wiatr z pogody widać lekko na zdjęciu pokoju. Przy bezchmurnej pogodzie nic się nie pokazuje."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Deszcz, śnieg, mgła i wiatr z pogody widać lekko na zdjęciu pokoju. Przy bezchmurnej pogodzie nic się nie pokazuje.",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Czujniki lub zdarzenia oznaczające dzwonek lub wykrycie przy kamerze. Nazwa pochodzi z Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Dzwonek z listy otwiera okno tej kamery.",
+    "Triggers": "Wyzwalacze",
+    "Open camera popup by itself": "Otwórz okno kamery automatycznie",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Tylko dla wybranych wyzwalaczy. Nic starszego niż 2 minuty, najwyżej raz na minutę dla każdego wyzwalacza. Tylko na tabletach ściennych; zamyka się przez „Zamykaj okna przy bezczynności”.",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Czujniki lub zdarzenia oznaczające dzwonek przy tej kamerze. Nazwa pochodzi z Home Assistant."
   },
   "patterns": [
     [

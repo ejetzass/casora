@@ -1,4 +1,5 @@
-"""The house-wide camera list survives the settings store: triggers, popup switches and the status sensor.
+"""The house-wide camera settings survive the settings store: the detection list, the
+doorbell list, the ring switch of a camera and the house switch of the camera popup.
 
   uv run --python 3.14 --with homeassistant python dev/unit/camera_settings_store_test.py
 """
@@ -231,6 +232,108 @@ class CameraSettingsStoreTest(unittest.IsolatedAsyncioTestCase):
             {"device_id": None, "entity_id": "camera.porch", "name": "Porch"},
         ]
         self.assertEqual(settings.camera_records(records), records)
+
+    async def test_the_house_switch_and_the_camera_ring_switch_survive_the_store(self):
+        store = FakeStore()
+        connection = Connection()
+        hass = SimpleNamespace(data={})
+        settings_store = settings._store
+        settings._store = lambda _hass: store
+        try:
+            message = {
+                "id": 3,
+                "type": "casora/settings/set",
+                "settings": {
+                    "camera_popup": {"open_by_itself": True},
+                    "cameras": [{
+                        "device_id": "garden",
+                        "entity_id": "camera.garden",
+                        "name": "Garden",
+                        "doorbell_triggers": ["event.garden_bell"],
+                        "detection_triggers": ["binary_sensor.garden_person"],
+                        "open_on_ring": False,
+                        "open_on_detection": True,
+                    }],
+                },
+            }
+            await inspect.unwrap(settings.ws_set)(hass, connection, message)
+        finally:
+            settings._store = settings_store
+
+        expected = {
+            "camera_popup": {"open_by_itself": True},
+            "cameras": [{
+                "device_id": "garden",
+                "entity_id": "camera.garden",
+                "name": "Garden",
+                "doorbell_triggers": ["event.garden_bell"],
+                "detection_triggers": ["binary_sensor.garden_person"],
+                "open_on_ring": False,
+                "open_on_detection": True,
+            }],
+        }
+        self.assertEqual(store.saved, expected)
+        self.assertEqual(connection.results, [(3, {"settings": expected, "stored": True})])
+
+    async def test_without_the_house_switch_no_camera_popup_section_is_stored(self):
+        store = FakeStore()
+        connection = Connection()
+        hass = SimpleNamespace(data={})
+        settings_store = settings._store
+        settings._store = lambda _hass: store
+        try:
+            message = {
+                "id": 4,
+                "type": "casora/settings/set",
+                "settings": {"cameras": [{"entity_id": "camera.garden"}]},
+            }
+            await inspect.unwrap(settings.ws_set)(hass, connection, message)
+        finally:
+            settings._store = settings_store
+
+        self.assertEqual(store.saved, {"cameras": [{"entity_id": "camera.garden"}]})
+        self.assertIn("camera_popup", settings.SECTIONS, "the house switch has its own section")
+
+    async def test_detection_switch_keeps_only_booleans(self):
+        for value, expected in [(False, False), (True, True), ("true", None)]:
+            store = FakeStore()
+            connection = Connection()
+            hass = SimpleNamespace(data={})
+            original = settings._store
+            settings._store = lambda _hass: store
+            try:
+                await inspect.unwrap(settings.ws_set)(hass, connection, {
+                    "id": 6, "type": "casora/settings/set",
+                    "settings": {"cameras": [{"entity_id": "camera.garden", "open_on_detection": value}]},
+                })
+            finally:
+                settings._store = original
+            record = store.saved["cameras"][0]
+            self.assertEqual(record.get("open_on_detection"), expected)
+            self.assertEqual("open_on_detection" in record, expected is not None)
+
+    async def test_an_off_house_switch_stores_nothing_and_unknown_keys_are_dropped(self):
+        store = FakeStore()
+        connection = Connection()
+        hass = SimpleNamespace(data={})
+        settings_store = settings._store
+        settings._store = lambda _hass: store
+        try:
+            message = {
+                "id": 5,
+                "type": "casora/settings/set",
+                "settings": {
+                    "camera_popup": {"open_by_itself": False, "unknown": True},
+                    "cameras": [{"entity_id": "camera.garden"}],
+                },
+            }
+            await inspect.unwrap(settings.ws_set)(hass, connection, message)
+        finally:
+            settings._store = settings_store
+
+        expected = {"cameras": [{"entity_id": "camera.garden"}]}
+        self.assertEqual(store.saved, expected, "an off house switch stores nothing")
+        self.assertEqual(connection.results, [(5, {"settings": expected, "stored": True})])
 
 
 if __name__ == "__main__":

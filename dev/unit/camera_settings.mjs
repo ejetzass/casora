@@ -91,10 +91,6 @@ assert.deepEqual(window.casoraPersonal.cameraCandidates(hass).map((camera) => ca
 assert.equal(existingFilterCalled, true);
 window._casoraCamSoft = realSoft;
 assert.deepEqual(window.casoraPersonal.normalize({}).cameras, [], 'the camera list defaults to empty');
-assert.equal(window.casoraPersonal.effectiveOpen(false, 'inherit'), false, 'inherited opening starts off');
-assert.equal(window.casoraPersonal.effectiveOpen(true, 'inherit'), true, 'inherit follows the house switch');
-assert.equal(window.casoraPersonal.effectiveOpen(false, 'always'), true, 'Always overrides the house switch');
-assert.equal(window.casoraPersonal.effectiveOpen(true, 'never'), false, 'Never overrides the house switch');
 
 const triggerHass = {
   devices: {
@@ -272,18 +268,16 @@ const renderCameras = () => {
   panel._casoraPersonalGroups(host, panel._cs.S, ['cameras'], renderCameras);
 };
 renderCameras();
+const switchOf = (label) => panel.switches.find((sw) => sw.label === label);
 assert.deepEqual(panel.switches.filter(({ label }) => label.startsWith('Open popup on')).map(({ label, button }) => [label, button.getAttribute('aria-checked')]), [
-  ['Open popup on a ring', 'false'],
+  ['Open popup on a ring', 'true'],
   ['Open popup on a detection', 'false'],
-], 'each camera defaults both house-wide opening switches to off');
-const dashboardChoices = () => panel.combos.filter((combo) => combo.opts && combo.opts.labels
-  && combo.options.includes('inherit'));
-assert.equal(dashboardChoices().length, 2, 'each camera has a choice for both popup triggers on this dashboard');
-assert.equal(dashboardChoices()[0].opts.labels.inherit, 'As all dashboards (off)', 'the inherited label shows the current house value');
-panel.switches.find(({ label }) => label === 'Open popup on a ring').button.onclick();
-assert.equal(panel._cs.S.cameras[0].open_on_ring, true, 'the house ring switch changes only the settings draft');
-assert.equal(dashboardChoices()[0].opts.labels.inherit, 'As all dashboards (on)', 'the inherited label follows a house draft change');
-assert.equal(calls.some((message) => message.type === 'casora/settings/set'), false, 'house opening switches do not save before Save settings');
+], 'a ring opens the popup by default, a detection does not');
+assert.equal(panel.combos.filter((combo) => combo.opts && combo.opts.labels && combo.options.includes('inherit')).length, 0,
+  'no per-dashboard choice for the ring or the detection');
+switchOf('Open popup on a ring').button.onclick();
+assert.equal(panel._cs.S.cameras[0].open_on_ring, false, 'the ring switch changes only the settings draft');
+assert.equal(calls.some((message) => message.type === 'casora/settings/set'), false, 'camera switches do not save before Save settings');
 const dirtySettingsDraft = structuredClone(panel._cs.S);
 const settingsReadsBeforeRefresh = calls.filter((message) => message.type === 'casora/settings/get').length;
 window.CASORA_SETTINGS = { cameras: [{ device_id: 'porch', entity_id: 'camera.porch' }] };
@@ -296,40 +290,18 @@ window.CASORA_SETTINGS = structuredClone(stored);
 assert.deepEqual(panel._state.compact.rooms[0].variables.casora_camera_settings['gone-device'].popup,
   { alert_window_minutes: 8, show_stream_variants: false }, 'house switches do not touch this dashboard popup settings');
 await panel._csSave();
-assert.equal(stored.cameras[0].open_on_ring, true, 'Save settings persists the house ring default');
+assert.equal(stored.cameras[0].open_on_ring, false, 'Save settings persists the ring switch as it is: off');
 renderCameras();
-assert.equal(dashboardChoices()[0].opts.labels.inherit, 'As all dashboards (on)', 'a saved house value updates the inherited label');
-panel.switches.find(({ label }) => label === 'Open popup on a ring').button.onclick();
-assert.equal(panel._cs.S.cameras[0].open_on_ring, undefined, 'turning the house switch back off restores the unset default');
-assert.equal(dashboardChoices()[0].opts.labels.inherit, 'As all dashboards (off)', 'the inherited label follows the off draft too');
+switchOf('Open popup on a ring').button.onclick();
+assert.equal(panel._cs.S.cameras[0].open_on_ring, true, 'the ring switch is on again in the draft');
 await panel._csDiscardAll();
-assert.equal(panel._cs.S.cameras[0].open_on_ring, true, 'Discard restores the saved house ring default');
+assert.equal(panel._cs.S.cameras[0].open_on_ring, false, 'Discard restores the saved ring switch');
 renderCameras();
-panel.switches.find(({ label }) => label === 'Open popup on a ring').button.onclick();
-await panel._csSave();
-assert.equal(stored.cameras[0].open_on_ring, undefined, 'saving the off default removes the optional house value');
-renderCameras();
-panel.switches.find(({ label }) => label === 'Open popup on a detection').button.onclick();
+switchOf('Open popup on a detection').button.onclick();
 assert.equal(panel._cs.S.cameras[0].open_on_detection, true, 'the detection switch changes independently of the ring switch');
-panel.switches.find(({ label }) => label === 'Open popup on a detection').button.onclick();
-assert.equal(panel._cs.S.cameras[0].open_on_detection, undefined, 'the detection switch can return independently to its off default');
-dashboardChoices()[0].onChange('always');
-dashboardChoices()[1].onChange('never');
-assert.equal(panel._state.compact.rooms[0].variables.casora_camera_settings['gone-device'].open.ring, 'always',
-  'the camera override is held in this dashboard draft, keyed by camera identity');
-assert.equal(panel._state.compact.rooms[0].variables.casora_camera_settings['gone-device'].open.detection, 'never',
-  'the detection override is independent of the ring override');
-assert.equal(panel._cs.S.cameras[0].open_on_ring, undefined, 'a dashboard override does not change the house switch');
-assert.equal(panel._csDirty(), true, 'a dashboard override enables the existing save bar');
-await panel._csSave();
-assert.equal(panel.dashboardSaved.compact.rooms[0].variables.casora_camera_settings['gone-device'].open.ring, 'always',
-  'Save settings persists the dashboard override through the existing dashboard save');
-dashboardChoices()[0].onChange('never');
-await panel._csDiscardAll();
-assert.equal(panel._state.compact.rooms[0].variables.casora_camera_settings['gone-device'].open.ring, 'always',
-  'Discard restores the saved dashboard override');
-assert.deepEqual(panel._state.compact.rooms[0].variables.casora_camera_settings['gone-device'].popup,
-  { alert_window_minutes: 8, show_stream_variants: false }, 'open choices preserve the popup subobject owned by #89');
+assert.equal(panel._cs.S.cameras[0].open_on_ring, false, 'the ring switch is not touched by the detection switch');
+switchOf('Open popup on a detection').button.onclick();
+assert.equal(panel._cs.S.cameras[0].open_on_detection, false, 'the detection switch can return to off');
 panel._csOpen = false;
 renderCameras();
 const writesBeforeCameraListChanges = calls.filter((message) => message.type === 'casora/settings/set').length;
@@ -354,7 +326,7 @@ assert.ok(allText(host).includes('When two cameras want to open at the same time
   'the approved camera priority hint follows the camera list');
 cameraPicker().onChange('camera.garden');
 assert.deepEqual(panel._cs.S.cameras, [
-  { device_id: 'gone-device', entity_id: 'camera.gone', name: 'Missing camera' },
+  { device_id: 'gone-device', entity_id: 'camera.gone', name: 'Missing camera', open_on_ring: false, open_on_detection: false },
   { device_id: 'garden', entity_id: 'camera.garden', name: 'Garden' },
 ], 'adding a camera changes the draft, not stored settings');
 assert.equal(calls.filter((message) => message.type === 'casora/settings/set').length, writesBeforeCameraListChanges,

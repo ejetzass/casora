@@ -102,6 +102,12 @@
   const ICON_LABELS = { "": "Icon: Automatic", tv: "TV", apple_tv: "Apple TV", homepod: "HomePod",
     playstation: "PlayStation", speaker: "Speaker" };
 
+  // The house switch of the camera popup: the section is either {open_by_itself: true} or nothing (off).
+  const cameraPopupSection = (value) => {
+    const on = !!(value && typeof value === "object" && !Array.isArray(value) && value.open_by_itself === true);
+    return on ? { open_by_itself: true } : null;
+  };
+
   // Bring everything into a fixed shape so the UI does not have to check every time.
   function normalize(src) {
     const s = clone(src);
@@ -128,6 +134,7 @@
     s.media.players = s.media.players || {};
     s.media.hidden = Array.isArray(s.media.hidden) ? s.media.hidden : [];
     s.cameras = Array.isArray(s.cameras) ? s.cameras : [];
+    s.camera_popup = cameraPopupSection(s.camera_popup);
     s.ebike = s.ebike || {};
     s.basis = s.basis || {};
     // #202: room types and changed recommended values (climate.rooms: name → type, climate.types: type → fields).
@@ -144,7 +151,9 @@
       const out = {};
       Object.keys(x).forEach((k) => {
         if (k === "") return;
-        const v = prune(x[k]);
+        let v = prune(x[k]);
+        // The house switch of the camera popup: one rule, the same as in normalize.
+        if (k === "camera_popup") { v = cameraPopupSection(v); if (!v) return; }
         if (v !== undefined) out[k] = v;
       });
       return Object.keys(out).length ? out : undefined;
@@ -188,12 +197,6 @@
         const ownB = !!cameraDeviceId && (R[b] || {}).device_id === cameraDeviceId;
         return Number(ownB) - Number(ownA) || name(a).localeCompare(name(b)) || a.localeCompare(b);
       });
-  }
-
-  function effectiveOpen(houseValue, dashboardChoice) {
-    if (dashboardChoice === "always") return true;
-    if (dashboardChoice === "never") return false;
-    return houseValue === true;
   }
 
   async function fileSettings() {
@@ -275,7 +278,7 @@
     return result;
   }
 
-  window.casoraPersonal = { normalize, prune, cameraCandidates, triggerCandidates, effectiveOpen, cameraPopupValues, fileSettings, CSS };
+  window.casoraPersonal = { normalize, prune, cameraCandidates, triggerCandidates, cameraPopupValues, fileSettings, CSS };
 
   customElements.whenDefined("casora-panel").then(() => {
     const P = customElements.get("casora-panel").prototype;
@@ -530,6 +533,15 @@
           if (typeof self._csBar === "function") self._csBar();
           render();
         };
+        // The house switch: no camera popup opens by itself until the user turns it on.
+        const house = self._flowRow(g, { title: "Open camera popup by itself",
+          sub: "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\"." });
+        if (typeof self._boolSwitch === "function") {
+          house.row.appendChild(self._boolSwitch(!!(S.camera_popup && S.camera_popup.open_by_itself), false, (v) => {
+            if (v === true) S.camera_popup = { open_by_itself: true }; else delete S.camera_popup;
+            changed();
+          }, tr("Open camera popup by itself")));
+        }
         if (!cameras.length) self._flowRow(g, { title: "No Cameras", sub: "Add a camera to change its popup settings." });
         cameras.forEach((camera, index) => {
           const key = cameraId(camera);
@@ -638,15 +650,17 @@
             "Sensors or events that count as a ring at this camera. Entities that belong to this camera come first.", "device");
           triggerList("detection_triggers", "Detection from",
             "Sensors or events that count as a detection at this camera. The name comes from Home Assistant.", "name");
-          const openSwitch = (title, field) => {
+          // Stored as true or false once touched; a missing field means the default of its kind (ring on, detection off).
+          const openSwitch = (title, field, fallback) => {
             const item = self._flowRow(all, { title });
-            item.row.appendChild(self._boolSwitch(camera[field] === true, false, (value) => {
-              if (value === true) camera[field] = true; else delete camera[field];
+            item.row.appendChild(self._boolSwitch(camera[field], fallback, (value) => {
+              // Once touched it is stored as true or false; undefined means the default of its kind.
+              camera[field] = value === undefined ? fallback : value === true;
               changed();
             }, tr(title)));
           };
-          openSwitch("Open popup on a ring", "open_on_ring");
-          openSwitch("Open popup on a detection", "open_on_detection");
+          openSwitch("Open popup on a ring", "open_on_ring", true);
+          openSwitch("Open popup on a detection", "open_on_detection", false);
           const switchHint = document.createElement("div");
           switchHint.className = "ffoot";
           switchHint.textContent = tr("Applies to all dashboards");
@@ -675,26 +689,6 @@
             note.textContent = tr("Open a dashboard in the Studio to change this.");
             only.parentElement.appendChild(note);
           } else {
-            const choice = (title, kind, houseField) => {
-              const saved = dashboardCameraSettings(camera, false);
-              const open = saved && saved.open;
-              const value = open && open[kind];
-              const selected = value === "always" || value === "never" ? value : "inherit";
-              const inherited = effectiveOpen(camera[houseField] === true, "inherit")
-                ? "As all dashboards (on)" : "As all dashboards (off)";
-              const labels = { inherit: inherited, always: "Always", never: "Never" };
-              row(only, title, [pick(selected, ["inherit", "always", "never"], labels, (next) => {
-                const settings = dashboardCameraSettings(camera, true);
-                if (!settings) return;
-                if (!settings.open || typeof settings.open !== "object" || Array.isArray(settings.open)) settings.open = {};
-                settings.open[kind] = next;
-                if (typeof self._markDirty === "function") self._markDirty();
-                if (typeof self._csBar === "function") self._csBar();
-                render();
-              })]);
-            };
-            choice("Open popup on a ring", "ring", "open_on_ring");
-            choice("Open popup on a detection", "detection", "open_on_detection");
             const family = window.casoraCameraPopup && window.casoraCameraPopup.kind(hass, camera.entity_id);
             if (window.casoraCameraPopup && typeof window.casoraCameraPopup.fields === "function"
                 && (!family || family === "camera" || family === "frigate" || family === "doorbell")) {

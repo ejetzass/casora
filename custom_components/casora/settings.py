@@ -38,7 +38,8 @@ STORAGE_KEY = f"{DOMAIN}.settings"
 STORAGE_VERSION = 1
 # Only these sections are known to Casora; anything else is not stored. security: covers in security (#76).
 # climate: room types and changed recommended values of the room climate (#202).
-SECTIONS = ("waste", "calendars", "notify", "scenes", "contacts", "security", "media", "night_entity", "ebike", "umzug", "basis", "welcome", "community", "climate", "cameras", "calendar_filter")
+SECTIONS = ("waste", "calendars", "notify", "scenes", "contacts", "security", "media", "night_entity", "ebike", "umzug", "basis", "welcome", "community", "climate", "cameras", "calendar_filter", "camera_popup")
+# camera_popup: the house switch of the camera popup (absent or false = off).
 
 
 def ai_text_language(hass: HomeAssistant) -> str:
@@ -152,7 +153,7 @@ def camera_records(value: Any) -> list[dict[str, Any]]:
 
     A camera without a non-empty string entity_id is dropped. A repeat of a camera keeps the first one's identity
     and adds its triggers to the first one; the trigger lists keep each non-empty string once. A popup switch is
-    kept only when it is true.
+    kept as true or false (a missing one means the default of its kind).
     """
     out: list[dict[str, Any]] = []
     by_entity: dict[str, dict[str, Any]] = {}
@@ -175,10 +176,19 @@ def camera_records(value: Any) -> list[dict[str, Any]]:
             merged = list(dict.fromkeys([*clean.get(key, []), *kept]))
             if merged:
                 clean[key] = merged
+        # The switches are stored as true or false once touched; a missing field means the default of its kind
+        # (a ring is on, a detection is off).
         for key in ("open_on_ring", "open_on_detection"):
-            if camera.get(key) is True:
-                clean[key] = True
+            if isinstance(camera.get(key), bool):
+                clean[key] = camera[key]
     return out
+
+
+def camera_popup_section(value: Any) -> dict[str, Any]:
+    """The house switch of the camera popup: one boolean. Off (absent or false) stores nothing."""
+    if not isinstance(value, dict) or value.get("open_by_itself") is not True:
+        return {}
+    return {"open_by_itself": True}
 
 
 @websocket_api.require_admin
@@ -191,6 +201,8 @@ async def ws_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     settings = dict(msg["settings"])
     if "cameras" in settings:
         settings["cameras"] = camera_records(settings["cameras"])
+    if "camera_popup" in settings:
+        settings["camera_popup"] = camera_popup_section(settings["camera_popup"])
     clean = {k: v for k, v in settings.items() if k in SECTIONS and v not in (None, "", [], {})}
     # Sections this version does not know (written by a newer Casora) stay as stored: going back to an older
     # version and saving one setting must not drop them for good (Prüfrunde w01-02).

@@ -3264,7 +3264,13 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Mit Fully Kiosk Browser: schaltet auch den Bildschirm des Tablets ein. Nachts nur gedimmt oder gar nicht.",
     "Weather effects on the dashboard": "Wettereffekte auf dem Dashboard",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Regen, Schnee, Nebel und Wind von draußen ziehen leicht über das Raumfoto.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regen, Schnee, Nebel und Wind aus dem Wetter zeigen sich leicht über dem Raumfoto. Bei klarem Wetter zeigt sich nichts."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regen, Schnee, Nebel und Wind aus dem Wetter zeigen sich leicht über dem Raumfoto. Bei klarem Wetter zeigt sich nichts.",
+    "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensoren oder Ereignisse, die als Klingeln oder Erkennung an einer Kamera zählen. Der Name kommt aus Home Assistant.",
+    "A listed ring opens the popup of this camera.": "Ein gelistetes Klingeln öffnet das Popup dieser Kamera.",
+    "Triggers": "Auslöser",
+    "Open camera popup by itself": "Kamera-Popup von selbst öffnen",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Nur für gelistete Auslöser. Nichts, was älter als 2 Minuten ist, höchstens einmal pro Minute je Auslöser. Nur auf Wandtablets; schließt mit „Bei Inaktivität Popups schließen“.",
+    "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensoren oder Ereignisse, die als Klingeln an dieser Kamera zählen. Der Name kommt aus Home Assistant."
   },
   "patterns": [
     [

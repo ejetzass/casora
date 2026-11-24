@@ -47,7 +47,7 @@ const config = {
     { path: 'home', cards: [
       { type: 'custom:button-card', template: 'casora_room', variables: {
         casora_camera_settings: {
-          'device-camera-a': { popup: { alert_window_minutes: 12 }, open: { ring: 'always' } },
+          'device-camera-a': { popup: { alert_window_minutes: 12 } },
         },
       } },
       { type: 'custom:button-card', template: 'casora_camera', entity: 'camera.mock_a_sub',
@@ -70,13 +70,10 @@ assert.equal(resolved.key, 'device-camera-a', 'dashboard settings use the camera
 assert.equal(resolved.values.alert_window_minutes, 12, 'a per-dashboard value wins');
 assert.equal(resolved.values.show_stream_variants, true, 'an unset field falls back to the first matching tile');
 assert.deepEqual(resolved.popup, { alert_window_minutes: 12 }, 'the open-choice subobject is not folded into popup settings');
-assert.deepEqual(resolved.open, { ring: 'always' }, 'automatic consumers can read the dashboard opening choice');
-resolved.open.ring = 'never';
 assert.deepEqual(config, before, 'resolving legacy values does not migrate or write the dashboard');
 
 const standalone = window.casoraCameraPopup.resolve('camera.mock_standalone', hassWithTiles, config);
 assert.equal(standalone.key, 'camera.mock_standalone', 'a camera without a device uses its entity id');
-assert.deepEqual(standalone.open, {}, 'an unset dashboard opening choice inherits the house setting');
 assert.deepEqual(standalone.values, { alert_window_minutes: 7, show_stream_variants: true },
   'a standalone camera falls back only to its own saved tile');
 
