@@ -996,8 +996,10 @@
         var m = document.createElement('ha-map');
         m._connection = { connection: hass.connection, hassUrl: function (u) { return hass.hassUrl ? hass.hassUrl(u) : u; } };
         m.entities = []; m.themeMode = 'auto'; m.zoom = 8; m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
-        // The map fills the box. The fade is off for reduced motion. The map takes no pointer input (pointer-events none);
-        // its attribution link is the one part that does (MAP_CSS), so it can be clicked and reached by Tab.
+        // The map fills the box. The fade is off for reduced motion. The map is not inert: inert would also take the attribution
+        // link out of reach. Instead the map takes no pointer input (pointer-events none), and its attribution link is the one
+        // part that does (MAP_CSS), so it can be clicked and reached by Tab. The host is role="group" (fmap), not "img",
+        // so that link is not nested inside an img role (axe: nested-interactive).
         var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         m.style.position = 'absolute'; m.style.top = '0'; m.style.left = '0'; m.style.width = '100%'; m.style.height = '100%';
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
@@ -1113,7 +1115,9 @@
       // The map element reads its flight from these attributes; it draws nothing for a flight that stops qualifying.
       var mv = F.mapView(h, c.src, c.flight, Date.now());
       if (!mv) return '';
-      return UI.stage('image', { html: '<casora-flight-map role="img" aria-label="' + esc(mv.label) + '" data-src="' + esc(c.src)
+      // role="group", not "img": an img role makes its children presentational, so the attribution link inside would be a
+      // nested-interactive case (axe) with no name for a screen reader. A named group keeps the label and the link.
+      return UI.stage('image', { html: '<casora-flight-map role="group" aria-label="' + esc(mv.label) + '" data-src="' + esc(c.src)
         + '" data-key="' + esc(c.flight) + '" style="display:block;width:100%;aspect-ratio:4 / 3;border-radius:inherit;overflow:hidden;'
         + 'background:var(--casora-soft-row-fill, rgba(127,127,127,0.1));"></casora-flight-map>' });
     }
