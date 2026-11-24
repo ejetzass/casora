@@ -56,12 +56,12 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 // ── _saveRun: anderes Dashboard geladen → abbrechen bzw. _raw/_clean nicht überschreiben ──
 {
-  const run = new Function('omit', 'stable', 'clone', 'expandAny', 'applyKiosk', 'dropRetiredVars',
+  const run = new Function('omit', 'stable', 'clone', 'expandAny', 'applyKiosk', 'dropRetiredVars', 'dropCameraPopupOpen',
     'markPhoneManaged', 'FINGERPRINT_KEY',
     'return async function (s, url_path, pair) {' + method('async _saveRun(s, url_path, pair) {') + '\n};')(
     (o, keys) => { const r = { ...o }; keys.forEach((k) => delete r[k]); return r; },
     JSON.stringify, (o) => JSON.parse(JSON.stringify(o)),
-    () => ({ views: [{ path: 'x' }] }), () => {}, () => {}, (c) => c, 'casora_fp');
+    () => ({ views: [{ path: 'x' }] }), () => {}, () => {}, () => {}, (c) => c, 'casora_fp');
   const mk = () => {
     const s = { surface: 'mobile', compact: { rooms: [] }, templates: {}, extras: {}, scaffold: {} };
     const B = { surface: 'mobile', compact: { rooms: [] } };
