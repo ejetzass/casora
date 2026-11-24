@@ -843,7 +843,7 @@
         + (eta ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta) + '</span>' : '')
         + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>'
           // The same value as a bar; decorative, the text line above is the one screen readers get.
-          + '<span aria-hidden="true" style="display:block;height:4px;margin-top:6px;border-radius:2px;overflow:hidden;background:rgba(127,127,127,0.3)"><span data-flights-bar style="display:block;height:100%;width:' + esc(pct) + '%;background:currentColor"></span></span>' : '') + '</button>';
+          + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>' : '') + '</button>';
     }).join('');
     if (!rowsHtml) return '';
     // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
@@ -1061,6 +1061,13 @@
     customElements.define('casora-flight-map', FlightMap);
   };
   defineMap();
+  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). Decorative for the tile
+  // (the text line carries the value), and the popup's line uses it too. The fill is a span, so it sits in a button as well.
+  var progressBar = function (pct, h, m) {
+    return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
+      + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
+      + esc(pct) + '%;background:currentColor"></span></span>';
+  };
   // The progress line: a track with the fill and the value as text (not by colour alone).
   var progressHtml = function (pct) {
     var label = tr('Ungefährer Fortschritt'), value = pctText(pct);
@@ -1068,8 +1075,7 @@
       + '" aria-valuetext="' + esc(value) + '" style="padding:12px 16px;box-sizing:border-box;">'
       + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">' + esc(label)
       + '</span><span style="font-weight:600">' + esc(value) + '</span></div>'
-      + '<div style="position:relative;height:6px;margin-top:12px;border-radius:3px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)">'
-      + '<div style="position:absolute;left:0;top:0;bottom:0;width:' + esc(pct) + '%;background:currentColor"></div></div></div>';
+      + progressBar(pct, 6, 12) + '</div>';
   };
 
   // ── The flight popup (casora_popup_flight): one flight of one source, by its FR24 ID ──────────────────────────────────
