@@ -254,7 +254,7 @@ assert.deepEqual(kicked, [popCard], 'the open flight popup is redrawn at the hid
 // ── Wiring: the Dashboard tile reads only the shared rule, and the Studio offers it where the source exists ──
 const tpl = JSON.parse(read('dashboards/casora/button_card_templates.json')).casora_flights_airborne;
 assert.deepEqual(tpl.template, ['casora_entity'], 'a plain entity-less tile: no popup, the native tile tap');
-assert.ok(tpl.state_display.includes('F.liveHtml(hass, F.setting())'), 'the rows come from the shared rule');
+assert.ok(tpl.state_display.includes('F.liveHtml(hass, F.setting(), undefined, variables.casora_default_name)'), 'the rows come from the shared rule, named by the template');
 assert.ok(tpl.hidden.includes('liveHidden(hass)'), 'hidden unless a flight qualifies');
 // No entity and no popup: a tap on the tile body does nothing, and holding does nothing. button-card then marks the card
 // "disabled" (pointer-events none), so the card's own style turns hit-testing back on: the rows stay tappable.
