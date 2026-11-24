@@ -934,8 +934,9 @@
   var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
   var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
     + '.maplibregl-ctrl-bottom-right{right:0;bottom:0}'
-    + '.maplibregl-ctrl-attrib{font-size:8px!important;line-height:1.2!important;padding:0 14px 3px 4px!important;margin:0!important;min-height:0!important;background:transparent!important;color:inherit!important}'
-    + '.maplibregl-ctrl-attrib a{color:inherit!important}.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}';
+    + '.maplibregl-ctrl-attrib{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important}'
+    + '.maplibregl-ctrl-attrib a{color:inherit!important;text-decoration:underline}.maplibregl-ctrl-attrib a:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
+    + '.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}';
   // The arrow points north at heading 0; MapLibre turns it clockwise on the map. Drawn on a canvas: no file or URL loads.
   var arrowImage = function (ml) {
     try {
@@ -995,12 +996,12 @@
         var m = document.createElement('ha-map');
         m._connection = { connection: hass.connection, hassUrl: function (u) { return hass.hassUrl ? hass.hassUrl(u) : u; } };
         m.entities = []; m.themeMode = 'auto'; m.zoom = 8; m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
-        // The map fills the box. The fade is off for reduced motion. The map is not a focus stop: its attribution link sits
-        // inside the popup's button (axe: nested-interactive); the map itself is shown, only its controls are inert.
+        // The map fills the box. The fade is off for reduced motion. The map takes no pointer input (pointer-events none);
+        // its attribution link is the one part that does (MAP_CSS), so it can be clicked and reached by Tab.
         var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         m.style.position = 'absolute'; m.style.top = '0'; m.style.left = '0'; m.style.width = '100%'; m.style.height = '100%';
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
-        m.inert = true;
+        m.style.pointerEvents = 'none';
         this.appendChild(m); this._el = m;
         // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
         if (window.MutationObserver && m.shadowRoot) {
@@ -1009,10 +1010,11 @@
         }
         this._timer = setInterval(() => this._poll(), F.MAP.TICK_MS);
       }
-      // The map's canvas, zoom controls and attribution keep tabindex 0 while the map is inert. The popup's Tab handling
-      // counts them as stops (casora-core.js _focusables), so Tab from Close would leave the popup: take them out of the tab order.
+      // The map's canvas and zoom controls keep tabindex 0. The popup's Tab handling counts them as stops (casora-core.js
+      // _focusables), so Tab from Close would leave the popup: take them out of the tab order. The attribution link stays.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
+          if (x.closest && x.closest('.maplibregl-ctrl-attrib')) return;
           if (x.matches('a[href],button,input,select,textarea,[tabindex]') && x.tabIndex >= 0) x.setAttribute('tabindex', '-1');
           if (x.shadowRoot) this._unstop(x.shadowRoot);
         });
