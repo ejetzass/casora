@@ -1094,7 +1094,8 @@
     customElements.define('casora-flight-map', FlightMap);
   };
   defineMap();
-  // The Flights tile's rows sit in casora-flight-list. On connect it puts the tile's styles into its card (once per card).
+  // The Flights tile's rows sit in casora-flight-list. On connect it puts the tile's styles into its card (once per card),
+  // and makes the card a named group: the card is a button by default, but it holds row buttons (nested-interactive).
   var TILE_CSS = '#container{height:100%;min-height:0;grid-template-rows:min-content min-content minmax(0,1fr)!important}'
     + '#state{height:100%;min-height:0;align-self:stretch!important;overflow:hidden!important}'
     + '@media (max-width:767px) and (orientation:portrait),(max-height:500px) and (orientation:portrait),(max-height:500px) and (orientation:landscape),(max-height:600px) and (orientation:landscape) and (hover:hover){#container{grid-template-rows:min-content minmax(0,1fr)!important}}'
@@ -1105,8 +1106,12 @@
     class FlightList extends HTMLElement {
       connectedCallback() {
         var root = this.getRootNode && this.getRootNode();
-        if (!root || !root.querySelector || root.querySelector('style[data-flights-tile]')) return;
-        var st = document.createElement('style'); st.setAttribute('data-flights-tile', ''); st.textContent = TILE_CSS; root.appendChild(st);
+        if (!root || !root.querySelector) return;
+        if (!root.querySelector('style[data-flights-tile]')) {
+          var st = document.createElement('style'); st.setAttribute('data-flights-tile', ''); st.textContent = TILE_CSS; root.appendChild(st);
+        }
+        var card = root.querySelector('#card');
+        if (card) { card.setAttribute('role', 'group'); card.setAttribute('aria-label', this.getAttribute('data-name') || ''); }
       }
     }
     customElements.define('casora-flight-list', FlightList);
