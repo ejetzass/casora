@@ -40,5 +40,6 @@ assert.ok(G.cardWithTemplate(['casora_battery'], 'sensor.x_akku'), 'Sammel-Eintr
 assert.ok(core.includes("window.casoraPopup.open(Object.assign({}, act.casora_popup, { src: card }));"), 'tapCard mit src');
 const basis = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/01-basis.js', import.meta.url), 'utf8');
 assert.ok(basis.includes('window._casoraTapTile(entityId'), 'Einträge ohne opens: erst die sichtbare Kachel');
-assert.ok(basis.includes("window.casoraPopup.open(Object.assign({}, act.casora_popup, { src: el }));"), 'verdeckte Karte mit src');
+assert.ok(basis.includes("var data = Object.assign({}, act.casora_popup, { src: el });"), 'verdeckte Karte mit src');
+assert.ok(basis.includes("data._entity = entityId;"), 'a camera window carries its camera (#394, #395)');
 console.log('ok glocke_wie_kachel');
