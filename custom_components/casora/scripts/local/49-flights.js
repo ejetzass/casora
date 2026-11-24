@@ -833,6 +833,13 @@
 
   var ROW_BTN = 'display:block;width:100%;box-sizing:border-box;min-height:44px;padding:8px 0 12px;margin:0;border:0;background:none;'
     + 'font:inherit;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;';
+  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). Decorative for the tile
+  // (the text line carries the value), and the popup's line uses it too. The fill is a span, so it sits in a button as well.
+  var progressBar = function (pct, h, m) {
+    return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
+      + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
+      + esc(pct) + '%;background:currentColor"></span></span>';
+  };
   F.liveHtml = function (hass, pin, now) {
     var rowsHtml = F.airborne(hass, pin, now).map(function (r) {
       var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
@@ -1071,13 +1078,6 @@
     customElements.define('casora-flight-map', FlightMap);
   };
   defineMap();
-  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). Decorative for the tile
-  // (the text line carries the value), and the popup's line uses it too. The fill is a span, so it sits in a button as well.
-  var progressBar = function (pct, h, m) {
-    return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
-      + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
-      + esc(pct) + '%;background:currentColor"></span></span>';
-  };
   // The progress line: a track with the fill and the value as text (not by colour alone).
   var progressHtml = function (pct) {
     var label = tr('Ungefährer Fortschritt'), value = pctText(pct);
@@ -1098,6 +1098,7 @@
       .filter(Boolean).join(' · ');
   };
   // A plate of label and value rows; a row without a value is left out, and no rows means no plate (no blank section).
+  // pairs() translates the labels (callers pass German keys), not the values.
   var pairs = function (rows) {
     var ok = rows.filter(function (x) { return x[1]; });
     if (!ok.length) return '';
