@@ -27,14 +27,14 @@ function env({ cfg, cameras }) {
       'camera.mock_sub': { state: 'idle' },
       'binary_sensor.mock_press': { state: 'off', last_changed: new Date(NOW - 60000).toISOString() },
     }, callWS: async () => ({}) };
-  const window = { CASORA_SETTINGS: { cameras }, route: '/mock-dashboard/home',
+  const window = { casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras }, route: '/mock-dashboard/home',
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     document: { querySelector: () => ({ hass }), addEventListener() {} },
     addEventListener() {}, setTimeout: () => 1, clearTimeout() {},
     setInterval: fn => { tick = fn; timers.set++; return 9; }, clearInterval: () => { timers.cleared++; },
     _casoraCfgOnce: async () => current,
     casoraCameraPopup: { resolve: () => ({ open: {} }), config: id => ({ entity: id }) },
-    _casoraRingPopup: { open: o => { opened.push(o); return true; }, handled() {} } };
+    _casoraRingPopup: { fresh: at => Number.isFinite(at) && NOW - at < 120000 && NOW - at >= -60000, open: o => { opened.push(o); return true; }, handled() {} } };
   Object.defineProperty(window, 'location', { get: () => ({ pathname: window.route }) });
   const context = vm.createContext({ window, Date: Clock, JSON, Object, Number, Array, Promise });
   vm.runInContext(triggerIdsSource, context);
