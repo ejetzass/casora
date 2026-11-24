@@ -1121,11 +1121,11 @@
       var pv = F.mapView(h, c.src, c.flight, Date.now());
       return pv && pv.progress != null ? progressHtml(pv.progress) : '';
     }
-    if (part === 'fmove') return pairs([[tr('Höhe'), r.altitude], [tr('Geschwindigkeit über Grund'), r.speed],
-      [tr('Vertikalgeschwindigkeit'), r.vspeed], [tr('Kurs'), r.heading]]);
-    if (part === 'fair') return pairs([[tr('Fluggesellschaft'), str(f.airline_short) || str(f.airline)], [tr('Flugzeugmodell'), str(f.aircraft_model) || str(f.aircraft_code)],
-      [tr('Registrierung'), str(f.aircraft_registration)], [tr('Rufzeichen'), str(f.callsign)]]);
-    if (part === 'fplaces') return pairs([[tr('Abflug'), place(f, 'origin')], [tr('Ankunft'), place(f, 'destination')]]);
+    if (part === 'fmove') return pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
+      ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs', r.heading]]);
+    if (part === 'fair') return pairs([['Fluggesellschaft', str(f.airline_short) || str(f.airline)], ['Flugzeugmodell', str(f.aircraft_model) || str(f.aircraft_code)],
+      ['Registrierung', str(f.aircraft_registration)], ['Rufzeichen', str(f.callsign)]]);
+    if (part === 'fplaces') return pairs([['Abflug', place(f, 'origin')], ['Ankunft', place(f, 'destination')]]);
     if (part === 'ftimes') {
       // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
       var tm = F.times(h, f, F.tz()), rows = [];
