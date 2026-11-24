@@ -77,22 +77,31 @@ const root = { styles: [], querySelector: (sel) => {
   if (sel.startsWith('style[data-flights-tile]')) return root.styles[0] || null;
   return null;
 }, appendChild(n) { root.styles.push(n); } };
-// The element as the browser builds it from the tile's markup: its attributes, then its connection.
-const connect = (markup) => {
+// The element as the browser builds it from the tile's markup: its attributes, then its connection. The host is the
+// button-card element that owns the card (its config carries the card's own name, if any).
+const connect = (markup, host) => {
   const w = new Wrap();
+  root.host = host;
   w._root = root;
   w.setAttribute('data-name', (markup.match(/<casora-flight-list data-name="([^"]*)"/) || [])[1]);
   w.connectedCallback();
 };
 assert.equal(card.attrs.role, 'button', 'precondition: the library gives the card role button');
-connect(html);
+const unnamed = { _config: {} };
+connect(html, unnamed);
 assert.equal(root.styles.length, 1, 'the tile styles are added to the card root');
 assert.equal(root.styles[0].tag, 'style', 'the styles are a style element in the card');
 assert.match(root.styles[0].textContent, /#container\{/, 'the grid rule is in the card');
 assert.match(root.styles[0].textContent, /\[data-flights-row\]:focus-visible/, 'the row focus ring is in the card');
-connect(html); // a redraw: no second style block
+connect(html, unnamed); // a redraw: no second style block
 assert.equal(root.styles.length, 1, 'a redraw adds no second style block');
 assert.equal(card.attrs.role, 'group', 'the Flights tile card is a group, not a button');
-assert.equal(card.attrs['aria-label'], 'Flüge', 'the group is named with the tile name');
+assert.equal(card.attrs['aria-label'], 'Flüge', 'an unnamed tile is labelled with the default name');
+
+// A renamed tile (the card config has a name): the label is the name the card shows, not the default name.
+connect(html, { _config: { name: 'Meine Flüge' } });
+assert.equal(card.attrs['aria-label'], 'Meine Flüge', 'a renamed tile is labelled with its own name');
+connect(html, unnamed);
+assert.equal(card.attrs['aria-label'], 'Flüge', 'a tile renamed back is labelled with the default name again');
 
 console.log('ok: flights tile card');
