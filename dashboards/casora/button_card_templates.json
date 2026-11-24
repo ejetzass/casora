@@ -20989,7 +20989,7 @@
     "hold_action": {
       "action": "none"
     },
-    "state_display": "[[[\n  /* Flights in the air (49-flights.js F.liveHtml): the shared rule, the same one the popup and screensaver use.\n     The sources' states are read here so the tile follows them. The rows are escaped there. */\n  const F = window._casoraFlights;\n  if (F && typeof hass !== 'undefined') F.watch(hass).forEach((id) => { states[id]; });\n  return F ? F.liveHtml(hass, F.setting(), undefined, variables.casora_default_name) : '';\n]]]\n",
+    "state_display": "[[[\n  /* Flights in the air (49-flights.js F.liveHtml): the shared rule, the same one the popup and screensaver use.\n     The sources' states are read here so the tile follows them. The rows are escaped there. */\n  const F = window._casoraFlights;\n  if (F && typeof hass !== 'undefined') F.watch(hass).forEach((id) => { states[id]; });\n  return F ? F.liveHtml(hass, F.setting(), Date.now(), variables.casora_default_name) : '';\n]]]\n",
     "styles": {
       "card": [
         {
