@@ -987,6 +987,7 @@
       }
       disconnectedCallback() {
         this._stop();
+        if (this._mo) { this._mo.disconnect(); this._mo = null; }
         if (this._el && this._el.remove) this._el.remove();
         this._el = this._ml = null; this._layers = this._ok = false; this._sent = this._ident = null;
       }
@@ -1001,10 +1002,24 @@
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
         m.inert = true;
         this.appendChild(m); this._el = m;
+        // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
+        if (window.MutationObserver && m.shadowRoot) {
+          this._mo = new MutationObserver(() => this._unstop(m.shadowRoot));
+          this._mo.observe(m.shadowRoot, { childList: true, subtree: true });
+        }
         this._timer = setInterval(() => this._poll(), F.MAP.TICK_MS);
+      }
+      // The map's canvas, zoom controls and attribution keep tabindex 0 while the map is inert. The popup's Tab handling
+      // counts them as stops (casora-core.js _focusables), so Tab from Close would leave the popup: take them out of the tab order.
+      _unstop(root) {
+        root.querySelectorAll('*').forEach((x) => {
+          if (x.matches('a[href],button,input,select,textarea,[tabindex]') && x.tabIndex >= 0) x.setAttribute('tabindex', '-1');
+          if (x.shadowRoot) this._unstop(x.shadowRoot);
+        });
       }
       _poll() {
         if (!this.isConnected) { this._stop(); return; }
+        if (this._el && this._el.shadowRoot) this._unstop(this._el.shadowRoot);
         var H = window._casoraHaMap, ml = H && this._el ? H.ml(this._el) : null, hass = hassNow();
         if (!ml) { if (Date.now() - this._since > F.MAP.READY_MS) this._fail(); return; }
         if (!this._ml) {
