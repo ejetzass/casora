@@ -25,11 +25,12 @@ function check(name, fn) {
 let clock = 0;
 const realNow = Date.now;
 Date.now = () => clock;
-function loadBlock({ pathname = '/dash/room', idle = '1', close = '0', tablet = true, popup = null, openedAt = 0 } = {}) {
+function loadBlock({ pathname = '/dash/room', idle = '1', close = '0', tablet = true, popup = null, openedAt = 0, trigger = null } = {}) {
   const window = {
     addEventListener() {},
     dispatchEvent() {},
     casoraIsWallTablet: () => tablet,
+    ...(trigger ? { casoraCameraTriggerSince: trigger } : {}),
     casoraPopup: {
       surface: popup,
       openedAt,
@@ -65,7 +66,7 @@ const fnEnd = m[0].indexOf('\n  }\n', fnStart) + '\n  }\n'.length;
 assert.ok(fnStart > 0 && fnEnd > fnStart, 'idleDecision in the Idle return block');
 const idleDecision = new Function(m[0].slice(fnStart, fnEnd) + '\nreturn idleDecision;')();
 const MIN_AWAY = 10 * MIN; // "now" for the cases below
-const base = { now: MIN_AWAY, lastTouch: 0, popupOpen: false, popupOpenedAt: 0, onHome: false, idleHomeMins: 1, idleCloseMins: 0, isWallTablet: true };
+const base = { now: MIN_AWAY, lastTouch: 0, popupOpen: false, popupOpenedAt: 0, onHome: false, idleHomeMins: 1, idleCloseMins: 0, isWallTablet: true, triggerStoppedAt: 0  };
 const decide = (over) => idleDecision({ ...base, ...over });
 const nothing = (d) => assert.deepEqual([d.close, d.home], [false, false]);
 const goHome = (d) => assert.deepEqual([d.close, d.home], [false, true]);
@@ -90,6 +91,29 @@ check('Idle close: Ring popup opened after 20 min without a touch, Idle close 2 
   const ring = { idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 20 * MIN, lastTouch: 0 };
   nothing(decide({ ...ring, now: 22 * MIN - 1000 }));
   closeOnly(decide({ ...ring, now: 22 * MIN }));
+});
+check('Idle close, camera window: a listed trigger still on (stop = now) → nothing, even an hour later', () => {
+  const cam = { idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 0, lastTouch: 0 };
+  nothing(decide({ ...cam, now: 60 * MIN, triggerStoppedAt: 60 * MIN }));
+});
+check('Idle close, camera window: trigger stopped at 0:30, Idle close 2 → nothing at 2:29, close at 2:30', () => {
+  const cam = { idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 0, lastTouch: 0, triggerStoppedAt: 30 * MIN };
+  nothing(decide({ ...cam, now: 32 * MIN - 1000 }));
+  closeOnly(decide({ ...cam, now: 32 * MIN }));
+});
+check('Idle close, camera window: a newer trigger moment restarts the count', () => {
+  const cam = { idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 0, lastTouch: 0, triggerStoppedAt: 5 * MIN };
+  nothing(decide({ ...cam, now: 6 * MIN, triggerStoppedAt: 5 * MIN }));
+  nothing(decide({ ...cam, now: 7 * MIN, triggerStoppedAt: 6.5 * MIN }));
+  closeOnly(decide({ ...cam, now: 8.5 * MIN, triggerStoppedAt: 6.5 * MIN }));
+});
+check('Idle close, camera window: the last touch later than the trigger moment counts', () => {
+  const cam = { idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 0, lastTouch: 10 * MIN, triggerStoppedAt: 5 * MIN };
+  nothing(decide({ ...cam, now: 11 * MIN }));
+  closeOnly(decide({ ...cam, now: 12 * MIN }));
+});
+check('Idle close, no camera (triggerStoppedAt 0) → unchanged: close from the opening', () => {
+  closeOnly(decide({ idleCloseMins: 2, idleHomeMins: 0, popupOpen: true, popupOpenedAt: 0, lastTouch: 0, triggerStoppedAt: 0, now: 2 * MIN }));
 });
 check('Idle close: no popup open → nothing', () => {
   nothing(decide({ idleCloseMins: 1, popupOpen: false, popupOpenedAt: 0, lastTouch: 0, now: 60 * MIN, idleHomeMins: 0 }));
@@ -171,6 +195,20 @@ check('block: Ring popup opened at 20 min, Idle close 2 → not closed at 21:50,
   assert.equal(env.window.casoraPopup.closes, 0, 'not at 21:50');
   clock = 22 * MIN; env.tick();
   assert.equal(env.window.casoraPopup.closes, 1, 'closed at 22:00');
+});
+
+check('block: camera window, Idle close 2, trigger on for 30 min then stops → no close while on, close 2 min after the stop', () => {
+  clock = 0;
+  let stopped = null;
+  const trigger = () => (stopped === null ? clock : stopped);
+  const env = loadBlock({ idle: '0', close: '2', popup: true, openedAt: 0, trigger });
+  for (let t = 10 * 1000; t <= 30 * MIN; t += 60 * 1000) { clock = t; env.tick(); }
+  assert.equal(env.window.casoraPopup.closes, 0, 'not closed while the trigger is on, an open count of 30 min');
+  stopped = 30 * MIN;
+  clock = 31 * MIN + 59 * 1000; env.tick();
+  assert.equal(env.window.casoraPopup.closes, 0, 'not at 1:59 after the stop');
+  clock = 32 * MIN; env.tick();
+  assert.equal(env.window.casoraPopup.closes, 1, 'closed at 2:00 after the stop, no touch');
 });
 
 Date.now = realNow;

@@ -1215,7 +1215,10 @@ window._casoraColGap = window._casoraColGap || function (keys) {
           var act = c && c.tap_action;
           if (act && act.casora_popup) {
             if (!mayOpen()) return fin(false);
-            ev.stopPropagation(); window.casoraPopup.open(Object.assign({}, act.casora_popup, { src: el })); return fin(true);
+            // A camera window carries its camera, whichever route opened it (#394, #395).
+            var data = Object.assign({}, act.casora_popup, { src: el });
+            if (typeof entityId === 'string' && entityId.indexOf('camera.') === 0) data._entity = entityId;
+            ev.stopPropagation(); window.casoraPopup.open(data); return fin(true);
           }
           fin(false);
         };

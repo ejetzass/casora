@@ -18202,7 +18202,6 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     }
     if (what === DOORBELL_OPENS) {
       var h = hassOf();
-      if (openListedPopup(listedDoorbell(fallbackEntity))) return;
       var bell = h && window.casoraDoorbellSources && window.casoraDoorbellSources(h).find(function (c) {
         return c.sensor === fallbackEntity;
       });
@@ -18934,9 +18933,10 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   function bump() { last = Date.now(); }
 
   // The idle decision. A pure function: it reads no globals and changes nothing, so a test can call it with
-  // plain values (dev/unit/idle_decision.mjs). Input: now, lastTouch and popupOpenedAt (ms; popupOpenedAt 0 =
-  // unknown), popupOpen, onHome, idleHomeMins and idleCloseMins (0 = Off), isWallTablet. Output: close (Idle
-  // close: the popup shuts after idleCloseMins from the later of lastTouch and popupOpenedAt) and home (Idle
+  // plain values (dev/unit/idle_decision.mjs). Input: now, lastTouch, popupOpenedAt and triggerStoppedAt (ms; 0 =
+  // unknown or none; triggerStoppedAt is the shown camera's last listed trigger stop, now while one is on), popupOpen,
+  // onHome, idleHomeMins and idleCloseMins (0 = Off), isWallTablet. Output: close (Idle
+  // close: the popup shuts after idleCloseMins from the latest of lastTouch, popupOpenedAt and triggerStoppedAt) and home (Idle
   // return: after idleHomeMins from lastTouch, paused while a popup is open). Both in one answer when both
   // apply. restart = the Idle return count does not run now, so the caller sets lastTouch to now; a popup
   // open never restarts it.
@@ -18945,7 +18945,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     if (!s.isWallTablet || (!s.idleHomeMins && !s.idleCloseMins)) { out.restart = true; return out; }
     var homeDue = !!s.idleHomeMins && s.now - s.lastTouch >= s.idleHomeMins * 60000;
     if (s.popupOpen) {
-      var since = Math.max(s.lastTouch, s.popupOpenedAt || 0);
+      var since = Math.max(s.lastTouch, s.popupOpenedAt || 0, s.triggerStoppedAt || 0);
       out.close = !!s.idleCloseMins && s.now - since >= s.idleCloseMins * 60000;
       out.home = out.close && homeDue && !s.onHome;
       return out;
@@ -19023,6 +19023,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       lastTouch: last,
       popupOpen: !!(window.casoraPopup && window.casoraPopup.surface),
       popupOpenedAt: (window.casoraPopup && window.casoraPopup.openedAt) || 0,
+      triggerStoppedAt: (window.casoraCameraTriggerSince && window.casoraCameraTriggerSince()) || 0,
       onHome: !home || norm(location.pathname) === norm(home),
       idleHomeMins: cfg ? minutes(cfg, 'casora_idle_home') : 0,
       idleCloseMins: cfg ? minutes(cfg, 'casora_idle_close') : 0,
