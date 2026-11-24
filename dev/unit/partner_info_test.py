@@ -43,7 +43,7 @@ fl = {"views": [{"cards": [{"variables": {"casora_flights_source": "sensor.fr24_
 assert pb.flights_of(fl) == {"casora_flights_source": "sensor.fr24_b", "casora_flights_altitude_unit": "m"}, pb.flights_of(fl)
 assert pb.flights_of({"views": []}) == {}
 assert pb.flights_of({"views": [{"cards": []}, {"cards": [{"variables": {"casora_flights_altitude_unit": ""}}]}]}) == {}
-# The same settings as the desktop (46-screensaver.js FLIGHT_KEYS): the three units and the timezone switch. A Python
+# The same Flights settings as the desktop twin: the three units and the timezone switch. A Python
 # bool becomes 'true' / 'false', the words 49-flights.js reads (F.tz compares with 'true'), never 'True'.
 units = {"views": [{"cards": [{"variables": {"casora_flights_source": "sensor.a", "casora_flights_altitude_unit": "ft",
     "casora_flights_speed_unit": "kn", "casora_flights_vspeed_unit": "fpm", "casora_flights_timezones": True}}]}]}
