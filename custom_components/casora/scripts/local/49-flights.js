@@ -931,6 +931,7 @@
     return p.clock + (zone && dep != null && part(dep, z, loc).day !== p.day ? ' ' + p.date : '') + (F.tz() && p.name ? ' ' + p.name : '');
   };
   // The timestamps as rows [label, text] for the details (departure, then arrival); labels are the German words to translate.
+  // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
   F.timeRows = function (hass, f, tzOn) {
     var tm = F.times(hass, f, tzOn), rows = [];
     tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
@@ -1292,10 +1293,11 @@
       .filter(Boolean).join(' · ');
   };
   // The identity and the airports of one entry, shared by the popup and the screensaver: '' for a missing value.
+  // The model falls back to the type code, as the popup always did.
   F.details = function (f) {
     f = f || {};
-    return { airline: str(f.airline_short) || str(f.airline), model: str(f.aircraft_model), registration: str(f.aircraft_registration),
-      callsign: str(f.callsign), origin: place(f, 'origin'), destination: place(f, 'destination') };
+    return { airline: str(f.airline_short) || str(f.airline), model: str(f.aircraft_model) || str(f.aircraft_code),
+      registration: str(f.aircraft_registration), callsign: str(f.callsign), origin: place(f, 'origin'), destination: place(f, 'destination') };
   };
   // A plate of label and value rows; a row without a value is left out, and no rows means no plate (no blank section).
   // pairs() translates the labels (callers pass German keys), not the values.
@@ -1336,16 +1338,10 @@
     }
     if (part === 'fmove') return pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
       ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs', r.heading]]);
-    if (part === 'fair') return pairs([['Fluggesellschaft', str(f.airline_short) || str(f.airline)], ['Flugzeugmodell', str(f.aircraft_model) || str(f.aircraft_code)],
-      ['Registrierung', str(f.aircraft_registration)], ['Rufzeichen', str(f.callsign)]]);
-    if (part === 'fplaces') return pairs([['Abflug', place(f, 'origin')], ['Ankunft', place(f, 'destination')]]);
-    if (part === 'ftimes') {
-      // One row per timestamp the source has: the word for the kind, then the times (origin or destination, and local).
-      var tm = F.times(h, f, F.tz()), rows = [];
-      tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
-      tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
-      return pairs(rows);
-    }
+    if (part === 'fair') { var d = F.details(f); return pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
+      ['Registrierung', d.registration], ['Rufzeichen', d.callsign]]); }
+    if (part === 'fplaces') { var p = F.details(f); return pairs([['Abflug', p.origin], ['Ankunft', p.destination]]); }
+    if (part === 'ftimes') return pairs(F.timeRows(h, f, F.tz()));
     return '';
   };
   // A tile row opens its flight's popup through the card opener: the popup template gets the source and the FR24 ID.
