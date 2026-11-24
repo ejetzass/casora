@@ -88,7 +88,26 @@ ctx.document.createElement = () => host;
 const map = new Cls();
 Object.assign(map, { _since: Date.now(), _tiles: 0, _ml: null, _timer: null, _layers: false, _ok: false, _sent: null, _ident: null });
 map._conn = true;
+// A MutationObserver that keeps its callback, so the test can run it the way the browser does when the map adds content.
+class FakeObserver {
+  constructor(cb) { this.cb = cb; FakeObserver.last = this; }
+  observe(target, opts) { this.target = target; this.opts = opts; }
+  disconnect() { this.disconnected = true; }
+}
+ctx.MutationObserver = FakeObserver;
 map._build({ connection: {}, hassUrl: (u) => u });
+
+// The observer watches the map's shadow root, its content and its subtree, from the moment the map is built.
+const mo = FakeObserver.last;
+assert.ok(mo, 'a MutationObserver is set up with the map');
+assert.equal(mo.target, host.shadowRoot, 'the observer watches the map\'s shadow root');
+assert.ok(mo.opts.childList && mo.opts.subtree, 'the observer sees added content at any depth');
+
+// The MutationObserver path, before any poll: the map adds a canvas and a zoom link, the observer runs, and neither is a stop.
+host.shadowRoot.children.push(el('canvas', { tabindex: '0' }), el('a', { href: 'https://example.invalid/', 'aria-label': 'Zoom' }));
+mo.cb([]);
+const moLeft = stopsOf(host.shadowRoot).filter((x) => !x.closest(ATTRIB)).map((x) => x.tag + '#' + x.getAttribute('aria-label'));
+assert.deepEqual(moLeft, [], 'the observer takes the map\'s stops out of the tab order: ' + moLeft.join(', '));
 
 // The map is not inert: the attribution link must take a click and a Tab. The map itself takes no pointer input.
 assert.notEqual(host.inert, true, 'the map is not inert, so its attribution link can be reached');
