@@ -1005,6 +1005,7 @@
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
         m.style.pointerEvents = 'none';
         this.appendChild(m); this._el = m;
+        if (m.shadowRoot) this._css(m.shadowRoot);
         // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
         if (window.MutationObserver && m.shadowRoot) {
           this._mo = new MutationObserver(() => this._unstop(m.shadowRoot));
@@ -1031,7 +1032,7 @@
           ['dragPan', 'scrollZoom', 'boxZoom', 'doubleClickZoom', 'touchZoomRotate', 'keyboard', 'dragRotate', 'touchPitch'].forEach(function (x) {
             if (ml[x] && ml[x].disable) ml[x].disable();
           });
-          if (this._el.shadowRoot) { var st = document.createElement('style'); st.textContent = MAP_CSS; this._el.shadowRoot.appendChild(st); }
+          if (this._el.shadowRoot) this._css(this._el.shadowRoot);
           ml.on('data', (e) => { if (e && e.tile && (!e.tile.state || e.tile.state === 'loaded')) this._tiles++; });
         }
         if (!this._layers && ml.isStyleLoaded && ml.isStyleLoaded()) { addLayers(ml); this._layers = true; }
@@ -1056,6 +1057,13 @@
           if (b) ml.fitBounds(b, { padding: 36, maxZoom: 9, duration: 0 });
         }
         this._ident = ident;
+      }
+      // The attribution style goes into the map's shadow root once per root: at build, and again on the first poll if the
+      // shadow root was not there yet.
+      _css(root) {
+        if (this._styled === root) return;
+        this._styled = root;
+        var st = document.createElement('style'); st.textContent = MAP_CSS; root.appendChild(st);
       }
       _stop() { if (this._timer) clearInterval(this._timer); this._timer = null; }
       _fail() { this._stop(); this.style.display = 'none'; }
