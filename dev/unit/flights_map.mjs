@@ -154,6 +154,10 @@ assert.ok(pop.fields.map && pop.fields.prog, 'popup has the map and the progress
 assert.equal(pop.stage, 'map', 'the map is the stage');
 const mapHtml = F.sec('fmap', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
 assert.match(mapHtml, /<casora-flight-map[^>]*data-src="sensor\.a"[^>]*data-key="w1"/, 'map element with the flight');
+// The host has a name and a role that allows the attribution link inside it: role="img" would make that link presentational
+// (axe: nested-interactive), so the host is a named group.
+assert.match(mapHtml, /<casora-flight-map[^>]*role="group"[^>]*aria-label="[^"]+"/, 'map host: named group, so its link is announced');
+assert.doesNotMatch(mapHtml, /role="img"/, 'map host is not role="img" (it would hide the attribution link)');
 assert.equal(F.sec('fmap', { src: 'sensor.a', flight: 'gone' }, hass.states, hass), '', 'no map for a flight not shown');
 const prog = F.sec('fprog', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
 assert.match(prog, /Ungefährer Fortschritt/, 'progress label');
@@ -288,7 +292,7 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
 }
 
 // ── Layout: the element keeps the popup's 4:3 box (no style text replaced), its map fills the box, reduced motion gives no fade,
-//    and the map is not a focus stop inside the card (axe: nested-interactive) ──
+//    and the map takes no pointer input while it is not inert (its attribution link stays reachable; the host is not an img role) ──
 const mountFresh = async (hs, key, reduce) => {
   const H = { ok: () => true, defined: () => Promise.resolve(true), ml: () => fakeMl() };
   ctx._casoraHaMap = H;
