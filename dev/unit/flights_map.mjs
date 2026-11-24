@@ -291,6 +291,25 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
   deq(hs.calls, [], 'the map and the rendering write nothing to HA');
 }
 
+// The attribution style is in the map's shadow root from the build on, not only after the first poll (no unstyled link
+// before then). A poll does not add a second copy.
+{
+  const hs = house(); moving(hs, fl('w5'));
+  const shadow = { kids: [], appendChild(c) { this.kids.push(c); return c; }, querySelectorAll: () => [] };
+  const host = { style: {}, setAttribute() {}, appendChild() {}, remove() {}, shadowRoot: shadow };
+  ctx.document.createElement = () => host;
+  ctx._casoraHaMap = { ok: () => true, defined: () => Promise.resolve(true), ml: () => fakeMl() };
+  ctx.document.querySelector = () => ({ hass: hs });
+  const Cls = ctx.customElements.get('casora-flight-map');
+  const el = new Cls(); el.setAttribute('data-src', 'sensor.a'); el.setAttribute('data-key', 'w5'); el._conn = true;
+  el.connectedCallback(); await settle();
+  const styled = () => shadow.kids.filter((c) => c.textContent && c.textContent.includes('.maplibregl-ctrl-attrib{'));
+  assert.equal(styled().length, 1, 'the attribution style is in the map shadow root after the build');
+  tick();
+  assert.equal(styled().length, 1, 'a poll does not add the style again');
+  el.disconnectedCallback();
+}
+
 // ── Layout: the element keeps the popup's 4:3 box (no style text replaced), its map fills the box, reduced motion gives no fade,
 //    and the map takes no pointer input while it is not inert (its attribution link stays reachable; the host is not an img role) ──
 const mountFresh = async (hs, key, reduce) => {
