@@ -2,6 +2,7 @@
 // is inert, and the popup's Tab handling counts them as stops (casora-core.js _focusables). Tab from Close would then leave
 // the popup. After a poll tick none of them may stay in the tab order. The attribution link is the one exception: it is a
 // real link, so it stays a stop, readable and clickable, while the map itself takes no pointer input.
+// It checks tabindex attributes only; that the map is not reachable before it is ready is covered by flights_map_loading.mjs.
 //   node dev/unit/flights_map_tab_stops.mjs
 // @deckt: custom_components/casora/scripts/local/49-flights.js#defineMap,_build,_poll,_unstop
 import fs from 'node:fs';
