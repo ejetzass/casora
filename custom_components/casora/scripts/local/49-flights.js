@@ -1011,6 +1011,9 @@
         m.style.position = 'absolute'; m.style.top = '0'; m.style.left = '0'; m.style.width = '100%'; m.style.height = '100%';
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
         m.style.pointerEvents = 'none';
+        // Hidden until ready: a hidden box takes its links and canvas out of the Tab order (the popup counts them by
+        // their visibility, casora-core _focusables). The ready step below shows it again.
+        m.style.visibility = 'hidden';
         this.appendChild(m); this._el = m;
         if (m.shadowRoot) this._css(m.shadowRoot);
         // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
@@ -1044,7 +1047,7 @@
         }
         if (!this._layers && ml.isStyleLoaded && ml.isStyleLoaded()) { addLayers(ml); this._layers = true; }
         if (this._layers && hass) this._sync(hass);
-        if (!this._ok && this._layers && this._tiles > 0 && ml.loaded()) { this._ok = true; this._el.style.opacity = '1'; }
+        if (!this._ok && this._layers && this._tiles > 0 && ml.loaded()) { this._ok = true; this._el.style.opacity = '1'; this._el.style.visibility = ''; }
         if (!this._ok && Date.now() - this._since > F.MAP.READY_MS) this._fail();
       }
       // The selected flight's layers; a change of flight clears the old ones first and fits the view once to the new flight.
