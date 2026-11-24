@@ -1,17 +1,21 @@
-// Shared lifecycle for automatic camera popup openings; trigger policy belongs to the callers.
+// Shared lifecycle for automatic camera popup openings; the trigger policy belongs to the callers.
+// The limits live here, in one place: a young enough occurrence and one trigger at most once per minute.
+// The popup has no close of its own: Idle close closes it, like every other window.
 (function () {
   if (window._casoraRingPopup) return;
   var P = window._casoraRingPopup = {};
-  var TWO_MINUTES = 120000;     // a ring this young may open the popup, and an untouched popup lives this long (Q4)
+  var TWO_MINUTES = 120000;     // a ring this young may open the popup
+  var COOLDOWN_MS = 60000;      // one trigger opens a popup at most once per minute
   var CLOCK_SKEW_MS = 60000;    // server and screen clock may differ: a ring up to this far "in the future" counts as now
-  var TOUCH_EVENTS = ['pointerdown', 'keydown', 'focusin', 'wheel'];   // any of these inside the popup ends the auto-close
   var shown = {}, pending = {}, deferred = {};
   var active = null;
   // Young enough to open: less than two minutes old, not more than the clock skew ahead.
-  var fresh = function (ring) {
-    var age = Date.now() - ring.at;
-    return age < TWO_MINUTES && age >= -CLOCK_SKEW_MS;
+  // The one definition of "young enough"; the watcher (26-camera-triggers.js) reads it from here.
+  P.fresh = function (at) {
+    var age = Date.now() - at;
+    return Number.isFinite(at) && age < TWO_MINUTES && age >= -CLOCK_SKEW_MS;
   };
+  var fresh = function (ring) { return P.fresh(ring.at); };
   // The pending ‹ destination of one attempt: a successful open consumed it, a failed or suppressed one
   // must not leave it for the next, unrelated popup.
   var clearBack = function (back) {
@@ -30,46 +34,11 @@
     if (typeof fn === 'function') fn();
     else popup.close();
   };
-  var disarm = function () {
-    if (!active) return;
-    var opening = active;
-    active = null;
-    if (opening.timer) window.clearTimeout(opening.timer);
-    if (opening.el) {
-      TOUCH_EVENTS.forEach(function (type) { opening.el.removeEventListener(type, opening.onTouch); });
-      opening.el.removeEventListener('casora-popup-closed', opening.onClosed);
-    }
-  };
-  var arm = function (opening) {
-    if (opening.timer) window.clearTimeout(opening.timer);
-    opening.timer = window.setTimeout(function () {
-      opening.timer = null;
-      if (active !== opening) return;
-      var popup = window.casoraPopup;
-      if (popup.current !== opening.cfg || opening.el && opening.el.isConnected === false) return disarm();
-      disarm();
-      P.back(popup);
-    }, TWO_MINUTES);
-  };
-  // One automatic opening: a touch ends the timer for good (a later ring must not restart it).
-  var start = function (previous, occurrence) {
-    disarm();
+  // The automatic popup that is open stays until someone closes it; it has no close of its own.
+  var start = function (occurrence) {
     var popup = window.casoraPopup;
-    var opening = { cfg: popup.current, previous: previous, role: occurrence.role, camera: occurrence.camera, touched: false, timer: null, el: popup.element };
-    opening.onTouch = function () {
-      if (active !== opening) return;
-      opening.touched = true;
-      if (opening.timer) { window.clearTimeout(opening.timer); opening.timer = null; }
-    };
-    opening.onClosed = function () {
-      if (active === opening) disarm();
-    };
-    active = opening;
-    if (opening.el) {
-      TOUCH_EVENTS.forEach(function (type) { opening.el.addEventListener(type, opening.onTouch, { passive: true }); });
-      opening.el.addEventListener('casora-popup-closed', opening.onClosed);
-    }
-    arm(opening);
+    active = { cfg: popup.current, role: occurrence.role,
+      camera: occurrence.camera, el: popup.element };
   };
   // Only a real Lovelace dashboard owns a dashboard config (26-camera-triggers.js reads it). /config, /history
   // and the Studio are not dashboards.
@@ -101,30 +70,34 @@
     if (!shown[key]) {
       try { shown[key] = JSON.parse(window.localStorage.getItem(key)); } catch (e) { /* Memory fallback. */ }
     }
-    if (shown[key] && (shown[key].id === occurrence.id || shown[key].at >= occurrence.at)) return true;
-    var popup = window.casoraPopup, el = popup.element, previous, replace = false;
+    // The same occurrence and one within the cooldown open no second popup.
+    if (shown[key] && (shown[key].id === occurrence.id || occurrence.at - shown[key].at < COOLDOWN_MS)) return true;
+    var popup = window.casoraPopup, el = popup.element, previous, previousEntity = null, previousActive = null, replace = false;
     var popupOpen = !!(popup.current && (!el || el.isConnected !== false)
       && !(el && el.hasAttribute && el.hasAttribute('closing')));
     if (active) {
       if (popupOpen && active.el && active.el.isConnected !== false && popup.current === active.cfg) {
-        if (occurrence.role === 'detection') { remember(key, occurrence); return true; }
-        if (active.touched && !(active.role === 'detection' && occurrence.role === 'doorbell')) { remember(key, occurrence); return true; }
-        if (active.role === 'detection' && occurrence.role === 'doorbell') {
-          previous = popup.current;
-        } else {
-          previous = active.previous || null;
+        if (occurrence.camera === active.camera || (occurrence.role === 'detection' && active.role !== 'detection')) {
+          remember(key, occurrence); return true;
         }
+        previous = popup.current;
+        previousEntity = popup.entity;
+        previousActive = active;
         replace = true;
-      } else disarm();
+      } else active = null;
     }
     if (!replace) {
       if (popupOpen && occurrence.role === 'detection') { remember(key, occurrence); return true; }
       if (popupOpen && popup.entity === occurrence.camera) { remember(key, occurrence); return true; }
       previous = popupOpen ? popup.current : null;
+      previousEntity = popupOpen ? popup.entity : null;
     }
     pending[key] = true;
     if (window._casoraKlingel) window._casoraKlingel._want = null;
-    var back = previous ? { fn: function () { popup.open(previous); }, at: Date.now() } : null;
+    var back = previous ? { fn: function () {
+      popup.open(previousEntity ? Object.assign({ _entity: previousEntity }, previous) : previous);
+      active = previousActive ? Object.assign({}, previousActive, { cfg: popup.current, el: popup.element }) : null;
+    }, at: Date.now() } : null;
     if (back) window._casoraBackNext = back;
     var stillWanted = function () { return allowed(url) && fresh(occurrence); };
     return new Promise(function (resolve) { try {
@@ -136,7 +109,7 @@
           resolve(false);
           return;
         }
-        start(previous, occurrence);
+        start(occurrence);
         remember(key, occurrence);
         resolve(true);
       }, { cfg: cfg, noTile: true, checked: false, canOpen: stillWanted });
