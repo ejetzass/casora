@@ -164,6 +164,11 @@ assert.match(F.sec('fair', { src: 'sensor.a', flight: 'w1' }, hass.states, hass)
 const tile = F.liveHtml(hass, '', nowB);
 assert.match(tile, new RegExp('Ungefährer Fortschritt: ' + v.progress + ' %'), 'tile progress line');
 assert.doesNotMatch(F.liveHtml(hass2, '', now2), /Ungefährer Fortschritt/, 'no tile progress without airports');
+// The tile also shows the progress as a bar, at the same value as the popup (the text line above carries the number).
+const tileBar = tile.match(/data-flights-bar[^>]*width:(\d+)%/);
+assert.ok(tileBar, 'tile progress bar');
+assert.equal(Number(tileBar[1]), v.progress, 'bar at the popup value');
+assert.doesNotMatch(F.liveHtml(hass2, '', now2), /data-flights-bar/, 'no tile bar without airports');
 
 // ── the element: draws on HA's map, follows the flight, and hides when the map is missing or fails ───────────────
 const fakeMl = () => {

@@ -841,7 +841,9 @@
         + '" data-flights-label="' + esc(r.label) + '" style="' + ROW_BTN + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
         + (extra ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(extra) + '</span>' : '')
         + (eta ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta) + '</span>' : '')
-        + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>' : '') + '</button>';
+        + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>'
+          // The same value as a bar; decorative, the text line above is the one screen readers get.
+          + '<span aria-hidden="true" style="display:block;height:4px;margin-top:6px;border-radius:2px;overflow:hidden;background:rgba(127,127,127,0.3)"><span data-flights-bar style="display:block;height:100%;width:' + esc(pct) + '%;background:currentColor"></span></span>' : '') + '</button>';
     }).join('');
     if (!rowsHtml) return '';
     // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
