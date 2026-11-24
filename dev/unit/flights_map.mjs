@@ -310,7 +310,7 @@ const mountFresh = async (hs, key, reduce) => {
   assert.equal(el.style.height, undefined, 'the host gets no fixed height (the ratio sets it)');
   assert.ok(el._el, 'the map is built');
   assert.equal(el._el.style.position, 'absolute', 'the map fills the box');
-  assert.equal(el._el.inert, true, 'the map is not a focus stop inside the card');
+  assert.equal(el._el.style.pointerEvents, 'none', 'the map takes no pointer input; only its attribution link does');
   assert.equal(el._el.style.transition, 'opacity .35s ease', 'no reduced motion: the fade stays');
   el.disconnectedCallback();
   const elR = await mountFresh(hs, 'w2', true);
