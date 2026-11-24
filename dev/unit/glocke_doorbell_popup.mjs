@@ -281,7 +281,8 @@ for (const brandListed of [false, true]) {
   const listed = await setup('reolink', { listed: true, brandListed, noTile: true });
   assert.equal(listed.N.rows.length, 1, 'listed and brand classification share one Logbook row');
   await listed.click(listed.list.querySelectorAll('.hui-row')[0]);
-  assert.equal(listed.opened[0].canonical, listed.cam, 'listed row manually opens its canonical camera despite default off');
+  // A doorbell row keeps its own rule: no listed-doorbell shortcut to the camera popup (the popup is a House opener only for detections).
+  assert.equal(listed.opened.filter(o => o.canonical === listed.cam).length, 0, 'a listed doorbell row opens no camera popup of its own');
 }
 const detection = await setup('reolink', { detection: true, noTile: true });
 assert.equal(detection.N.rows[0].label, 'Mock Doorbell erkannt');
@@ -335,8 +336,7 @@ await overlap.N.refresh();
 assert.equal(overlap.N.rows.length, 0, 'ring rows remain under the Doorbell category');
 const realManual = await setup('reolink', { listed: true, realListed: true, noTile: true });
 await realManual.click(realManual.list.querySelectorAll('.hui-row')[0]);
-assert.equal(realManual.opened[0].template, 'casora_camera', 'bell invokes the real canonical camera opener');
-assert.equal(realManual.opened[0].entity, realManual.cam);
+assert.equal(realManual.opened.filter(o => o.template === 'casora_camera').length, 0, 'a listed doorbell row does not open the camera popup by itself');
 assert.equal(realManual.delays.includes(120000), false, 'manual bell opening never arms automatic close');
 // Doorbell stack: repeated rings of one doorbell are one row with a count; the open stack's timeline lists every ring,
 // the newest too, and each entry opens the same doorbell popup. The row itself keeps opening and closing the list.
