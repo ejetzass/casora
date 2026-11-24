@@ -14,10 +14,16 @@ class Clock extends Date { static now() { return now; } }
 const PANELS = { 'mock-dashboard': { component_name: 'lovelace' }, 'other-dashboard': { component_name: 'lovelace' }, config: { component_name: 'config' }, 'casora-studio': { component_name: 'casora-studio' } };
 let route = 'mock-dashboard';
 const loc = r => ({ get pathname() { return '/' + r(); } });
-const window = { location: loc(() => route), CASORA_SETTINGS: { cameras: [
+const window = { location: loc(() => route), casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [
   { entity_id: 'camera.mock', open_on_ring: true, doorbell_triggers: ['binary_sensor.mock', 'event.mock'] },
 ] } };
 const source = triggerIdsSource + fs.readFileSync(new URL('../../custom_components/casora/scripts/local/26-camera-triggers.js', import.meta.url), 'utf8');
+const lifecycleSource = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/45-ring-popup.js', import.meta.url), 'utf8');
+function runWatcher(w) {
+  const ctx = vm.createContext({ window: w, Date: Clock, Number, Object, Array, JSON });
+  vm.runInContext(lifecycleSource, ctx);
+  vm.runInContext(source, ctx);
+}
 vm.runInNewContext(source, { window, Date: Clock, Number, Object, Array, JSON });
 const h = { panels: PANELS, states: {
   'binary_sensor.mock': { state: 'on', last_changed: new Date(now).toISOString(), attributes: { friendly_name: 'Mock bell' } },
@@ -25,8 +31,8 @@ const h = { panels: PANELS, states: {
 } };
 const scan = () => Array.from(window._casoraCameraTriggers.scan(h));
 window._casoraCfgOnce = async () => ({ views: [] });
-window.casoraCameraPopup = { resolve: () => ({ open: {} }), config: id => ({ entity: id }) };
-window._casoraRingPopup = { open() { return true; }, handled() {} };
+window.casoraCameraPopup = { config: id => ({ entity: id }) };
+window._casoraRingPopup = { fresh: at => Number.isFinite(at) && now - at < 120000 && now - at >= -60000, open() { return true; }, handled() {} };
 assert.equal(scan().length, 0, 'initial on does not prove a press');
 h.states['binary_sensor.mock'].state = 'off';
 assert.equal(scan().length, 0);
@@ -39,7 +45,7 @@ now += 30000;
 h.states['binary_sensor.mock'].state = 'off'; scan();
 h.states['binary_sensor.mock'].state = 'on';
 h.states['binary_sensor.mock'].last_changed = new Date(now).toISOString();
-assert.equal(scan().length, 0, 'cooldown suppresses a second press');
+assert.equal(scan().length, 1, 'the watcher reports a second press; the once-a-minute limit is the lifecycle\'s (ring_popup.mjs)');
 now += 30000;
 h.states['binary_sensor.mock'].state = 'off'; scan();
 h.states['binary_sensor.mock'].state = 'on';
@@ -55,10 +61,9 @@ const cfg = { views: [{ path: 'home', cards: [] }] };
 window._casoraRing = { route: () => 'mock-dashboard', dashboard: async () => ({ url: 'mock-dashboard' }) };
 window._casoraCfgOnce = async () => cfg;
 window.casoraCameraPopup = {
-  resolve: () => ({ open: {} }),
   config: id => ({ entity: id }),
 };
-window._casoraRingPopup = { open: (o, c) => { calls.push(['open', o.camera, c.entity]); return true; },
+window._casoraRingPopup = { fresh: at => Number.isFinite(at) && now - at < 120000 && now - at >= -60000, open: (o, c) => { calls.push(['open', o.camera, c.entity]); return true; },
   handled: o => calls.push(['handled', o.camera]) };
 window.CASORA_SETTINGS.cameras = [
   { entity_id: 'camera.first', open_on_ring: true },
@@ -72,26 +77,28 @@ await window._casoraCameraTriggers.dispatch(h, occurrences);
 assert.deepEqual(calls, [['open', 'camera.first', 'camera.first'], ['handled', 'camera.second']],
   'the first configured camera wins and the loser is handled');
 calls.length = 0;
-window.casoraCameraPopup.resolve = id => ({ open: { ring: id === 'camera.first' ? 'never' : 'always' } });
-const policyOccurrences = occurrences.map((o, i) => ({ ...o, entity: 'event.policy' + i }));
-await window._casoraCameraTriggers.dispatch(h, policyOccurrences);
-assert.deepEqual(calls, [['open', 'camera.second', 'camera.second']], 'Never blocks only its automatic opening');
+window.CASORA_SETTINGS.camera_popup = { open_by_itself: false };
+const houseOffOccurrences = occurrences.map((o, i) => ({ ...o, entity: 'event.house_off' + i }));
+await window._casoraCameraTriggers.dispatch(h, houseOffOccurrences);
+assert.deepEqual(calls, [], 'the house switch off: nothing opens by itself');
+window.CASORA_SETTINGS.camera_popup = { open_by_itself: true };
 calls.length = 0;
-cfg.views[0].cards.push({ template: 'casora_mobile_bg' });
+// Only a Wall tablet opens by itself: the Wall tablet check decides, not the layout of the dashboard.
+window.casoraIsWallTablet = () => false;
 await window._casoraCameraTriggers.dispatch(h, occurrences);
-assert.deepEqual(calls, [], 'phone layout never opens automatically');
+assert.deepEqual(calls, [], 'a phone never opens automatically');
+window.casoraIsWallTablet = () => true;
 console.log('camera_triggers: policy, ordering and phone exclusion');
 
 cfg.views[0].cards = [];
 window.CASORA_SETTINGS.cameras = [{ entity_id: 'camera.retry', open_on_ring: true }];
-window.casoraCameraPopup.resolve = () => ({ open: {} });
 const retry = { entity: 'event.retry', at: now, id: 'retry', role: 'doorbell', camera: 'camera.retry' };
 let attempts = 0;
 window._casoraRingPopup.open = () => { attempts++; return attempts > 1; };
 assert.equal(await window._casoraCameraTriggers.dispatch(h, [retry]), false, 'suppressed opening keeps the occurrence retryable');
 assert.equal(await window._casoraCameraTriggers.dispatch(h, [retry]), true, 'fresh retry opens');
 await window._casoraCameraTriggers.dispatch(h, [retry]);
-assert.equal(attempts, 2, 'a real opening spends the cooldown');
+assert.equal(attempts, 3, 'the watcher asks the lifecycle again; the once-a-minute limit lives there (ring_popup.mjs)');
 window._casoraRingPopup.open = (o, c) => { calls.push(['open', o.camera, c.entity]); return true; };
 
 window.CASORA_SETTINGS.cameras = [{ entity_id: 'camera.mock', doorbell_triggers: ['binary_sensor.recovered'] }];
@@ -115,7 +122,6 @@ console.log('camera_triggers: verified Recorder recovery');
 // before a hidden-page lifecycle has had a chance to open it.
 calls.length = 0;
 cfg.views[0].cards = [];
-window.casoraCameraPopup.resolve = () => ({ open: { ring: 'always' } });
 window.CASORA_SETTINGS.cameras = [
   { entity_id: 'camera.first' }, { entity_id: 'camera.second' },
 ];
@@ -138,8 +144,11 @@ assert.deepEqual(calls, [], 'a route change while loading does not open an old d
 console.log('camera_triggers: shared identity and asynchronous route guard');
 
 function freshWatcher() {
-  const w = { location: loc(() => route), CASORA_SETTINGS: { cameras: [{ entity_id: 'camera.mock', doorbell_triggers: ['event.fresh'] }] } };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  const w = { location: loc(() => route), casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [{ entity_id: 'camera.mock', doorbell_triggers: ['event.fresh'] }] } };
+  // The freshness limit is the real lifecycle's (45-ring-popup.js), not a copy in this test.
+  const ctx = vm.createContext({ window: w, Date: Clock, Number, Object, Array, JSON });
+  vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/local/45-ring-popup.js', import.meta.url), 'utf8'), ctx);
+  vm.runInContext(source, ctx);
   return w._casoraCameraTriggers;
 }
 for (const [age, expected] of [[119999, 1], [120000, 0], [120001, 0], [-60000, 1], [-60001, 0]]) {
@@ -162,12 +171,12 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
   const listeners = {};
   const hass = { panels: PANELS, states: {}, callWS: async () => { requests++; return {}; } };
   const w = {
-    CASORA_SETTINGS: { cameras: [{ entity_id: 'camera.mock' }] },
+    casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [{ entity_id: 'camera.mock' }] },
     document: { querySelector: () => ({ hass }), addEventListener() {} },
     addEventListener: (name, fn) => { listeners[name] = fn; }, setInterval: () => { intervals++; return 1; }, clearInterval: () => { stopped++; },
     location: loc(() => route), _casoraCfgOnce: async () => ({ views: [] }),
   };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(intervals, 0, 'no interval without listed triggers');
   assert.equal(requests, 0, 'no history without listed triggers');
@@ -192,7 +201,7 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
     'event.second': { state: new Date(now).toISOString() },
   }, callWS: () => new Promise(resolve => { releaseHistory = resolve; }) };
   const w = {
-    CASORA_SETTINGS: { cameras: [
+    casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [
       { entity_id: 'camera.first', open_on_ring: true, doorbell_triggers: ['binary_sensor.first'] },
       { entity_id: 'camera.second', open_on_ring: true, doorbell_triggers: ['event.second'] },
     ] },
@@ -200,10 +209,10 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
     addEventListener() {}, setInterval: fn => { tick = fn; },
     location: loc(() => 'mock-dashboard'),
     _casoraCfgOnce: async () => ({ views: [] }),
-    casoraCameraPopup: { resolve: () => ({ open: {} }), config: id => ({ entity: id }) },
-    _casoraRingPopup: { open: o => calls.push(['open', o.camera]), handled: o => calls.push(['handled', o.camera]) },
+    casoraCameraPopup: { config: id => ({ entity: id }) },
+    _casoraRingPopup: { fresh: at => Number.isFinite(at) && now - at < 120000 && now - at >= -60000, open: o => calls.push(['open', o.camera]), handled: o => calls.push(['handled', o.camera]) },
   };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(calls, [], 'wait for same-tick recovery before arbitration');
   releaseHistory({ 'binary_sensor.first': [
@@ -226,15 +235,15 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
       { s: 'off', lc: (at - 1000) / 1000 }, { s: 'on', lc: at / 1000 },
     ] } };
   const w = {
-    CASORA_SETTINGS: { cameras: [{ entity_id: 'camera.lag', open_on_ring: true, doorbell_triggers: ['binary_sensor.lag'] }] },
+    casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [{ entity_id: 'camera.lag', open_on_ring: true, doorbell_triggers: ['binary_sensor.lag'] }] },
     document: { querySelector: () => ({ hass }), addEventListener() {} },
     addEventListener() {}, setInterval: fn => { tick = fn; },
     location: loc(() => 'mock-dashboard'),
     _casoraCfgOnce: async () => ({ views: [] }),
-    casoraCameraPopup: { resolve: () => ({ open: {} }), config: id => ({ entity: id }) },
-    _casoraRingPopup: { open: o => calls.push(o.camera), handled() {} },
+    casoraCameraPopup: { config: id => ({ entity: id }) },
+    _casoraRingPopup: { fresh: at => Number.isFinite(at) && now - at < 120000 && now - at >= -60000, open: o => calls.push(o.camera), handled() {} },
   };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 1);
   now += 7000;
@@ -250,15 +259,15 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
   route = 'casora-studio';
   const hass = { panels: PANELS, states: { 'event.pending': { state: new Date(now).toISOString() } } };
   const w = {
-    CASORA_SETTINGS: { cameras: [{ entity_id: 'camera.pending', open_on_ring: true, doorbell_triggers: ['event.pending'] }] },
+    casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [{ entity_id: 'camera.pending', open_on_ring: true, doorbell_triggers: ['event.pending'] }] },
     document: { querySelector: () => ({ hass }), addEventListener() {} },
     addEventListener: (name, fn) => { listeners[name] = fn; }, setInterval: fn => { tick = fn; },
     location: loc(() => route),
     _casoraCfgOnce: async () => ({ views: [] }),
-    casoraCameraPopup: { resolve: () => ({ open: {} }), config: id => ({ entity: id }) },
-    _casoraRingPopup: { open: o => calls.push(o.id), handled() {} },
+    casoraCameraPopup: { config: id => ({ entity: id }) },
+    _casoraRingPopup: { fresh: at => Number.isFinite(at) && now - at < 120000 && now - at >= -60000, open: o => calls.push(o.id), handled() {} },
   };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(calls, [], 'Studio does not open');
   route = 'mock-dashboard';
@@ -269,13 +278,13 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
   hass.states['event.pending'].state = new Date(now).toISOString();
   tick();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(calls.length, 1, 'a distinct occurrence inside the cooldown is suppressed');
+  assert.equal(calls.length, 2, 'the watcher passes a distinct occurrence on; the once-a-minute limit is the lifecycle\'s (ring_popup.mjs)');
 }
 {
-  const w = { CASORA_SETTINGS: { cameras: [
+  const w = { casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [
     { entity_id: 'camera.one', detection_triggers: ['binary_sensor.detect', 'event.detect'] },
   ] } };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   const states = {
     'binary_sensor.detect': { state: 'off', attributes: { friendly_name: 'Naam-Detection' } },
     'event.detect': { state: 'unknown' },
@@ -300,27 +309,25 @@ console.log('camera_triggers: freshness boundaries and restart-like samples');
     { entity_id: 'camera.first', open_on_detection: true },
     { entity_id: 'camera.second', open_on_ring: true, open_on_detection: true },
   ];
-  window.casoraCameraPopup.resolve = () => ({ open: {} });
   const detect = { entity: 'event.detect', at: now, id: 'detect', role: 'detection', camera: 'camera.first' };
   const ring = { entity: 'event.ring', at: now, id: 'ring', role: 'doorbell', camera: 'camera.second' };
   await window._casoraCameraTriggers.dispatch(h, [detect, ring]);
   assert.deepEqual(calls, [['open', 'camera.second', 'camera.second'], ['handled', 'camera.first']],
     'ring wins over an earlier configured detection');
   calls.length = 0;
-  window.casoraCameraPopup.resolve = () => ({ open: { detection: 'never' } });
-  await window._casoraCameraTriggers.dispatch(h, [{ ...detect, entity: 'event.other_detect' }]);
-  assert.deepEqual(calls, [], 'Never blocks a detection');
-  window.casoraCameraPopup.resolve = () => ({ open: { detection: 'always' } });
   window.CASORA_SETTINGS.cameras[0].open_on_detection = false;
   await window._casoraCameraTriggers.dispatch(h, [{ ...detect, entity: 'event.other_detect' }]);
-  assert.deepEqual(calls, [['open', 'camera.first', 'camera.first']], 'Always overrides the default off');
+  assert.deepEqual(calls, [], 'the detection switch off: nothing opens');
+  window.CASORA_SETTINGS.cameras[0].open_on_detection = true;
+  await window._casoraCameraTriggers.dispatch(h, [{ ...detect, entity: 'event.third_detect' }]);
+  assert.deepEqual(calls, [['open', 'camera.first', 'camera.first']], 'the detection switch on opens');
 }
 
 {
-  const w = { CASORA_SETTINGS: { cameras: [
+  const w = { casoraIsWallTablet: () => true, CASORA_SETTINGS: { camera_popup: { open_by_itself: true }, cameras: [
     { entity_id: 'camera.one', detection_triggers: ['binary_sensor.recover_detection'] },
   ] } };
-  vm.runInNewContext(source, { window: w, Date: Clock, Number, Object, Array, JSON });
+  runWatcher(w);
   const result = await w._casoraCameraTriggers.recover({
     states: { 'binary_sensor.recover_detection': { state: 'on' } },
     callWS: async () => ({ 'binary_sensor.recover_detection': [
