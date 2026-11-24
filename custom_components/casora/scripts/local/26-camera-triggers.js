@@ -17,18 +17,21 @@
   var CFG_BACKOFF_MS = 30000;        // a rejected dashboard config is not asked again before this
   var REDISCOVER_MS = 30000;
   var MINUTE_MS = 60000;
-  var FRESH_MS = 2 * MINUTE_MS;      // an occurrence older than this is not shown as a popup
-  var CLOCK_SKEW_MS = MINUTE_MS;     // an occurrence this far in the future is a clock skew, still accepted up to here
-  var COOLDOWN_MS = MINUTE_MS;       // one trigger opens a popup at most once per minute
   var HISTORY_WAIT_MS = 1500;        // a broken Recorder must not block a live press longer
   var HISTORY_WINDOW_MS = 180000;    // listed-trigger recovery looks this far back
   var RECOVER_IDLE_MS = 2 * MINUTE_MS;  // pause after all attempts found nothing
   // The one rule for an occurrence: its identity is the UTC millisecond timestamp as ISO text,
   // for a live HA string and a Recorder number alike.
   var identity = function (at) { return new Date(Math.trunc(at)).toISOString(); };
+  // The trigger ids of a camera record come from the core (casoraTriggerIds); on a slow phone the core can
+  // arrive after this module, so the watcher waits for it instead of failing.
+  var triggerIds = function (camera) {
+    return window.casoraTriggerIds ? window.casoraTriggerIds(camera) : [];
+  };
+  // The limit (two minutes, clock skew) is decided by the lifecycle, 45-ring-popup.js: one definition for both.
   var fresh = function (at) {
-    var age = Date.now() - at;
-    return Number.isFinite(at) && age < FRESH_MS && age >= -CLOCK_SKEW_MS;
+    var lifecycle = window._casoraRingPopup;
+    return !!lifecycle && lifecycle.fresh(at);
   };
   var remembered = {};
   var registry = null, sources = [], discoveredAt = 0;
@@ -176,7 +179,7 @@
     });
     return out;
   };
-  var previous = {}, eventSeen = {}, accepted = {};
+  var previous = {}, eventSeen = {};
   var expand = function (cameras, hits) {
     var out = [];
     cameras.forEach(function (camera) {
@@ -195,7 +198,7 @@
     var states = (hass && hass.states) || {}, hits = {};
     cameras.forEach(function (camera) {
       if (!camera) return;
-      window.casoraTriggerIds(camera).forEach(function (id) {
+      triggerIds(camera).forEach(function (id) {
         if (Object.prototype.hasOwnProperty.call(hits, id)) return;
         hits[id] = null;
         var st = states[id], value = st && st.state, at = null;
@@ -209,7 +212,7 @@
             at = parsed;
           }
         }
-        if (!fresh(at) || (accepted[id] != null && at - accepted[id] < COOLDOWN_MS)) return;
+        if (!fresh(at)) return;
         hits[id] = { entity: id, at: at, id: identity(at),
           name: (st.attributes && st.attributes.friendly_name) || id };
       });
@@ -217,18 +220,35 @@
     var out = expand(cameras, hits);
     return out;
   };
-  var phone = function (config) {
-    var views = config && config.views || [];
-    var home = views.find(function (v) { return v && v.path === 'home'; }) || views[0];
-    var found = false;
-    var walk = function (value, depth) {
-      if (found || !value || typeof value !== 'object' || depth > 16) return;
-      if (Array.isArray(value)) { value.forEach(function (v) { walk(v, depth + 1); }); return; }
-      if ([].concat(value.template || []).indexOf('casora_mobile_bg') >= 0) { found = true; return; }
-      ['cards', 'card', 'sections', 'elements'].forEach(function (key) { walk(value[key], depth + 1); });
-    };
-    walk(home, 0);
-    return found;
+  // The moment the shown camera's last listed trigger stopped (ms): now while one is still on; 0 = nothing to count.
+  // Read from hass.states, so a tap-opened camera window counts the same as one the watcher opened.
+  window.casoraCameraTriggerSince = function () {
+    var id = window.casoraPopup && window.casoraPopup.entity, hass = hassOf();
+    var cameras = (window.CASORA_SETTINGS || {}).cameras || [];
+    var camera = cameras.filter(function (c) { return c && c.entity_id === id; })[0];
+    if (!camera || !hass) return 0;
+    var since = 0;
+    triggerIds(camera).forEach(function (t) {
+      var st = (hass.states || {})[t];
+      if (!st) return;
+      if (t.indexOf('binary_sensor.') === 0) {
+        if (st.state === 'on') since = Date.now();
+        else if (st.state === 'off') since = Math.max(since, Date.parse(st.last_changed));
+      } else if (t.indexOf('event.') === 0) {
+        var at = Date.parse(st.state);
+        if (Number.isFinite(at)) since = Math.max(since, at);
+      }
+    });
+    return since;
+  };
+  // Both the house switch and the camera's switch for this role must allow opening. The switches are the
+  // only rule: no per-dashboard choice. A ring is on unless the camera's switch is off; a detection is off unless on.
+  var mayOpen = function (occurrence, camera) {
+    var house = (window.CASORA_SETTINGS || {}).camera_popup || {};
+    if (house.open_by_itself !== true) return false;
+    if (occurrence.role === 'doorbell') return camera.open_on_ring !== false;
+    if (occurrence.role === 'detection') return camera.open_on_detection === true;
+    return false;
   };
   var dispatch = async function (hass, occurrences) {
     var popup = window.casoraCameraPopup;
@@ -237,21 +257,16 @@
     if (!dashboard || dashboard.error || dashboard.url !== url || route() !== url) return false;
     var config;
     try { config = await window._casoraCfgOnce(hass, url); } catch (e) { return false; }
-    if (route() !== url || phone(config)) return false;
+    if (route() !== url) return false;
+    // The Wall tablet check is the only screen gate; a phone is never a Wall tablet.
+    if (!window.casoraIsWallTablet || !window.casoraIsWallTablet()) return true;
     var cameras = (window.CASORA_SETTINGS || {}).cameras || [], candidates = [];
     cameras.forEach(function (camera) {
       if (!camera || !camera.entity_id) return;
-      var choices = popup.resolve(camera.entity_id, hass, config).open;
       occurrences.forEach(function (o) {
-        if (o.camera !== camera.entity_id || !fresh(o.at)
-          || (accepted[o.entity] != null && o.at - accepted[o.entity] < COOLDOWN_MS)) return;
-        var kind = o.role === 'doorbell' ? 'ring' : 'detection';
-        var choice = choices[kind], house = camera['open_on_' + kind] === true;
-        var personal = window.casoraPersonal;
-        var allowed = personal && typeof personal.effectiveOpen === 'function'
-          ? personal.effectiveOpen(house, choice)
-          : choice === 'always' || (choice !== 'never' && house);
-        if (allowed) candidates.push(o);
+        if (o.camera !== camera.entity_id || !fresh(o.at)) return;
+        if (!mayOpen(o, camera)) return;
+        candidates.push(o);
       });
     });
     if (!candidates.length) return true;
@@ -264,7 +279,6 @@
       // The winner handles this identity itself; recording it here would cancel a deferred winner.
       if (o.entity !== candidates[0].entity || o.id !== candidates[0].id) window._casoraRingPopup.handled(o);
     });
-    candidates.forEach(function (o) { accepted[o.entity] = Math.max(accepted[o.entity] || 0, o.at); });
     return true;
   };
   var triggerRecovery = {};
@@ -272,7 +286,7 @@
     if (!hass || typeof hass.callWS !== 'function') return [];
     var cameras = (window.CASORA_SETTINGS || {}).cameras || [], ids = [];
     cameras.forEach(function (camera) {
-      window.casoraTriggerIds(camera).forEach(function (id) {
+      triggerIds(camera).forEach(function (id) {
         if (id.indexOf('binary_sensor.') !== 0 || ids.indexOf(id) >= 0) return;
         var state = (hass.states || {})[id];
         if (!state || (state.state !== 'on' && state.state !== 'off')) return;
@@ -316,7 +330,7 @@
       } else {
         job.due = now + (job.attempts === 1 ? RECORDER_LAG_MS : RETRY_MS * Math.pow(2, job.attempts - 2));
       }
-      if (latest === null || (accepted[id] != null && latest - accepted[id] < COOLDOWN_MS)) return;
+      if (latest === null) return;
       var state = (hass.states || {})[id] || {};
       hits[id] = { entity: id, at: latest, id: identity(latest),
         name: (state.attributes && state.attributes.friendly_name) || id };
@@ -328,7 +342,7 @@
   var hasTriggers = function () {
     var cameras = (window.CASORA_SETTINGS || {}).cameras || [];
     return cameras.some(function (camera) {
-      return window.casoraTriggerIds(camera).length > 0;
+      return triggerIds(camera).length > 0;
     });
   };
   var enqueue = function (items) {
@@ -370,6 +384,15 @@
     var sequence = ++checking;
     if (retry != null && window.clearTimeout) window.clearTimeout(retry);
     retry = null;
+    // The listed triggers need the core helper; until it arrives, look again in a second instead of failing.
+    var listed = ((window.CASORA_SETTINGS || {}).cameras || []).some(function (c) {
+      return c && ((c.doorbell_triggers || []).length || (c.detection_triggers || []).length);
+    });
+    if (listed && !window.casoraTriggerIds && window.setTimeout) {
+      stop();
+      retry = window.setTimeout(check, TICK_MS);
+      return;
+    }
     var hass = hassOf();
     if (!hass) {
       stop();
@@ -403,6 +426,6 @@
     });
     check();
   };
-  window._casoraCameraTriggers = { scan: scan, dispatch: dispatch, recover: recover, check: check };
+  window._casoraCameraTriggers = { scan: scan, dispatch: dispatch, recover: recover, check: check, triggerSince: window.casoraCameraTriggerSince };
   if (window.document && window.setInterval && window.addEventListener) R.start();
 })();
