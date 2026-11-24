@@ -1,5 +1,6 @@
 // The Flights tile's text and card (49-flights.js liveHtml): the tile text carries no CSS, since the card's accessible name
-// is built from the text. The tile's styles go into the card once, from casora-flight-list.
+// is built from the text. The tile's styles go into the card once, from casora-flight-list. The card is a named group, not a
+// button: the tile holds row buttons, and a button with buttons inside is a nested-interactive case for screen readers.
 //   node dev/unit/flights_tile_card.mjs
 // @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,airborne,liveHidden,defineTileList
 import fs from 'node:fs';
@@ -60,24 +61,38 @@ const tile = (f, name = 'Flüge') => {
 };
 
 // ── The tile text holds no CSS (it is the card's accessible name source) ────────────────────────────────────────────
-const html = tile(fl());
+const html = tile(fl(), 'Flüge');
 assert.ok(html.length > 0, 'precondition: the tile has a row');
 assert.doesNotMatch(html, /<style/i, 'the tile output has no style element: its CSS stays out of the text');
 const text = html.replace(/<[^>]*>/g, '');
 assert.doesNotMatch(text, /[{}]|#container|#state|grid-template|outline/, 'the tile text holds no CSS');
 
-// ── The styles go into the card's root once, from the tile's element on connect ─────────────────────────────────────
+// ── The styles go into the card's root once, and the card is a named group ─────────────────────────────────────────
 const Wrap = defined['casora-flight-list'];
 assert.ok(Wrap, 'the tile rows are wrapped in casora-flight-list');
-const root = { styles: [], querySelector: (sel) => (sel.startsWith('style[data-flights-tile]') ? (root.styles[0] || null) : null),
-  appendChild(n) { root.styles.push(n); } };
-const connect = () => { const w = new Wrap(); w._root = root; w.connectedCallback(); return w; };
-connect();
+const card = { tagName: 'HA-CARD', id: 'card', attrs: { role: 'button' },
+  getAttribute(n) { return n in this.attrs ? this.attrs[n] : null; }, setAttribute(n, v) { this.attrs[n] = String(v); } };
+const root = { styles: [], querySelector: (sel) => {
+  if (sel === '#card') return card;
+  if (sel.startsWith('style[data-flights-tile]')) return root.styles[0] || null;
+  return null;
+}, appendChild(n) { root.styles.push(n); } };
+// The element as the browser builds it from the tile's markup: its attributes, then its connection.
+const connect = (markup) => {
+  const w = new Wrap();
+  w._root = root;
+  w.setAttribute('data-name', (markup.match(/<casora-flight-list data-name="([^"]*)"/) || [])[1]);
+  w.connectedCallback();
+};
+assert.equal(card.attrs.role, 'button', 'precondition: the library gives the card role button');
+connect(html);
 assert.equal(root.styles.length, 1, 'the tile styles are added to the card root');
 assert.equal(root.styles[0].tag, 'style', 'the styles are a style element in the card');
 assert.match(root.styles[0].textContent, /#container\{/, 'the grid rule is in the card');
 assert.match(root.styles[0].textContent, /\[data-flights-row\]:focus-visible/, 'the row focus ring is in the card');
-connect(); // a redraw: no second style block
+connect(html); // a redraw: no second style block
 assert.equal(root.styles.length, 1, 'a redraw adds no second style block');
+assert.equal(card.attrs.role, 'group', 'the Flights tile card is a group, not a button');
+assert.equal(card.attrs['aria-label'], 'Flüge', 'the group is named with the tile name');
 
 console.log('ok: flights tile card');
