@@ -3,7 +3,7 @@
 // element that draws on HA's map (with the map failing or missing), and that rendering never writes to HA.
 // Controlled clock; synthetic flights; no browser.
 //   node dev/unit/flights_map.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#distanceKm,progress,progressOf,trailOf,greatCircle,mapView,mapGeo,mapBounds,liveHtml,flightSec,flightPopup
+// @deckt: custom_components/casora/scripts/local/49-flights.js#distanceKm,progress,progressOf,trailOf,greatCircle,unreportedOf,mapView,mapGeo,mapBounds,liveHtml,flightSec,flightPopup
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -146,6 +146,62 @@ deq(F.trailOf(fl('t', { coordinates: [[49, 8], [0, 0], [NaN, 3], ['x', 2], [95, 
 deq(F.trailOf(fl('t', { coordinates: undefined })), [], 'no trail');
 deq(F.trailOf(fl('t', { coordinates: 'nope' })), [], 'trail not a list');
 
+// ── Unreported part: the great circle from the departure airport to the oldest trail point, one function for both maps ──
+{
+  const onArc = (a, p, b) => Math.abs(F.distanceKm(a, p) + F.distanceKm(p, b) - F.distanceKm(a, b)) < 0.01;
+  const view = { origin: ALPHA, trail: [[49.8, 8], [49.9, 10]], cur: [50.05, 12], route: [] };
+  const before = JSON.stringify(view);
+  const u = F.unreportedOf(view);
+  assert.ok(u.length >= 8 && u.length <= 64, 'one point per 150 km of the arc, between 8 and 64 points');
+  deq(u[0], ALPHA, 'starts at the departure airport');
+  assert.ok(Math.abs(u[u.length - 1][0] - 49.8) < 1e-9 && Math.abs(u[u.length - 1][1] - 8) < 1e-9, 'ends at the oldest trail point');
+  assert.ok(u.every((p) => onArc(ALPHA, p, [49.8, 8])), 'every point lies on the great circle');
+  assert.ok(u[Math.floor(u.length / 2)][0] > 49.9, 'the middle bows poleward: a great circle, not a straight lat/lon line');
+  // Across the dateline the short way round is drawn, not the way round the globe.
+  const dl = F.unreportedOf({ origin: [10, 179], trail: [[10, -179]] });
+  assert.ok(dl.every((p) => Math.abs(p[1]) > 170 && onArc([10, 179], p, [10, -179])), 'dateline: the short arc');
+  // Nothing drawn without the origin or without any trail point (no error).
+  deq(F.unreportedOf({ origin: null, trail: view.trail }), [], 'no origin: nothing drawn');
+  deq(F.unreportedOf({ origin: ALPHA, trail: [] }), [], 'no trail: nothing drawn');
+  deq(F.unreportedOf(null), [], 'no view: nothing drawn');
+  assert.equal(JSON.stringify(view), before, 'the view and its trail are not changed');
+  // GeoJSON for the popup map: one line ([lon, lat]) from the airport to the oldest point; none without origin or trail.
+  const gu = F.mapGeo(view).unreported.features;
+  assert.equal(gu.length, 1, 'one unreported line');
+  assert.equal(gu[0].geometry.coordinates.length, u.length, 'the line has the arc\'s points');
+  deq(gu[0].geometry.coordinates[0], [4, 50], 'the line starts at the airport, [lon, lat]');
+  assert.equal(F.mapGeo({ cur: [50.05, 12], origin: null, destination: null, trail: [[49.8, 8]], route: [] }).unreported.features.length, 0, 'no origin: no line');
+  assert.equal(F.mapGeo({ cur: [50.05, 12], origin: ALPHA, destination: null, trail: [], route: [] }).unreported.features.length, 0, 'no trail: no line');
+  // Both maps ask the same function: the popup's GeoJSON calls F.unreportedOf (the saver is checked in dev/unit/screensaver_flights.mjs).
+  const real = F.unreportedOf;
+  let calls = 0;
+  F.unreportedOf = (x) => { calls += 1; return real(x); };
+  F.mapGeo(view);
+  F.unreportedOf = real;
+  assert.equal(calls, 1, 'the popup map uses the shared function');
+  // The bounds hold the arc: its middle bows north of the other points (origin 60N 0E, oldest point 60N 40E).
+  const bow = { origin: [60, 0], trail: [[60, 40]], cur: [60, 20], destination: [50, 60], route: [] };
+  const arcMaxLat = Math.max(...F.unreportedOf(bow).map((p) => p[0]));
+  assert.ok(arcMaxLat > 61, 'the arc bows north of 60');
+  assert.ok(F.mapBounds(bow)[1][1] >= arcMaxLat, 'popup bounds hold the arc');
+  // Dateline: neighbouring GeoJSON longitudes of the line never differ by 180 or more; the line ends at -179 taken as 181.
+  // The view carries its arc, and the arc keeps its start and end while the aircraft glides and the trail's end is cut back.
+  {
+    const hs = house(), nw = moving(hs, fl('w1'));
+    const mv = F.mapView(hs, 'sensor.a', 'w1', nw);
+    assert.ok(mv.unreported && mv.unreported.length >= 8, 'the view holds the Unreported part');
+    deq(mv.unreported[0], mv.origin, 'it starts at the origin airport');
+    deq(mv.unreported[mv.unreported.length - 1], mv.trail[0], 'and ends at the oldest trail point');
+    const glided = F.mapViewAt(mv, [mv.cur[0] - 0.01, mv.cur[1] - 0.01], 90);
+    deq(F.unreportedOf(glided), mv.unreported, 'a glide does not move the Unreported part');
+    const lone = F.mapViewAt({ ...mv, trail: [mv.cur] }, [mv.cur[0] - 0.01, mv.cur[1]], 90);
+    deq(lone.trail, [], 'a glide cuts the trail end that equals the new fix');
+  }
+  const dlc = F.mapGeo({ cur: [10, -179], heading: null, origin: [10, 179], destination: null, trail: [[10, -179]], route: [] }).unreported.features[0].geometry.coordinates;
+  for (let i = 1; i < dlc.length; i++) assert.ok(Math.abs(dlc[i][0] - dlc[i - 1][0]) < 180, 'no jump across the map at point ' + i);
+  assert.ok(Math.abs(dlc[dlc.length - 1][0] - 181) < 1e-9, 'the line ends at -179 taken as 181, the short way');
+}
+
 // ── one presentation: identity, freshness and the shared rule ──────────────────────────────────────────────────────
 const hass = house();
 const now = moving(hass, fl('w1'));
@@ -285,7 +341,7 @@ const fakeMl = () => {
   const ml = { sources: {}, layers: {}, fits: [], images: [], handlers: {}, styleLoaded: true, loadedFlag: true, tiles: 0,
     isStyleLoaded() { return this.styleLoaded; }, loaded() { return this.loadedFlag; },
     addSource(id, o) { this.sources[id] = { data: o.data, setData(d) { this.data = d; } }; },
-    getSource(id) { return this.sources[id]; }, addLayer(o) { this.layers[o.id] = o; }, addImage(id) { this.images.push(id); },
+    getSource(id) { return this.sources[id]; }, addLayer(o) { this.layers[o.id] = o; this.order = (this.order || []).concat(o.id); }, addImage(id) { this.images.push(id); },
     fitBounds(bb) { this.fits.push(bb); }, on(t, fn) { (this.handlers[t] = this.handlers[t] || []).push(fn); }, once() {},
     resize() {}, jumpTo() {}, dragPan: { disable() {} } };
   return ml;
@@ -335,6 +391,11 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
     assert.equal(rt.length, 1, 'the route data is set');
     deq(rt[0].geometry.coordinates.slice(-1)[0], [20, 50], 'the route ends at the destination');
   }
+  // The Unreported part: fainter than the trail, drawn under it, one line from the airport to the oldest trail point.
+  assert.ok(ml.layers['casora-flight-unreported'], 'unreported layer added');
+  assert.equal(ml.layers['casora-flight-unreported'].paint['line-opacity'], 0.45, 'unreported part at 45 % opacity');
+  assert.ok(ml.order.indexOf('casora-flight-unreported') < ml.order.indexOf('casora-flight-trail-casing'), 'drawn under the trail');
+  assert.equal(ml.sources['casora-flight-unreported'].data.features.length, 1, 'unreported part drawn');
   assert.ok(ml.images.includes('casora-flight-arrow') || ml.images.length === 0, 'arrow image when a canvas exists');
   assert.equal(ml.fits.length, 1, 'fitted once');
   // Movement of the same flight: its data changes, no second fit.

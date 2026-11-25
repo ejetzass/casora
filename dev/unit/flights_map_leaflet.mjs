@@ -194,6 +194,11 @@ await withClock(T0, async (setNow) => {
   assert.ok(markup.indexOf('stroke-dasharray') < markup.indexOf('M320 182'), 'Leaflet: the route lies under the trail');
   assert.ok(markup.lastIndexOf('stroke-dasharray') < markup.indexOf('<circle'), 'Leaflet: and under the dots and the arrow');
   assert.doesNotMatch(markup.match(/<path d="M320 182[^>]*>/)[0], /dasharray/, 'Leaflet: the Flown trail stays solid');
+  // The Unreported part: a fainter solid path from the origin dot (280 180) to the oldest trail point (320 182), under everything.
+  const unrep = markup.match(/<path d="M280 180 [^"]*L320 182"[^>]*stroke-opacity="0\.45"[^>]*>/);
+  assert.ok(unrep, 'Leaflet: the Unreported part runs from the origin airport to the start of the Flown trail, at 45 %');
+  assert.doesNotMatch(unrep[0], /dasharray/, 'Leaflet: the Unreported part is solid');
+  assert.equal(markup.indexOf(unrep[0]), 0, 'Leaflet: the Unreported part lies under the route, the trail, the dots and the arrow');
   assert.equal(svg.getAttribute('aria-hidden'), 'true', 'Leaflet: the overlay is hidden from assistive technology');
   assert.equal(svg.getAttribute('tabindex'), null, 'Leaflet: the overlay is not a Tab stop');
   assert.equal(svg.style.pointerEvents, 'none', 'Leaflet: the overlay takes no pointer input');
@@ -215,7 +220,25 @@ for (const [what, extra] of [
     lf.loadTile(); tick();
     const markup = svgOf(f).innerHTML;
     assert.doesNotMatch(markup, /stroke-dasharray/, 'Leaflet: ' + what + ': no dashed route');
+    assert.match(markup, /stroke-opacity="0\.45"/, 'Leaflet: ' + what + ': the Unreported part is still drawn');
     assert.match(markup, /M320 182 L340 181 L360 179\.5/, 'Leaflet: ' + what + ': the trail is still drawn');
+    assert.match(markup, /<circle cx="360" cy="179\.5" r="7"/, 'Leaflet: ' + what + ': the aircraft is still drawn');
+  });
+}
+
+// ── no Unreported part: without the origin airport, and without any Flown trail point ────────────────────────────────────
+for (const [what, extra] of [
+  ['no origin airport', { airport_origin_latitude: undefined, airport_origin_longitude: undefined }],
+  ['no Flown trail', { coordinates: [] }],
+]) {
+  await withClock(T0, async (setNow) => {
+    const hs = house(); const t = moving(hs, fl('w1', extra));
+    setNow(t);
+    const lf = fakeLf();
+    const { f } = await mount(lf, hs);
+    lf.loadTile(); tick();
+    const markup = svgOf(f).innerHTML;
+    assert.doesNotMatch(markup, /stroke-opacity="0\.45"/, 'Leaflet: ' + what + ': nothing drawn for the Unreported part');
     assert.match(markup, /<circle cx="360" cy="179\.5" r="7"/, 'Leaflet: ' + what + ': the aircraft is still drawn');
   });
 }
