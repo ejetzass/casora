@@ -194,7 +194,10 @@
   var msgOf = function (a) { return a && MSG[a.state] ? fillName(tr(MSG[a.state]), a.name) : ''; };
   // A call HA refuses (the user may not use the control) is named apart from a failed call: the fix is a permission.
   var refused = function (e) { return !!e && (e.code === 'unauthorized' || /unauthori[sz]ed/i.test(String(e.message || ''))); };
-  var inStudio = function () { return !!(window.casoraInStudio && window.casoraInStudio()); };
+  // The Studio panel while it is on the page, else null. The panel itself says so: a Studio opened on its own has no
+  // casora-core.js (no casoraInStudio), and its preview must still never send a call.
+  var studioPanel = function () { var p = window._casoraStudioPanel; return p && p.isConnected !== false ? p : null; };
+  var inStudio = function () { return !!(window.casoraInStudio && window.casoraInStudio()) || !!studioPanel(); };
   var flightsOf = function (hass, id) { var st = ((hass && hass.states) || {})[id]; return st && isList((st.attributes || {}).flights) ? st.attributes.flights : []; };
   var keyOf = function (f, i) { return str(f && f.id) || '#' + i; };
   var sameAs = function (f, key) { return !!f && typeof f === 'object' && [f.flight_number, f.callsign, f.aircraft_registration].some(function (v) { return str(v).toUpperCase() === key; }); };
@@ -477,9 +480,8 @@
   // The Studio's draft (its rooms, which Save writes and Discard drops) wins over the saved dashboard: the preview
   // follows a draft unit or switch at once. null = not in the Studio (or no draft loaded yet).
   var draftOf = function (key) {
-    var p = window._casoraStudioPanel;
-    // The panel itself says it is on the page: a Studio opened on its own has no casora-core.js (no casoraInStudio).
-    if (!p || p.isConnected === false) return null;
+    var p = studioPanel();
+    if (!p) return null;
     var rooms = ((p._state || {}).compact || {}).rooms;
     if (!Array.isArray(rooms)) return null;
     for (var i = 0; i < rooms.length; i++) {
