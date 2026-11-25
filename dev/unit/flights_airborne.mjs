@@ -276,6 +276,12 @@ const tileMany = F.liveHtml(hass, '', T0 + MIN);
 assert.equal(F.airborne(hass, '', T0 + MIN).length, 9, 'nine flights in the air');
 assert.equal(tileMany.replace(/<[^>]*>/g, ''), '9 in der Luft', 'nine flights: one line on the tile');
 assert.doesNotMatch(tileMany, /data-flights-row/, 'nine flights: no rows on the tile');
+// The list popup (F.listRows) with the nine flights: every row is listed, none cut off, and the list has no height limit of
+// its own, so the popup itself scrolls the rows.
+ctx._casoraUI = { empty: (o) => o.text };
+const listMany = F.listRows(hass, { pin: '' });
+assert.equal((listMany.match(/data-flights-row data-flights-src/g) || []).length, 9, 'list popup: all nine rows listed, none cut off');
+assert.doesNotMatch(listMany, /max-height|height:100%|overflow-y:auto/, 'list popup: no height limit of its own (the popup scrolls)');
 // The tile's CSS is not in the text: it is in the card (casora-flight-list), so it cannot reach the card's name.
 assert.doesNotMatch(tileMany, /<style/, 'the tile text carries no style element');
 const tileCss = F._tileCss;
