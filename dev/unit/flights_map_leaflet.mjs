@@ -92,11 +92,17 @@ const fakeLf = () => {
   });
   return lf;
 };
+// The real lookup from 12-tanken.js (one line), so the tests run the code that finds the Leaflet map.
+const TANKEN = read('custom_components/casora/scripts/local/12-tanken.js');
+const LF_LINE = TANKEN.match(/^\s*(var lfOf = function \(m\) \{.*\});\s*$/m);
+const lfOf = LF_LINE ? vm.runInNewContext(LF_LINE[1] + '; lfOf', {}) : null;
 // Mounts a flight map element on a Leaflet map (the MapLibre handle reports nothing, as for a Leaflet ha-map).
-const mount = async (lf, hs, key = 'w1', ml = null) => {
-  ctx._casoraHaMap = { ok: () => true, defined: () => Promise.resolve(true), ml: () => ml, lf: () => lf };
+// The Leaflet map sits where HA keeps it: ha-map._engine.leafletMap. shape 'direct' puts it on ha-map itself (older HA).
+const mount = async (lf, hs, key = 'w1', ml = null, shape = 'engine') => {
+  ctx._casoraHaMap = { ok: () => true, defined: () => Promise.resolve(true), ml: () => ml, lf: (el) => lfOf(el) };
   ctx.document.querySelector = () => ({ hass: hs });
   const host = fakeEl();
+  if (shape === 'direct') host.leafletMap = lf; else host._engine = { leafletMap: lf };
   ctx.document.createElement = () => host;
   ctx.document.createElementNS = (ns, tag) => svgEl(tag);
   const Cls = ctx.customElements.get('casora-flight-map');
@@ -301,8 +307,30 @@ await withClock(T0, async (setNow) => {
 // The shared helper hands out the Leaflet map as its own handle; ml() stays MapLibre-only (source check: 12-tanken.js runs in its own file).
 {
   const tanken = read('custom_components/casora/scripts/local/12-tanken.js');
-  assert.match(tanken, /var lfOf = function \(m\) \{ return m && m\.leafletMap \? m\.leafletMap : null; \};/, 'lf: the Leaflet map of the ha-map');
+  assert.ok(LF_LINE, 'lfOf is one line in 12-tanken.js');
   assert.match(tanken, /window\._casoraHaMap = \{ ok: mapOk, defined: haMapDefined, ml: mlOf, lf: lfOf \}/, 'the helper exposes lf and keeps ml');
 }
+
+// lfOf: the Leaflet map of ha-map (real HA 2026.11: ha-map._engine.leafletMap), never a MapLibre map.
+{
+  const lf = fakeLf();
+  assert.equal(lfOf({ _engine: { leafletMap: lf } }), lf, 'the engine shape gives the Leaflet map');
+  assert.equal(lfOf({ leafletMap: lf }), lf, 'the older direct property still gives the Leaflet map');
+  assert.equal(lfOf({ _engine: { _map: { project() {} } } }), null, 'a MapLibre engine is not a Leaflet map');
+  assert.equal(lfOf({ _engine: { leafletMap: {} } }), null, 'an engine map without getSize is not a Leaflet map');
+  assert.equal(lfOf({ _engine: {} }), null, 'an engine without a Leaflet map gives nothing');
+  assert.equal(lfOf(null), null, 'no ha-map gives nothing');
+}
+// The older direct property, through the whole popup.
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const lf = fakeLf();
+  const { host } = await mount(lf, hs, 'w1', null, 'direct');
+  tick();
+  lf.loadTile();
+  tick();
+  assert.equal(host.style.visibility, '', 'direct leafletMap: shown once tiles have loaded');
+});
 
 console.log('ok flights_map_leaflet');
