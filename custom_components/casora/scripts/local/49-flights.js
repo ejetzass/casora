@@ -1158,8 +1158,9 @@
   // fix and dur the measured time between the last two updates. Straight line in latitude and longitude between the fixes
   // (no prediction from speed or heading), so it is never beyond the newest fix: before the start it is the old fix, at and
   // after the end exactly the new one. Longitude runs continuous (the date line is no jump); the heading turns the short way.
-  // Where a glide would show something untrue, the new fix comes at once: `jumps` is the one place for those cases (now: reduced
-  // motion, no old fix, no usable duration). Without a new fix there is nothing to draw: null.
+  // Where a glide would show something untrue, the new fix comes at once: `jumps` is the one place for the cases that depend on
+  // the glide itself (reduced motion, no old fix, no usable duration); `jumpsTo` (below, used by F.track) is the one place for the
+  // cases that depend on the poll history (a long gap, a step no aircraft could fly). Without a new fix there is nothing to draw: null.
   var jumps = function (g, reduce) { return !!reduce || !g.from || !(g.dur > 0) || !isFinite(g.dur); };
   F.glide = function (g, now, reduce) {
     var to = g && g.to;
@@ -1200,8 +1201,22 @@
   // A poll with the same position and heading is not an update: the sensor state also changes for other reasons (altitude,
   // speed), and counting those would shorten the interval and the glide would end before the next fix.
   // The first update after opening has no earlier update to measure against, so it is drawn as reported; the second one is the
-  // first that glides, over the time between the two. A change of flight starts again. Rules that jump instead of glide
-  // (a gap far over the normal poll, a step too long for the aircraft) belong where `dur` is set below and in `jumps`.
+  // first that glides, over the time between the two. A change of flight starts again.
+  // Two more cases jump (`jumpsTo`): a gap over GAP_FACTOR x the normal poll (the old fix is stale), and a step longer than an
+  // aircraft could fly in that time (bad data). A jump for a gap keeps the earlier interval as the normal poll; the gap is not
+  // one, and taking it would make the next glide as long as the gap. A jump for a step is a normal poll and sets the interval.
+  var GAP_FACTOR = 3;
+  // Fixed upper limit for the ground speed, well above any airliner (about 1100 km/h with a strong tailwind). It is not the
+  // flight's reported speed: that needs no new HA data this way, and a bad speed value could not widen the limit.
+  var MAX_SPEED_KMH = 1500;
+  // Steps closer in time than this count as this long: poll jitter (two updates a second apart) is not bad data.
+  var MIN_STEP_MS = 10000;
+  var jumpsTo = function (here, to, gap, interval) {
+    if (interval > 0 && gap > GAP_FACTOR * interval) return 'gap';
+    var km = F.distanceKm(here, to);
+    if (km > MAX_SPEED_KMH * Math.max(gap, MIN_STEP_MS) / 3600000) return 'step';
+    return '';
+  };
   F.track = function (state, view, ident, now, reduce) {
     if (!view) return { state: null, view: null, gliding: false };
     if (!state || state.ident !== ident) {
@@ -1211,8 +1226,9 @@
     if (st.cur[0] !== view.cur[0] || st.cur[1] !== view.cur[1] || st.heading !== view.heading) {
       var here = st.glide ? F.glide(st.glide, now, reduce) : { cur: st.cur, heading: st.heading };
       if (st.at != null) {
-        st.interval = now - st.at;
-        st.glide = { from: { cur: here.cur, heading: here.heading }, to: { cur: view.cur, heading: view.heading }, start: now, dur: st.interval };
+        var gap = now - st.at, why = jumpsTo(here.cur, view.cur, gap, st.interval);
+        if (why !== 'gap') st.interval = gap;
+        st.glide = why ? null : { from: { cur: here.cur, heading: here.heading }, to: { cur: view.cur, heading: view.heading }, start: now, dur: gap };
       } else st.glide = null;
       st.at = now; st.cur = view.cur; st.heading = view.heading;
     }
