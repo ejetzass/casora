@@ -1226,9 +1226,15 @@
           ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard', 'tap'].forEach(function (x) {
             if (lm[x] && lm[x].disable) lm[x].disable();
           });
-          var self = this;
-          lm.eachLayer(function (l) { if (l.on && l.getTileUrl) l.on('tileload', function () { self._tiles++; }); });
         }
+        // Every tile layer is counted, also one added after the first poll. A layer is hooked once.
+        var self = this;
+        if (!this._hooked) this._hooked = new WeakSet();
+        lm.eachLayer(function (l) {
+          if (!l.on || !l.getTileUrl || self._hooked.has(l)) return;
+          self._hooked.add(l);
+          l.on('tileload', function () { self._tiles++; });
+        });
         if (!this._layers) {
           this._layers = true;
           var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
