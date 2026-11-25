@@ -1186,7 +1186,11 @@
       // alone does not match the Leaflet attribution, so both classes are listed.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
-          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) return;
+          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) {
+            // Leaflet's "Leaflet" prefix link stays visible, but it is not a stop; the credit links are.
+            if (x.matches('a[href]') && /leafletjs\.com/.test(x.getAttribute('href'))) x.setAttribute('tabindex', '-1');
+            return;
+          }
           if (x.matches('a[href],button,input,select,textarea,[tabindex]') && x.tabIndex >= 0) x.setAttribute('tabindex', '-1');
           if (x.shadowRoot) this._unstop(x.shadowRoot);
         });
