@@ -173,19 +173,19 @@ assert.match(tag, /^<casora-flight-list data-flights-sum data-name="[^"]*" style
 assert.doesNotMatch(tag, /=""|" [a-z-]+"|=""/, 'the summary tag has no junk attribute');
 
 // ── Review: the card follows the phone query on every change (resize, rotation) ──────────────────────────────────
-const modeOf = () => ({ role: card.attrs.role, label: card.attrs['aria-label'], marker: card.attrs['data-flights-tile-card'] });
+const modeOf = () => ({ role: card.attrs.role, label: card.attrs['aria-label'], marker: card.attrs['data-flights-tile-card'], tab: card.attrs.tabindex });
 const flipMode = () => mqChange.forEach((fn) => fn());
 calls.length = 0;
 phone = true;
 onPage(null, { 'data-flights-sum': '', 'data-name': 'Flüge' });
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone: a button, no label, marked');
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'phone: a button, no label, marked, reachable by Tab');
 phone = false; flipMode();
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'desktop with the summary line after a change: still one button');
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'desktop with the summary line after a change: still one button');
 seen(two); calls.length = 0;
 tap(card);
 assert.equal(calls.length, 1, 'desktop with two flights: a tap on the card opens the list (one button)');
 phone = true; flipMode();
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone again after a change: the button again');
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'phone again after a change: the button again');
 calls.length = 0;
 seen(two);
 tap(card);
@@ -246,5 +246,32 @@ const templates = JSON.parse(read('dashboards/casora/button_card_templates.json'
 const listStyle = templates.casora_popup_flights_list.tap_action.casora_popup.style;
 assert.match(listStyle, /F\.listRows|list of flight rows/, 'the list popup style comment names the list');
 assert.doesNotMatch(listStyle, /flightSec/, 'the list popup style comment does not point at the flight popup');
+
+// ── Review: keyboard focus on the phone tile, and the desktop group keeps no tab stop ───────────────────────────────
+const card2 = attrsOf();
+const root2 = { host: { _config: {} }, styles: [], appendChild(n) { this.styles.push(n); },
+  querySelector: (sel) => (sel === '#card' ? card2 : null) };
+const connectRoot2 = () => {
+  const w = new defined['casora-flight-list']();
+  w._root = root2; w.setAttribute('data-name', 'Flüge');
+  w.connectedCallback();
+};
+phone = false;
+connectRoot2();
+assert.equal(card2.attrs.tabindex, undefined, 'desktop group: no tab stop (as before)');
+phone = true; flipMode();
+assert.equal(card2.attrs.tabindex, '0', 'phone: the tile card can be reached by Tab');
+assert.equal(card2.attrs.role, 'button', 'phone: the tile card is a button');
+phone = false; flipMode();
+assert.equal(card2.attrs.tabindex, undefined, 'back to the desktop group: the tab stop it got is removed');
+assert.equal(card2.attrs.role, 'group', 'back to the desktop group: role group');
+
+// ── Review: a list row wraps long text inside the card (no clipped route at 390 px) ────────────────────────────────
+const rowTag = list.match(/<button[^>]*data-flights-row[^>]*>/)[0];
+const rowStyle = rowTag.match(/style="([^"]*)"/)[1];
+for (const rule of ['white-space:normal', 'overflow-wrap:anywhere', 'min-width:0', 'max-width:100%', 'box-sizing:border-box']) {
+  assert.ok(rowStyle.includes(rule), 'list row wraps long text: ' + rule);
+}
+assert.doesNotMatch(list, /nowrap/, 'the list has no nowrap text (a long route would run past the card edge)');
 
 console.log('ok: flights tile phone');
