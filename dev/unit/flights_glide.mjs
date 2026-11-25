@@ -3,7 +3,7 @@
 // animation-frame loop (runs only during a glide; stops after it and when the element leaves the page).
 // Controlled clock and a fake frame queue; synthetic flights; no browser.
 //   node dev/unit/flights_glide.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#glide,mapViewAt,mapView,mapGeo,defineMap
+// @deckt: custom_components/casora/scripts/local/49-flights.js#glide,track,mapViewAt,mapView,mapGeo,defineMap
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -88,10 +88,56 @@ const g = (o = {}) => ({ from: { cur: [50, 10], heading: 80 }, to: { cur: [51, 1
   near(dl2.cur[1], 180, 1e-9, 'across the date line, longitudes already continuous');
   near(F.glide(g({ from: { cur: [50, 181], heading: 90 }, to: { cur: [50, -177], heading: 90 } }), 11000).cur[1], -178, 1e-9, 'an old fix in the other turn: same place');
   deq(F.glide(g({ from: { cur: [50, 179], heading: 90 }, to: { cur: [50, -179], heading: 90 } }), 21000).cur, [50, -179], 'the end is the new fix as reported');
+  // A missing new fix or old fix cannot crash it.
+  assert.doesNotThrow(() => F.glide(g({ to: null }), 5000), 'no new fix: no crash');
+  assert.equal(F.glide(g({ to: null }), 5000), null, 'no new fix: nothing to draw');
   // A zero or missing duration, or no old fix: the new fix at once.
   deq(F.glide(g({ dur: 0 }), 1000).cur, [51, 12], 'no duration: at once');
   deq(F.glide(g({ from: null }), 1000).cur, [51, 12], 'no old fix: at once');
   deq(F.glide(g({ dur: NaN }), 1000).cur, [51, 12], 'a bad duration: at once');
+}
+
+// ── the pure state step: F.track(state, view, ident, now, reduce) → {state, view, gliding} ───────────────────────────────
+{
+  const mk = (lon, heading = 90) => ({ key: 'a', cur: [50, lon], heading, trail: [[50, lon - 1]], route: [], destination: null, origin: null });
+  const T = 1000;
+  let r = F.track(null, mk(10), 'src|a', T, false);
+  assert.equal(r.gliding, false, 'the first fix after opening does not glide');
+  deq(r.view.cur, [50, 10], 'and is drawn as reported');
+  // A poll with the same position and heading is not an update: it must not start the clock of the interval.
+  r = F.track(r.state, mk(10), 'src|a', T + 1000, false);
+  assert.equal(r.gliding, false, 'the same position again: no glide');
+  r = F.track(r.state, mk(10), 'src|a', T + 5000, false);
+  // The first real update has no earlier update to measure against: it is drawn as reported.
+  r = F.track(r.state, mk(11), 'src|a', T + 20000, false);
+  assert.equal(r.gliding, false, 'the first update: no glide, there is no interval yet');
+  deq(r.view.cur, [50, 11]);
+  assert.equal(r.state.interval, null, 'no interval measured yet');
+  // The second update glides over the time between the two updates.
+  r = F.track(r.state, mk(12), 'src|a', T + 40000, false);
+  assert.equal(r.gliding, true, 'the second update glides'); assert.equal(r.state.interval, 20000, 'over the measured interval, kept in the state');
+  deq(r.view.cur, [50, 11], 'it starts at the old fix');
+  const r2 = F.track(r.state, mk(12), 'src|a', T + 50000, false);
+  near(r2.view.cur[1], 11.5, 1e-9, 'halfway: between the fixes'); assert.equal(r2.gliding, true);
+  assert.equal(r2.state.interval, 20000, 'a poll without a new fix keeps the interval');
+  { const line = F.mapGeo(r2.view).trail.features[0].geometry.coordinates; deq(line[line.length - 1], [11.5, 50], 'the trail ends at the arrow'); }
+  const r3 = F.track(r2.state, mk(12), 'src|a', T + 60000, false);
+  assert.equal(r3.gliding, false, 'at the end the glide is over'); deq(r3.view.cur, [50, 12], 'exactly on the fix');
+  // A new fix mid-glide glides from where the arrow is, over the time since the last update.
+  const r4 = F.track(r2.state, mk(14), 'src|a', T + 50000, false);
+  assert.equal(r4.gliding, true); near(r4.view.cur[1], 11.5, 1e-9, 'starts at the drawn position, not at the old fix');
+  assert.equal(r4.state.interval, 10000, 'the interval is the time since the last update');
+  // Reduced motion: the second update is drawn as reported.
+  const j = F.track(F.track(F.track(null, mk(10), 'x', T, true).state, mk(11), 'x', T + 20000, true).state, mk(12), 'x', T + 40000, true);
+  assert.equal(j.gliding, false, 'reduced motion: no glide'); deq(j.view.cur, [50, 12]);
+  // Another flight: nothing glides across, the count starts again.
+  const c = F.track(r3.state, mk(30), 'src|b', T + 61000, false);
+  assert.equal(c.gliding, false, 'a change of flight is drawn as reported'); assert.equal(c.state.interval, null, 'and starts a new count');
+  const c2 = F.track(c.state, mk(31), 'src|b', T + 70000, false);
+  assert.equal(c2.gliding, false, 'its first update does not glide either');
+  // No view: no state.
+  const n = F.track(r3.state, null, null, T + 62000, false);
+  assert.equal(n.view, null); assert.equal(n.state, null); assert.equal(n.gliding, false);
 }
 
 // ── the view at a drawn position: the trail end and the Remaining route start follow the arrow ───────────────────────
@@ -183,8 +229,9 @@ await withClock(T0, async (setNow) => {
   deq(arrowAt(f), [360, 179.5], 'the first position is drawn as reported');
 
   // 20 s later a new fix arrives: the glide runs for the measured time between the updates (here 20 s after the first).
-  setNow(t + 20000); step(hs, 13); tick();   // second fix seen: duration is measured from the first
-  assert.ok(frames.queue.size > 0, 'a glide runs: a frame is requested');
+  setNow(t + 20000); step(hs, 13); tick();   // the first real update: there is no interval to glide over yet
+  assert.equal(frames.queue.size, 0, 'the first update after opening does not glide');
+  deq(arrowAt(f), [370, 179.5], 'the first update is drawn as reported');
   // Update two: measured interval 20 s. Now the third one, 20 s later; sample the glide.
   runFrames();
   setNow(t + 40000); step(hs, 14); tick();
@@ -288,5 +335,22 @@ await withClock(T0, async (setNow) => {
   setNow(t + 60000); runFrames();
   deq(arrow().geometry.coordinates, [14, 50.05], 'MapLibre: ends on the fix');
   assert.equal(frames.queue.size, 0, 'MapLibre: the loop stops');
+});
+
+// A frame of a glide does not build the view again (F.mapView runs once per poll), and a failing matchMedia means no reduced motion.
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const lf = fakeLf(); const f = await mount(lf, hs);
+  tick(); lf.layers[0].load(); tick();
+  setNow(t + 20000); step(hs, 13); tick();
+  setNow(t + 40000); step(hs, 14); tick();
+  const real = F.mapView; let calls = 0; F.mapView = (...a) => { calls++; return real(...a); };
+  setNow(t + 45000); runFrames(); setNow(t + 50000); runFrames(); setNow(t + 55000); runFrames();
+  F.mapView = real;
+  assert.equal(calls, 0, 'the frames reuse the poll\'s view');
+  const mm = ctx.matchMedia; ctx.matchMedia = () => { throw new Error('no media'); };
+  setNow(t + 56000); assert.doesNotThrow(() => runFrames(), 'a failing matchMedia does not break the frame');
+  ctx.matchMedia = mm;
 });
 console.log('flights_glide: ok');

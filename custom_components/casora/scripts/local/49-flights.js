@@ -39,7 +39,7 @@
 //   window._casoraFlights.ROUTE_STYLE                → {width, casingWidth, casingOpacity, dash}: the Remaining route's look; the screensaver uses width and dash only
 //   window._casoraFlights.greatCircle(a, b)           → the Remaining route: [lat, lon] points aircraft→destination ([] when none)
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
-//   window._casoraFlights.glide(g, now, reduce) / .mapViewAt(view, pos, heading) → the popup arrow's drawn position and heading during a glide; the view drawn there
+//   window._casoraFlights.glide(g, now, reduce) / .mapViewAt(view, pos, heading) / .track(state, view, ident, now, reduce) → the popup arrow's glide: drawn position and heading, the view drawn there, and the pure state step ({state, view, gliding})
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
 //   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
 //   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
@@ -1158,25 +1158,29 @@
   // fix and dur the measured time between the last two updates. Straight line in latitude and longitude between the fixes
   // (no prediction from speed or heading), so it is never beyond the newest fix: before the start it is the old fix, at and
   // after the end exactly the new one. Longitude runs continuous (the date line is no jump); the heading turns the short way.
-  // Where a glide would show something untrue, the new fix comes at once: JUMPS is the one place for those cases (now: reduced
-  // motion, no old fix, no usable duration).
-  var JUMPS = function (g, reduce) { return !!reduce || !g.from || !g.to || !(g.dur > 0) || !isFinite(g.dur); };
+  // Where a glide would show something untrue, the new fix comes at once: `jumps` is the one place for those cases (now: reduced
+  // motion, no old fix, no usable duration). Without a new fix there is nothing to draw: null.
+  var jumps = function (g, reduce) { return !!reduce || !g.from || !(g.dur > 0) || !isFinite(g.dur); };
   F.glide = function (g, now, reduce) {
-    var to = g.to;
-    if (JUMPS(g, reduce)) return { cur: [to.cur[0], to.cur[1]], heading: to.heading, done: true };
+    var to = g && g.to;
+    if (!to) return null;
+    var atEnd = { cur: [to.cur[0], to.cur[1]], heading: to.heading, done: true };
+    if (jumps(g, reduce)) return atEnd;
     var t = (now - g.start) / g.dur;
     if (!(t > 0)) t = 0;
-    if (t >= 1) return { cur: [to.cur[0], to.cur[1]], heading: to.heading, done: true };
+    if (t >= 1) return atEnd;
     var from = g.from, lon0 = lonNear(to.cur[1], from.cur[1]);
     var heading = to.heading;
     if (typeof to.heading === 'number' && typeof from.heading === 'number') {
       var turn = ((to.heading - from.heading + 540) % 360) - 180;
       heading = (from.heading + turn * t + 360) % 360;
-    } else if (typeof to.heading === 'number' && from.heading == null) heading = to.heading;
+    }
     return { cur: [from.cur[0] + (to.cur[0] - from.cur[0]) * t, lon0 + (to.cur[1] - lon0) * t], heading: heading, done: false };
   };
   // The view with the aircraft drawn at `pos` (a glide in progress): the Flown trail ends at the arrow (a reported fix at the
   // trail's end is not drawn ahead of it) and the Remaining route starts there. At the reported fix itself the view is as it was.
+  // The route is cut again from `pos` every call (at most ROUTE_MAX_POINTS points of trigonometry, well under a millisecond), so
+  // each frame of a glide costs the arrow, the trail end and that one route; the view itself is built once per poll.
   F.mapViewAt = function (v, pos, heading) {
     if (!v) return v;
     if (pos[0] === v.cur[0] && pos[1] === v.cur[1] && heading === v.heading) return v;
@@ -1186,6 +1190,35 @@
     var out = {}; for (var k in v) out[k] = v[k];
     out.cur = pos; out.heading = heading; out.trail = trail; out.route = route;
     return out;
+  };
+  // The pure state step of the glide. state is null or what the last call returned; view is F.mapView's view (or null);
+  // ident names the flight (source and key). Returns {state, view, gliding}: the new state, the view to draw now (the arrow
+  // at its drawn position while a glide runs) and whether a glide is running (the caller keeps asking for frames).
+  // state = {ident, cur, heading, at, interval, glide}: the newest reported fix, the time of the last real update (null
+  // until one was seen: the first fix after opening is no update), the measured time between the last two updates (the
+  // normal poll; null until two were seen) and the glide in progress.
+  // A poll with the same position and heading is not an update: the sensor state also changes for other reasons (altitude,
+  // speed), and counting those would shorten the interval and the glide would end before the next fix.
+  // The first update after opening has no earlier update to measure against, so it is drawn as reported; the second one is the
+  // first that glides, over the time between the two. A change of flight starts again. Rules that jump instead of glide
+  // (a gap far over the normal poll, a step too long for the aircraft) belong where `dur` is set below and in `jumps`.
+  F.track = function (state, view, ident, now, reduce) {
+    if (!view) return { state: null, view: null, gliding: false };
+    if (!state || state.ident !== ident) {
+      return { state: { ident: ident, cur: view.cur, heading: view.heading, at: null, interval: null, glide: null }, view: view, gliding: false };
+    }
+    var st = { ident: ident, cur: state.cur, heading: state.heading, at: state.at, interval: state.interval, glide: state.glide };
+    if (st.cur[0] !== view.cur[0] || st.cur[1] !== view.cur[1] || st.heading !== view.heading) {
+      var here = st.glide ? F.glide(st.glide, now, reduce) : { cur: st.cur, heading: st.heading };
+      if (st.at != null) {
+        st.interval = now - st.at;
+        st.glide = { from: { cur: here.cur, heading: here.heading }, to: { cur: view.cur, heading: view.heading }, start: now, dur: st.interval };
+      } else st.glide = null;
+      st.at = now; st.cur = view.cur; st.heading = view.heading;
+    }
+    var at = st.glide ? F.glide(st.glide, now, reduce) : null;
+    if (!at || at.done) { st.glide = null; return { state: st, view: view, gliding: false }; }
+    return { state: st, view: F.mapViewAt(view, at.cur, at.heading), gliding: true };
   };
   F.MAP = { READY_MS: 12000, TICK_MS: 1000 };
   // The Remaining route's look, for MapLibre and Leaflet alike: a light dashed line (thinner than the Flown trail) over a dark
@@ -1243,6 +1276,10 @@
           'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': 0.6 } });
     }
   };
+  // The device asks for reduced motion (false when the browser cannot say).
+  var reducedMotion = function () {
+    try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  };
   var defineMap = function () {
     if (!window.customElements || customElements.get('casora-flight-map')) return;
     class FlightMap extends HTMLElement {
@@ -1251,7 +1288,7 @@
         this.style.display = 'block'; this.style.position = 'relative'; this.style.width = '100%';
         this.style.overflow = 'hidden'; this.style.borderRadius = 'inherit';
         this._since = Date.now(); this._tiles = 0; this._ml = this._el = this._timer = null; this._layers = false; this._ok = false;
-        this._sent = null; this._ident = null; this._fix = this._glide = null; this._raf = 0;
+        this._sent = null; this._ident = null; this._track = this._base = null; this._raf = 0;
         var H = window._casoraHaMap, hass = hassNow();
         // HA's map service and ha-map are the only map there is; without them the text stays and this element hides.
         if (!H || !hass || !H.ok()) { this._fail(); return; }
@@ -1262,7 +1299,7 @@
         });
       }
       disconnectedCallback() {
-        this._stop(); this._stopFrames(); this._fix = this._glide = null;
+        this._stop(); this._stopFrames(); this._track = this._base = null;
         if (this._mo) { this._mo.disconnect(); this._mo = null; }
         if (this._el && this._el.remove) this._el.remove();
         if (this._svg && this._svg.remove) this._svg.remove();
@@ -1277,7 +1314,7 @@
         // link out of reach. Instead the map takes no pointer input (pointer-events none), and its attribution link is the one
         // part that does (MAP_CSS), so it can be clicked and reached by Tab. The host is role="group" (fmap), not "img",
         // so that link is not nested inside an img role (axe: nested-interactive).
-        var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        var reduce = reducedMotion();
         m.style.position = 'absolute'; m.style.top = '0'; m.style.left = '0'; m.style.width = '100%'; m.style.height = '100%';
         m.style.opacity = '0'; m.style.transition = reduce ? 'none' : 'opacity .35s ease';
         m.style.pointerEvents = 'none';
@@ -1376,7 +1413,8 @@
         var key = this.getAttribute('data-key'), src = this.getAttribute('data-src');
         var v = F.mapView(hass, src, key, Date.now());
         var ident = v ? src + '|' + v.key : null;
-        v = this._drawnView(v, ident, Date.now());
+        this._base = v ? { v: v, ident: ident } : null; // built once per poll; the frames of a glide reuse it
+        v = this._advance(Date.now());
         // Fit once per flight. A map without a size gives a wrong zoom, so the fit waits for one.
         var size = lm.getSize ? lm.getSize() : null;
         var fit = !!ident && ident !== this._ident && !!size && size.x > 0 && size.y > 0;
@@ -1438,20 +1476,16 @@
         var key = this.getAttribute('data-key'), src = this.getAttribute('data-src');
         var v = F.mapView(hass, src, key, Date.now());
         var ident = v ? src + '|' + v.key : null;
-        v = this._drawnView(v, ident, Date.now());
+        this._base = v ? { v: v, ident: ident } : null;
+        v = this._advance(Date.now());
         var geo = v ? F.mapGeo(v) : null;
         var sig = JSON.stringify([ident, geo]);
         if (sig === this._sent) return;
         this._sent = sig;
-        var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
-        var route = ml.getSource('casora-flight-route');
-        if (!pts || !trail || !route) return;
-        pts.setData(geo ? geo.points : EMPTY);
-        route.setData(geo ? geo.route : EMPTY);
-        trail.setData(geo ? geo.trail : EMPTY);
+        if (!this._putMl(geo)) return;
         if (ident && ident !== this._ident) {
           var b = F.mapBounds(v);
-          if (b) ml.fitBounds(b, { padding: 36, maxZoom: 9, duration: 0 });
+          if (b) this._ml.fitBounds(b, { padding: 36, maxZoom: 9, duration: 0 });
         }
         this._ident = ident;
       }
@@ -1462,35 +1496,35 @@
         this._styled = root;
         var st = document.createElement('style'); st.textContent = MAP_CSS; root.appendChild(st);
       }
-      // The view at the arrow's drawn position. A new reported fix of the same flight starts a glide from where the arrow is
-      // now to that fix, lasting the time since the previous fix. The first fix, and a change of flight, are drawn as reported.
-      // The frame loop runs while a glide is on (see _frames), never between glides.
-      _drawnView(v, ident, now) {
-        if (!v) { this._fix = this._glide = null; return v; }
-        var fix = this._fix, reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-        if (!fix || fix.ident !== ident) { this._fix = { ident: ident, cur: v.cur, heading: v.heading, at: now }; this._glide = null; return v; }
-        if (fix.cur[0] !== v.cur[0] || fix.cur[1] !== v.cur[1] || fix.heading !== v.heading) {
-          var here = this._glide ? F.glide(this._glide, now, reduce) : { cur: fix.cur, heading: fix.heading };
-          this._glide = { from: { cur: here.cur, heading: here.heading }, to: { cur: v.cur, heading: v.heading }, start: now, dur: now - fix.at };
-          this._fix = { ident: ident, cur: v.cur, heading: v.heading, at: now };
-        }
-        var g = this._glide;
-        if (!g) return v;
-        var at = F.glide(g, now, reduce);
-        if (at.done) { this._glide = null; return v; }
-        this._frames();
-        return F.mapViewAt(v, at.cur, at.heading);
+      _putMl(geo) {
+        var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
+        var route = ml.getSource('casora-flight-route');
+        if (!pts || !trail || !route) return false;
+        pts.setData(geo ? geo.points : EMPTY);
+        route.setData(geo ? geo.route : EMPTY);
+        trail.setData(geo ? geo.trail : EMPTY);
+        return true;
       }
-      // One animation frame at a time, only while a glide is on; the frame redraws and asks for the next one through _drawnView.
-      _frames() {
+      // Advances the glide state to `now` (F.track) on the view of the last poll, and returns the view to draw. While a glide
+      // runs it asks for the next animation frame; between glides nothing is requested.
+      _advance(now) {
+        var b = this._base, r = F.track(this._track, b && b.v, b && b.ident, now, reducedMotion());
+        this._track = r.state;
+        if (r.gliding) this._nextFrame();
+        return r.view;
+      }
+      // One animation frame at a time, only while a glide is on. A frame redraws the arrow, the trail end and the route start
+      // from the poll's view (no new F.mapView, no comparison of the whole geometry on MapLibre).
+      _nextFrame() {
         var raf = window.requestAnimationFrame;
         if (this._raf || typeof raf !== 'function') return;
         this._raf = raf.call(window, () => {
           this._raf = 0;
           if (!this.isConnected) { this._stopFrames(); return; }
-          var hass = hassNow();
-          if (!hass) return;
-          if (this._lm) this._syncLeaflet(hass, this._lm); else if (this._ml && this._layers) this._sync(hass);
+          var v = this._advance(Date.now());
+          if (!v) return;
+          if (this._lm) this._drawLeaflet(this._lm, F.mapGeo(v));
+          else if (this._ml && this._layers) { this._sent = null; this._putMl(F.mapGeo(v)); }
         });
       }
       _stopFrames() {
