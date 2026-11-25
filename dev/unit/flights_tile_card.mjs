@@ -71,7 +71,8 @@ assert.doesNotMatch(text, /[{}]|#container|#state|grid-template|outline/, 'the t
 const Wrap = defined['casora-flight-list'];
 assert.ok(Wrap, 'the tile rows are wrapped in casora-flight-list');
 const card = { tagName: 'HA-CARD', id: 'card', attrs: { role: 'button' },
-  getAttribute(n) { return n in this.attrs ? this.attrs[n] : null; }, setAttribute(n, v) { this.attrs[n] = String(v); } };
+  getAttribute(n) { return n in this.attrs ? this.attrs[n] : null; }, setAttribute(n, v) { this.attrs[n] = String(v); },
+  removeAttribute(n) { delete this.attrs[n]; } };
 const root = { styles: [], querySelector: (sel) => {
   if (sel === '#card') return card;
   if (sel.startsWith('style[data-flights-tile]')) return root.styles[0] || null;
