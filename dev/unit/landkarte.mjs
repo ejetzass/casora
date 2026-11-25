@@ -148,7 +148,7 @@ const coreSrc = rd(C + 'scripts/casora-core.js');
 assert.match(coreSrc, /AUTO_ALWAYS = \{[^}]*casora_map: 1/, 'large on the phone, as the camera tile');
 assert.match(coreSrc, /'casora_map'\) !== -1 && cfg\.variables && cfg\.variables\.map_tile === false\) return 0/, 'option off: small on the phone');
 const tanken = rd(C + 'scripts/local/12-tanken.js');
-assert.match(tanken, /window\._casoraHaMap = \{ ok: mapOk, defined: haMapDefined, ml: mlOf \}/, 'the same ha-map loading as the fuel map');
+assert.match(tanken, /window\._casoraHaMap = \{ ok: mapOk, defined: haMapDefined, ml: mlOf, lf: lfOf \}/, 'the same ha-map loading as the fuel map');
 
 // The entity-less tile reaches the phone dashboard (panel's own check for tiles without an entity).
 const dir = new URL(C + 'panel/', ROOT);

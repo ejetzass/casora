@@ -518,7 +518,9 @@
     };
   };
   // Shared with the map tile (44-landkarte.js): whether HA's map service exists, loading ha-map, its MapLibre map.
-  window._casoraHaMap = { ok: mapOk, defined: haMapDefined, ml: mlOf };
+  // Leaflet ha-map (no WebGL2): its own Leaflet map. mlOf never returns it, and lfOf never returns a MapLibre map.
+  var lfOf = function (m) { return m && m.leafletMap ? m.leafletMap : null; };
+  window._casoraHaMap = { ok: mapOk, defined: haMapDefined, ml: mlOf, lf: lfOf };
   var hmStyleMl = '.maplibregl-canvas{filter:var(--ct-filter,none)}.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-scale{display:none!important}'
     + '.maplibregl-ctrl-attrib{font-size:9px!important;line-height:1.3!important;padding:1px 6px!important;border-radius:8px 0 0 0;background:var(--ct-att-bg)!important;color:var(--ct-att-fg)!important}'
     + '.maplibregl-ctrl-attrib a{color:inherit!important}.maplibregl-ctrl-attrib-button{display:none!important}';
