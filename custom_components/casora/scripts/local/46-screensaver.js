@@ -589,8 +589,11 @@
   // A single Flights kind: one flight per native turn (TURN_MS), in a fixed order (scheduled departure, then the flight
   // ID), round and round. The page keeps the last flight it showed: the next turn moves on from it (wherever it sits now
   // in the list), an earlier-landed flight takes the rest of its turn, and a fresh start of the saver moves on too.
-  // Returns the flight to draw, or null with none. peek: the choice only, nothing kept (the Studio preview).
-  var FLIGHT_TURN = { slot: null, key: null, pos: 0 };
+  // The layout (detail: false = map) flips when the pick wraps from the last flight back to the first, so each full
+  // round is either all on the map or all in detail. If flights come or go mid-round, the round ends at the end of the
+  // current list. Returns { row, detail } for the flight to draw, or null with none. peek: the choice only, nothing
+  // kept, always the map (the Studio preview).
+  var FLIGHT_TURN = { slot: null, key: null, pos: 0, detail: false };
   var flightOrder = function (a, b) {
     var da = Number(a.entry.time_scheduled_departure) || Infinity, db = Number(b.entry.time_scheduled_departure) || Infinity;
     if (da !== db) return da < db ? -1 : 1;
@@ -608,8 +611,12 @@
     else if (!moveOn && at > -1) pos = at;
     else if (!moveOn) pos = before;
     else pos = at > -1 ? (at + 1) % n : before;
-    if (!peek) { FLIGHT_TURN.slot = slot; FLIGHT_TURN.key = order[pos].key; FLIGHT_TURN.pos = pos; }
-    return order[pos];
+    // A round ends when the pick moves on from the end of the list back to the first flight (a flight that has gone
+    // counts from its old place: past the new end, the round ends there too).
+    var wrapped = moveOn && st.key !== null && (at > -1 ? at === n - 1 : st.pos >= n);
+    var detail = !peek && (wrapped ? !st.detail : st.detail);
+    if (!peek) { FLIGHT_TURN.slot = slot; FLIGHT_TURN.key = order[pos].key; FLIGHT_TURN.pos = pos; FLIGHT_TURN.detail = detail; }
+    return { row: order[pos], detail: detail };
   };
   // The kinds that take turns: the picked ones the house has something for; never empty (then the sky).
   S.pool = function (vars, has) {
@@ -1367,8 +1374,9 @@
   };
   // ── Flights: a map and the details, one flight per turn ─────────────────────────────────────────────────────────────
   // In „mix“, turn t (see S.turnOf) shows flight t mod n; the layout changes once every n turns, so each flight gets the
-  // map and the details in turn. A single Flights kind gets its one flight from S.flightPick (ctx.flights holds only that
-  // one), so turn 0 here, always on the map. No timer or count of its own: the native turns and the native update do the rest.
+  // map and the details in turn. A single Flights kind gets its one flight and its layout from S.flightPick (ctx.flights
+  // holds only that one, ctx.flightDetail the layout), so turn 0 here. No timer or count of its own: the native turns and
+  // the native update do the rest.
   // The route is plain shapes from the view's points (F.mapView): no tile, image or link is loaded.
   // The picture's frame: its size in degrees (W × H, longitude shrunk to the latitude) and where one point sits in it.
   // X and Y give numbers in the picture's units. Null without a position.
@@ -1433,7 +1441,7 @@
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
-    var r = rows[((t % n) + n) % n], detail = Math.floor(t / n) % 2 === 1;
+    var r = rows[((t % n) + n) % n], detail = ctx.flightDetail != null ? !!ctx.flightDetail : Math.floor(t / n) % 2 === 1;
     var f = r.entry, v = F ? F.mapView(ctx.hass, r.src, r.key, +ctx.now) : null;
     var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
     if (!detail) {
@@ -1617,9 +1625,10 @@
       var ctx = S.context(Object.assign({}, base, { kind: k }));
       ctx.turn = S.turnOf(want, now, pool);
       if (want === 'flights') {
-        var row = S.flightPick(ctx.flights, now, fresh && !o.sample, !!o.sample);
-        ctx.flights = row ? [row] : [];
-        if (row && !o.sample) fresh = false;
+        var pick = S.flightPick(ctx.flights, now, fresh && !o.sample, !!o.sample);
+        ctx.flights = pick ? [pick.row] : [];
+        ctx.flightDetail = pick ? pick.detail : false;
+        if (pick && !o.sample) fresh = false;
       }
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
