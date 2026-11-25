@@ -11,11 +11,15 @@ import assert from 'node:assert/strict';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const SRC = read('custom_components/casora/scripts/local/49-flights.js');
+// The repo is public: the comments name the case, not the private test house (the pattern is written with \x20 so this line does not match itself).
+const PRIVATE_HOUSE = /Test\x20HA/;
+assert.doesNotMatch(SRC, PRIVATE_HOUSE, 'no private test-house wording in 49-flights.js comments');
+assert.doesNotMatch(read('dev/unit/flights_map_tab_stops.mjs'), PRIVATE_HOUSE, 'no private test-house wording in this test');
 
 // Minimal DOM: elements with attributes, a tabIndex that follows the HTML defaults, parents, and shadow roots.
 const STOP = 'a[href],button,input,select,textarea,[tabindex]';
 const ATTRIB = '.maplibregl-ctrl-attrib';
-// Both renderers: MapLibre's attribution, and Leaflet's (HA's ha-map draws with Leaflet in the Test HA).
+// Both renderers: MapLibre's attribution, and Leaflet's (HA's ha-map draws with Leaflet when the browser has no WebGL2).
 const ATTRIB_ANY = '.maplibregl-ctrl-attrib, .leaflet-control-attribution';
 const el = (tag, attrs = {}, kids = []) => {
   const n = { tag, attrs: { ...attrs }, children: kids, shadowRoot: null, style: {},
@@ -146,7 +150,7 @@ assert.match(attribRule[1], /pointer-events:auto/, 'the attribution takes pointe
 assert.doesNotMatch(attribRule[1], /background:transparent/, 'the attribution has an opaque background');
 assert.match(css[1], /\.maplibregl-ctrl-attrib a:focus-visible,\.leaflet-control-attribution a:focus-visible\{[^}]*outline/, 'the attribution link shows a focus ring');
 
-// Leaflet (HA's ha-map in the Test HA): the zoom links are the map's own stops and leave the tab order; the attribution link
+// Leaflet (HA's ha-map when the browser has no WebGL2): the zoom links are the map's own stops and leave the tab order; the attribution link
 // stays reachable. Both the poll path and the MutationObserver path are checked.
 const leafletShadow = () => el('div', {}, [
   el('div', { class: 'leaflet-container', tabindex: '0' }),

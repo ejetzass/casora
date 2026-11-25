@@ -1094,7 +1094,7 @@
   var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
   var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
     + '.maplibregl-ctrl-bottom-right{right:0;bottom:0}'
-    // MapLibre and Leaflet (HA's ha-map in the Test HA) attribution: one selector list per rule.
+    // MapLibre and Leaflet (HA's ha-map when the browser has no WebGL2) attribution: one selector list per rule.
     + '.maplibregl-ctrl-attrib,.leaflet-control-attribution{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important;z-index:2!important}'
     + '.maplibregl-ctrl-attrib a,.leaflet-control-attribution a{color:inherit!important;text-decoration:underline}'
     + '.maplibregl-ctrl-attrib a:focus-visible,.leaflet-control-attribution a:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
@@ -1180,7 +1180,7 @@
       }
       // The map's canvas and zoom controls keep tabindex 0. The popup's Tab handling counts them as stops (casora-core.js
       // _focusables), so Tab from Close would leave the popup: take them out of the tab order. The attribution link stays.
-      // Both renderers are handled: MapLibre (its own map) and Leaflet (HA's ha-map in the Test HA). The MapLibre class
+      // Both renderers are handled: MapLibre (its own map) and Leaflet (HA's ha-map when the browser has no WebGL2). The MapLibre class
       // alone does not match the Leaflet attribution, so both classes are listed.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
