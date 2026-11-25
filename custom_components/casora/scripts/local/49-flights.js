@@ -1151,6 +1151,9 @@
     return [[Math.min.apply(null, lon), Math.min.apply(null, lat)], [Math.max.apply(null, lon), Math.max.apply(null, lat)]];
   };
   F.MAP = { READY_MS: 12000, TICK_MS: 1000 };
+  // The Remaining route's look, for MapLibre and Leaflet alike: a light dashed line (thinner than the Flown trail) over a dark
+  // dashed casing; dash and gap are DASH px each.
+  var ROUTE_STYLE = { width: 2, casingWidth: 4, casingOpacity: 0.6, dash: 6 };
   var EMPTY = { type: 'FeatureCollection', features: [] };
   var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
   var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
@@ -1179,12 +1182,14 @@
     ml.addSource('casora-flight-route', { type: 'geojson', data: EMPTY });
     ml.addSource('casora-flight-points', { type: 'geojson', data: EMPTY });
     var arrow = arrowImage(ml);
-    // The Remaining route first, so it lies under the trail, the airports and the aircraft: dashed (dash lengths are in line
-    // widths: 6 px on, 6 px off for the line and for its slightly wider casing), thinner than the solid Flown trail.
+    // The Remaining route first, so it lies under the trail, the airports and the aircraft. MapLibre counts dash lengths in line
+    // widths, so the line and its wider casing get the same dash in pixels.
     ml.addLayer({ id: 'casora-flight-route-casing', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
-      paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 4, 'line-dasharray': [1.5, 1.5] } });
+      paint: { 'line-color': '#000000', 'line-opacity': ROUTE_STYLE.casingOpacity, 'line-width': ROUTE_STYLE.casingWidth,
+        'line-dasharray': [ROUTE_STYLE.dash / ROUTE_STYLE.casingWidth, ROUTE_STYLE.dash / ROUTE_STYLE.casingWidth] } });
     ml.addLayer({ id: 'casora-flight-route', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
-      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [3, 3] } });
+      paint: { 'line-color': '#ffffff', 'line-width': ROUTE_STYLE.width,
+        'line-dasharray': [ROUTE_STYLE.dash / ROUTE_STYLE.width, ROUTE_STYLE.dash / ROUTE_STYLE.width] } });
     // Dark casing under a light line: visible on light and dark map tiles alike.
     ml.addLayer({ id: 'casora-flight-trail-casing', type: 'line', source: 'casora-flight-trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 5 } });
@@ -1345,24 +1350,28 @@
         if (!ident || fit) this._ident = ident;
         this._drawLeaflet(lm, F.mapGeo(v));
       }
-      // Trail (casing under a light line), airports, the aircraft and its arrow: the same look as the MapLibre layers.
+      // Remaining route and trail (each a dark casing under a light line), airports, the aircraft and its arrow: the same look as
+      // the MapLibre layers.
       _drawLeaflet(lm, geo) {
         var svg = this._svg;
         if (!svg) return;
         var size = lm.getSize ? lm.getSize() : { x: 0, y: 0 };
         var round = function (n) { return Math.round(n * 10) / 10; };
         var pt = function (c) { var q = lm.latLngToContainerPoint([c[1], c[0]]); return [round(q.x), round(q.y)]; };
+        // SVG path data of one line from its [lon, lat] coordinates.
+        var pathOf = function (coords) { return coords.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' '); };
+        var firstLine = function (collection) { return collection.features.length ? collection.features[0].geometry.coordinates : []; };
         var out = '';
-        // The Remaining route first (under everything): dashed, 6 px on and 6 px off, casing and line alike.
-        var ahead = geo.route.features.length ? geo.route.features[0].geometry.coordinates : [];
-        if (ahead.length) {
-          var rd = ahead.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
-          out += '<path d="' + rd + '" fill="none" stroke="#000000" stroke-opacity="0.6" stroke-width="4" stroke-dasharray="6 6" stroke-linejoin="round"/>'
-            + '<path d="' + rd + '" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="6 6" stroke-linejoin="round"/>';
+        // The Remaining route first (under everything): dashed, casing and line alike (ROUTE_STYLE, as on MapLibre).
+        var route = firstLine(geo.route);
+        if (route.length) {
+          var routePath = pathOf(route), dash = ' stroke-dasharray="' + ROUTE_STYLE.dash + ' ' + ROUTE_STYLE.dash + '" stroke-linejoin="round"/>';
+          out += '<path d="' + routePath + '" fill="none" stroke="#000000" stroke-opacity="' + ROUTE_STYLE.casingOpacity + '" stroke-width="' + ROUTE_STYLE.casingWidth + '"' + dash
+            + '<path d="' + routePath + '" fill="none" stroke="#ffffff" stroke-width="' + ROUTE_STYLE.width + '"' + dash;
         }
-        var line = geo.trail.features.length ? geo.trail.features[0].geometry.coordinates : [];
-        if (line.length) {
-          var d = line.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
+        var trail = firstLine(geo.trail);
+        if (trail.length) {
+          var d = pathOf(trail);
           out += '<path d="' + d + '" fill="none" stroke="#000000" stroke-opacity="0.6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'
             + '<path d="' + d + '" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
         }
