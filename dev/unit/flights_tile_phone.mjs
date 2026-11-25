@@ -85,11 +85,11 @@ assert.doesNotMatch(html, /data-flights-sum/, 'desktop: no one-line summary');
 phone = true;
 now = seen(two);
 html = F.liveHtml(hass, '', now, 'Flüge');
-assert.equal(text(html), '2 unterwegs', 'phone: the tile shows one line, the count of airborne flights');
+assert.equal(text(html), '2 in der Luft', 'phone: the tile shows one line, the count of airborne flights');
 assert.match(html, /data-flights-sum/, 'phone: the summary element is marked');
 assert.doesNotMatch(html, /data-flights-row|<button|<br>/, 'phone: no row buttons and no second line');
 assert.doesNotMatch(html, /<style/i, 'phone: no CSS in the tile text');
-assert.equal(text(F.liveHtml(hass, '', seen([fl('3')]), 'Flüge')), '1 unterwegs', 'phone: one flight, one line');
+assert.equal(text(F.liveHtml(hass, '', seen([fl('3')]), 'Flüge')), '1 in der Luft', 'phone: one flight, one line');
 
 // ── Phone tap: one flight opens its popup, two or more the list popup ───────────────────────────────────────────────
 calls.length = 0;
@@ -116,7 +116,7 @@ assert.deepEqual([...labels], ['XY1', 'XY2'], 'precondition: the airborne order'
 assert.ok(list.indexOf('XY1') < list.indexOf('XY2'), 'the rows keep the airborne order');
 assert.match(text(list), /AAA → BBB/, 'a row shows its route');
 assert.match(text(list), /31000|31,000/, 'a row shows its altitude');
-assert.equal(text(F.listStage(hass, { pin: '' })), '2 unterwegs', 'the list popup stage shows the count');
+assert.equal(text(F.listStage(hass, { pin: '' })), '2 in der Luft', 'the list popup stage shows the count');
 
 // ── The phone tile's element and tap: a plain button card, tapped as one ────────────────────────────────────────────
 const attrsOf = () => { const a = {}; return { attrs: a, hasAttribute: (n) => n in a, getAttribute: (n) => (n in a ? a[n] : null),
