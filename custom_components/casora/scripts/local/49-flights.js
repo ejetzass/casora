@@ -687,7 +687,7 @@
     var card = function (fn) { return { card: KIT.secCard(watch, 'return window._casoraFlights ? window._casoraFlights.' + fn + '(hass, ' + cj + ') : "";', S) }; };
     return KIT.layout({ fields: { stage: card('listStage'), list: card('listRows') }, top: [], stage: 'stage', left: [], right: ['list'] });
   };
-  // The tile's tap (two or more flights, phone and desktop): one airborne flight opens its popup (F.open), two or more the list popup. Returns what opened.
+  // The tile's tap (phone and desktop): one airborne flight opens its popup (F.open), two or more the list popup. Returns what opened.
   F.tapTile = function (hass) {
     var rows = F.airborne(hass, F.setting(), Date.now());
     if (rows.length === 1) return F.open(hass, rows[0].src, rows[0].key) ? 'flight' : null;
@@ -915,6 +915,18 @@
     });
     return out;
   };
+  // The tile row's arrival: one clock, no zone labels (the flight popup and the list popup show both times). The HA zone's
+  // clock when there is one, else the destination airport's; its date is added when the day differs from the departure's local day,
+  // and its zone name when the Studio switch for zone names is on.
+  var shortEstimate = function (hass, f) {
+    var ms = epochMs(f && f.time_estimated_arrival), loc = locale(), zone = haZone(hass), off = f && f.airport_destination_timezone_offset;
+    if (ms == null) return '';
+    var z = zone ? { zone: zone } : offsetOk(off) ? { off: off } : null;
+    if (!z) return '';
+    var p = part(ms, z, loc), dep = null;
+    ['scheduled', 'real', 'estimated'].some(function (k) { dep = epochMs(f['time_' + k + '_departure']); return dep != null; });
+    return p.clock + (zone && dep != null && part(dep, z, loc).day !== p.day ? ' ' + p.date : '') + (F.tz() && p.name ? ' ' + p.name : '');
+  };
   var estimateOf = function (hass, f) {
     var hit = F.times(hass, f, F.tz()).arr.filter(function (x) { return x.kind === 'estimated'; })[0];
     return hit ? hit.text : '';
@@ -922,6 +934,9 @@
 
   var ROW_BTN = 'display:block;width:100%;box-sizing:border-box;min-height:44px;padding:8px 0 12px;margin:0;border:0;background:none;'
     + 'font:inherit;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;';
+  // The tile's row is shorter than the list popup's: little padding, and the button is the containing block of the visually
+  // hidden percentage, so that text cannot leak out of the tile or its scroll box.
+  var TILE_ROW_BTN = ROW_BTN.replace('min-height:44px;padding:8px 0 12px;', 'padding:2px 0 4px;position:relative;');
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
   // sits in a button as well. The bar is a picture: its callers hide it from screen readers.
   var progressBar = function (pct, h, m) {
@@ -934,11 +949,11 @@
   // (its accessible name) and the bar is decorative. A browser drops a role on anything inside a button, so no progressbar here.
   var rowHtml = function (hass, r, style, tileRow) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
-    var eta = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
+    var eta = tileRow ? shortEstimate(hass, r.entry) : estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
     var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
     var barHtml = '';
     if (pct != null && tileRow) {
-      barHtml = '<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">'
+      barHtml = '<span style="position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">'
         + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>'
         + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>';
     } else if (pct != null) {
@@ -961,11 +976,11 @@
       return '<casora-flight-list data-flights-sum data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere">'
         + esc(summaryText(flights.length)) + '</casora-flight-list>';
     }
-    // Desktop with one flight: its tile row. The list scrolls inside the tile only as a safety net for very small tiles.
-    // NOT VERIFIED YET: that the heading stays fixed (no CSS change here; the browser check is pending).
+    // Desktop with one flight: its tile row. The list scrolls inside the tile only as a safety net for very small tiles. The
+    // heading is its own grid row of the card (TILE_CSS), outside #state, so a scrolled row never runs under it.
     // The tile's CSS is not in this text (it would reach the card's accessible name): casora-flight-list puts it in the card.
-    return '<casora-flight-list data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain">'
-      + rowHtml(hass, flights[0], ROW_BTN, true) + '</casora-flight-list>';
+    return '<casora-flight-list data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain">'
+      + rowHtml(hass, flights[0], TILE_ROW_BTN, true) + '</casora-flight-list>';
   };
   // Phone check: the tile CSS's own media query (PHONE_MQ), so the text and the CSS switch at the same width.
   F.phone = function () { return !!(window.matchMedia && window.matchMedia(PHONE_MQ).matches); };

@@ -202,18 +202,18 @@ assert.equal(F.tz(), true, 'the saved switch is read');
 assert.equal(F.times(hass, fl('s1'), F.tz()).arr.find((x) => x.kind === 'estimated').text,
   '18:40 18.11. EST Zeit am Zielort · 00:40 19.11. MEZ Ortszeit', 'suffix on: zone names added, labels unchanged');
 
-// ── Surfaces: the tile and the popup read the same text; a Save/Discard draft changes both ──────────────────────
+// ── Surfaces: the tile shows the arrival as one short time, the popup both times; a Save/Discard draft changes both ──────────────────────
 hass = house();
 assert.equal(moving(hass, fl('s1')).length, 1, 'the flight qualifies (observed movement)');
 setTz(true);
 let html = texts(tile(hass));
-assert.ok(html.includes('Voraussichtliche Ankunft: 18:40 18.11. EST Zeit am Zielort · 00:40 19.11. MEZ Ortszeit'), 'tile: estimated arrival with dates and suffix');
+assert.ok(html.includes('Voraussichtliche Ankunft: 00:40 19.11. MEZ'), 'tile: estimated arrival, one short time (local clock, date, zone name with the suffix on)');
 const popOn = texts(popupTimes(hass, fl('s1')));
 assert.ok(popOn.includes('Geplant: 10:00 MEZ Ortszeit'), 'popup: scheduled departure, same clock as the local zone: one local time, with the suffix on');
 assert.ok(popOn.includes('Voraussichtlich: 18:40 18.11. EST Zeit am Zielort'), 'popup: estimated arrival with the same text as the tile');
 setTz(false); // Discard: the saved dashboard has no switch on.
 html = texts(tile(hass));
-assert.ok(html.includes('Voraussichtliche Ankunft: 18:40 18.11. Zeit am Zielort · 00:40 19.11. Ortszeit'), 'discard: tile back to the labels without suffix');
+assert.ok(html.includes('Voraussichtliche Ankunft: 00:40 19.11.'), 'discard: tile back to the short time without the zone name');
 assert.ok(!texts(popupTimes(hass, fl('s1'))).includes('EST'), 'discard: popup without suffix');
 
 // The tile shows the estimate only when the source has one; the popup shows only the timestamps that exist.
