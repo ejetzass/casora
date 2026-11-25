@@ -3,7 +3,7 @@
 // F.airborne's order. Desktop keeps its rows. The phone check is the tile CSS's media query, read with matchMedia.
 // Controlled fake page: the phone flag is set by the test. Synthetic data only.
 //   node dev/unit/flights_tile_phone.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,liveHidden,airborne,phone,tapTile,openList,open,flight,listRows,listStage,listPopup,sec,popup,defineTileList
+// @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,liveHidden,airborne,phone,tapTile,openList,open,flight,listRows,listStage,listPopup,sec,popup,defineTileList,setTileMode,closeListPopup
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -16,6 +16,9 @@ const T0 = 1800000000000;
 // The phone flag: the tile CSS's media query matches when this is true (any query string with the 767px rule).
 let phone = false;
 const calls = [];
+const pending = [];
+const mqChange = []; // the phone query's change listeners (resize, rotation)
+const flush = () => { pending.splice(0).forEach((fn) => fn()); };
 const listeners = {};
 const defined = {};
 class FakeHTMLElement {
@@ -32,11 +35,13 @@ const ctx = {
   localStorage: { getItem: () => null, setItem() {} },
   document: { querySelector: (sel) => (sel === 'home-assistant' ? { hass } : null), querySelectorAll: () => [],
     createElement: (tag) => ({ tag, textContent: '', setAttribute(n, v) { this[n] = String(v); } }) },
-  setTimeout: () => ({ live: false }), clearTimeout() {},
+  // Timers are kept, so a test runs them by hand (flush below).
+  setTimeout: (fn) => { pending.push(fn); return { live: false }; }, clearTimeout() {},
   addEventListener: (n, fn) => { (listeners[n] = listeners[n] || []).push(fn); },
   HTMLElement: FakeHTMLElement,
   customElements: { get: (n) => defined[n], define: (n, c) => { defined[n] = c; } },
-  matchMedia: (q) => ({ matches: phone && q.includes('max-width:767px'), addEventListener() {} }),
+  matchMedia: (q) => ({ matches: phone && q.includes('max-width:767px'),
+    addEventListener(n, fn) { if (n === 'change') mqChange.push(fn); } }),
   // The page's stage and empty pieces, reduced to their text (the test reads the text, not the layout).
   _casoraUI: { stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
   // The popup opener: records the card config it is given, as the page would open that popup.
@@ -157,5 +162,89 @@ phone = false;
 calls.length = 0;
 tap(deskCard);
 assert.equal(calls.length, 0, 'a click on a desktop card opens nothing');
+
+// ── Review: the summary tag is real HTML ───────────────────────────────────────────────────────────────────────────
+phone = true;
+now = seen(two);
+html = F.liveHtml(hass, '', now, 'Flüge');
+const tag = html.match(/^<casora-flight-list[^>]*>/)[0];
+assert.match(tag, /^<casora-flight-list data-flights-sum data-name="[^"]*" style="display:block;[^"]*overflow:hidden[^"]*">$/,
+  'the summary tag has one real style attribute with display:block and overflow:hidden');
+assert.doesNotMatch(tag, /=""|" [a-z-]+"|=""/, 'the summary tag has no junk attribute');
+
+// ── Review: the card follows the phone query on every change (resize, rotation) ──────────────────────────────────
+const modeOf = () => ({ role: card.attrs.role, label: card.attrs['aria-label'], marker: card.attrs['data-flights-tile-card'] });
+const flipMode = () => mqChange.forEach((fn) => fn());
+calls.length = 0;
+phone = true;
+onPage(null, { 'data-flights-sum': '', 'data-name': 'Flüge' });
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone: a button, no label, marked');
+phone = false; flipMode();
+assert.deepEqual(modeOf(), { role: 'group', label: 'Flüge', marker: undefined }, 'desktop after a change: a group named by the card, no marker');
+seen(two); calls.length = 0;
+tap(card);
+assert.equal(calls.length, 0, 'desktop after a change: a tap on the card does not run the tile tap');
+phone = true; flipMode();
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone again after a change: the button again');
+calls.length = 0;
+seen(two);
+tap(card);
+assert.equal(calls.length, 1, 'phone again: a tap on the card runs the tile tap');
+
+// ── Review: Enter and Space on the phone tile are one tap, no second action on the release ─────────────────────────
+const key = (target, k, type) => {
+  const ev = { key: k, target, composedPath: () => [target], prevented: false,
+    preventDefault() { this.prevented = true; }, stopPropagation() {} };
+  (listeners[type] || []).forEach((fn) => fn(ev));
+  return ev;
+};
+phone = true; calls.length = 0;
+seen(two);
+const enter = key(card, 'Enter', 'keydown');
+assert.equal(enter.prevented, true, 'Enter on the phone tile: the default (a click) is cancelled');
+assert.equal(calls.length, 1, 'Enter on the phone tile opens the list once');
+calls.length = 0;
+const space = key(card, ' ', 'keydown');
+assert.equal(space.prevented, true, 'Space on the phone tile: the default is cancelled');
+assert.equal(calls.length, 1, 'Space on the phone tile opens the list once');
+const spaceUp = key(card, ' ', 'keyup');
+assert.equal(spaceUp.prevented, true, 'the release of Space does not click the tile again');
+assert.equal(calls.length, 1, 'the release of Space adds no second open');
+
+// ── Review: no flight in the air, the phone tile stays hidden and empty ───────────────────────────────────────────
+phone = true;
+now = seen([]);
+assert.equal(F.liveHidden(hass, now), true, 'phone: no flight in the air hides the tile');
+assert.equal(F.liveHtml(hass, '', now, 'Flüge'), '', 'phone: no flight in the air draws nothing');
+assert.equal(F.tapTile(hass), null, 'phone: a tap with no flight opens nothing');
+
+// ── Review: the list popup does not stay open as an empty shell ─────────────────────────────────────────────────
+let closedCount = 0;
+ctx.casoraPopup = { element: { hasAttribute: () => true }, close() { closedCount += 1; } };
+seen(two);
+calls.length = 0;
+F.tapTile(hass); // the list opens
+assert.equal(calls.length, 1, 'precondition: the list is open');
+setSource([]);
+F.listRows(hass, { pin: '' });
+flush();
+assert.equal(closedCount, 1, 'no flight left: the open list popup closes');
+F.openList(hass, 'sensor.a');
+now = seen([fl('7')]);
+const one = F.listRows(hass, { pin: '' });
+flush();
+assert.equal((one.match(/<button/g) || []).length, 1, 'one flight left: its row is still shown');
+assert.equal(closedCount, 1, 'one flight left: the list stays open');
+(listeners['casora-popup-closed'] || []).forEach((fn) => fn({}));
+setSource([]);
+F.listRows(hass, { pin: '' });
+flush();
+assert.equal(closedCount, 1, 'a list closed by the user is not closed again');
+
+// ── Review: the list popup's template says what it shows (not the flight popup's comment) ───────────────────────
+const templates = JSON.parse(read('dashboards/casora/button_card_templates.json'));
+const listStyle = templates.casora_popup_flights_list.tap_action.casora_popup.style;
+assert.match(listStyle, /F\.listRows|list of flight rows/, 'the list popup style comment names the list');
+assert.doesNotMatch(listStyle, /flightSec/, 'the list popup style comment does not point at the flight popup');
 
 console.log('ok: flights tile phone');
