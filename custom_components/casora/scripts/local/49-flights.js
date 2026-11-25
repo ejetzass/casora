@@ -436,6 +436,7 @@
     });
     // The popup is closed: a focus after this is no longer the popup's to hand back to a row.
     window.addEventListener('casora-popup-closed', function () {
+      listOpen = false;
       if (!document.querySelector('casora-popup[open]')) backRow = null;
     });
     // Space opens on the key down; its release would click the button again, so the release is cancelled too.
@@ -656,11 +657,19 @@
     if (!UI || !n) return '';
     return UI.stage('status', { tone: 'good', icon: 'mdi:airplane', text: summaryText(n) });
   };
+  // The list popup that F.openList opened, until the popup closes. Its rows close it once no flight is left.
+  var listOpen = false;
+  var closeListPopup = function () {
+    if (!listOpen) return;
+    listOpen = false;
+    setTimeout(function () { if (window.casoraPopup) window.casoraPopup.close(); }, 0); // after this render, not inside it
+  };
   F.listRows = function (hass, c) {
     var UI = window._casoraUI;
     if (!UI || !hass) return '';
     var rows = F.airborne(hass, c && c.pin, Date.now());
-    if (!rows.length) return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY });
+    // Nothing left in the air: the list does not stay open as an empty shell. One flight keeps its row.
+    if (!rows.length) { closeListPopup(); return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY }); }
     var rowStyle = 'display:block;width:100%;box-sizing:border-box;min-height:52px;padding:12px 16px;margin:0;border:0;background:none;'
       + 'font:inherit;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;';
     return '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
@@ -688,6 +697,7 @@
   F.openList = function (hass, src) {
     if (inStudio() || !hass || !src) return null;
     if (typeof window._casoraNotifyOpenViaCard !== 'function') return null;
+    listOpen = true;
     window._casoraNotifyOpenViaCard(src, function () {}, { type: 'custom:button-card', template: 'casora_popup_flights_list', entity: src }, true);
     return true;
   };
@@ -936,7 +946,7 @@
     var flights = F.airborne(hass, pin, now);
     if (F.phone()) {
       if (!flights.length) return '';
-      return '<casora-flight-list data-flights-sum style=""display:block;height:100%;max-height:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere">'
+      return '<casora-flight-list data-flights-sum data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere">'
         + esc(summaryText(flights.length)) + '</casora-flight-list>';
     }
     var rowsHtml = flights.map(function (r) { return rowHtml(hass, r, ROW_BTN); }).join('');
@@ -1178,6 +1188,17 @@
     + '@media ' + PHONE_MQ + '{#container{grid-template-rows:min-content minmax(0,1fr)!important}}'
     + '[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}';
   F._tileCss = TILE_CSS; // for the tests only (not part of the API)
+  // The card's mode: the phone tile is one button (its line is the name, its tap is F.tapTile); the desktop card is a group
+  // named by the tile's name. Set on connect and on every breakpoint change (see tileCards).
+  var setTileMode = function (card, name, phone) {
+    if (phone) {
+      card.setAttribute('role', 'button'); card.removeAttribute('aria-label'); card.setAttribute('data-flights-tile-card', '');
+    } else {
+      card.removeAttribute('data-flights-tile-card'); card.setAttribute('role', 'group'); card.setAttribute('aria-label', name || '');
+    }
+  };
+  // The cards of the tiles on the page, with their names: a breakpoint change sets their mode without waiting for a redraw.
+  var tileCards = [];
   var defineTileList = function () {
     if (!window.customElements || customElements.get('casora-flight-list')) return;
     class FlightList extends HTMLElement {
@@ -1188,21 +1209,25 @@
           var st = document.createElement('style'); st.setAttribute('data-flights-tile', ''); st.textContent = TILE_CSS; root.appendChild(st);
         }
         var card = root.querySelector('#card');
-        // Phone: the whole card is one button, its name is the one line inside it; the tap goes to F.tapTile.
-        if (this.getAttribute('data-flights-sum') !== null) {
-          if (card) { card.setAttribute('role', 'button'); card.removeAttribute('aria-label'); card.setAttribute('data-flights-tile-card', ''); }
-          return;
-        }
-        // Desktop: the label is the name the card shows: its own config name when set, else the default name from the markup.
+        // The label is the name the card shows: its own config name when set, else the default name from the markup.
         var own = root.host && root.host._config ? String(root.host._config.name || '').trim() : '';
-        if (card) { card.removeAttribute('data-flights-tile-card'); card.setAttribute('role', 'group'); card.setAttribute('aria-label', own || this.getAttribute('data-name') || ''); }
+        var name = own || this.getAttribute('data-name') || '';
+        if (!card) return;
+        tileCards = tileCards.filter(function (t) { return t.card !== card && t.card.isConnected !== false; });
+        tileCards.push({ card: card, name: name });
+        setTileMode(card, name, this.getAttribute('data-flights-sum') !== null);
       }
     }
     customElements.define('casora-flight-list', FlightList);
-    // A breakpoint change (rotate, resize) redraws the tile in its other form.
+    // A breakpoint change (rotate, resize): every tile card takes the new mode, then the tiles are drawn again in it.
     if (window.matchMedia) {
       var mq = window.matchMedia(PHONE_MQ);
-      if (mq && mq.addEventListener) mq.addEventListener('change', function () { redrawFlights(); });
+      if (mq && mq.addEventListener) mq.addEventListener('change', function () {
+        var phone = F.phone();
+        tileCards = tileCards.filter(function (t) { return t.card.isConnected !== false; });
+        tileCards.forEach(function (t) { setTileMode(t.card, t.name, phone); });
+        redrawFlights();
+      });
     }
   };
   defineTileList();
