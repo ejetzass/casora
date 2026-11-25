@@ -1,5 +1,5 @@
 // The Agenda tile's pick reads the shared event cache when it is ready, and falls back to the states.
-// @deckt: custom_components/casora/scripts/local/06-kalender.js#K.next,loadCache,stamp,K.load,K.repaint
+// @deckt: custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache,stamp,K.load,K.repaint,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -115,3 +115,19 @@ console.log('ok filtered running event is skipped, the popup keeps it');
   assert.equal(pending.calendar.next(states, pending.variables)?.name, 'Termin A', 'after a failed fetch: the state rule');
 }
 console.log('ok cache not ready or failed falls back to the state rule');
+
+// 4. Exported decisions on cache events: the event's uid decides with the calendar state's casora_filter_match.
+// The state carries no message here, so only the uid decision can apply to the cache event.
+{
+  const codedStates = (matches) => ({ 'calendar.mock_a': { state: 'off', attributes: { casora_filter_match: {
+    entries: ['lunch'], events: { 'uid-1': { title: 'Lunch Termin', matches } } } } } });
+  const events = { 'calendar.mock_a': [{ ...timed('Lunch Termin', '2054-11-13T15:00:00', '2054-11-13T16:00:00'), uid: 'uid-1' }] };
+  const settings = { calendar_filter: 'lunch' };
+  const noMatch = setup({ states: codedStates([]), events, settings });
+  assert.equal((await warm(noMatch))?.name, 'Lunch Termin', 'a recorded no-match decision keeps a cache event whose title holds the word');
+  const match = setup({ states: codedStates(['lunch']), events, settings });
+  assert.equal(await warm(match), null, 'a recorded match decision hides the cache event');
+  const plain = setup({ states: { 'calendar.mock_a': { state: 'off', attributes: {} } }, events, settings });
+  assert.equal(await warm(plain), null, 'without match data the plain substring rule hides the cache event');
+}
+console.log('ok cache events take exported decisions by uid');

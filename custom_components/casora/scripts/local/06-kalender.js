@@ -71,8 +71,8 @@
   var calOf = function (cals, id) { for (var i = 0; i < cals.length; i++) if (cals[i].entity === id) return cals[i]; return { entity: id, name: id, color: '#8E8E93' }; };
 
   // The calendar popup keeps every event; the Agenda tile skips filtered titles (rule in 06a-kalender-filter.js).
-  K.allowsTitle = function (title, attrs) {
-    return window.casoraCalendarAllows ? window.casoraCalendarAllows(title, null, attrs) : true;
+  K.allowsTitle = function (title, attrs, uid) {
+    return window.casoraCalendarAllows ? window.casoraCalendarAllows(title, null, attrs, uid || null) : true;
   };
   // The Agenda tile's pick: the shared event cache when it is ready for a calendar, else the calendar states
   // (Upstream's rule, casoraCalendarNext in 06a). Default order: a running event wins, then the earliest start.
@@ -95,8 +95,8 @@
       if (timedFirst) return rank(ev) < rank(best) || (rank(ev) === rank(best) && ev.start < best.start);
       return (ev.on && !best.on) || (ev.on === best.on && ev.start < best.start);
     };
-    var consider = function (ev, attrs) {
-      if (isNaN(ev.start) || !K.allowsTitle(ev.name, attrs) || (!ev.on && ev.end < now)) return;
+    var consider = function (ev, attrs, uid) {
+      if (isNaN(ev.start) || !K.allowsTitle(ev.name, attrs, uid) || (!ev.on && ev.end < now)) return;
       if (skip && skip(ev)) return;
       if (before(ev)) best = ev;
     };
@@ -107,7 +107,10 @@
       if (authoritative) {
         cache.ev.forEach(function (ev) {
           if (ev.cal !== c.entity) return;
-          consider(Object.assign({}, ev, { cal: c, on: ev.start <= now && ev.end > now }));
+          // The exported decision of the calendar state for this event (uid, or the current message).
+          var decided = window.casoraFilterAttrsForEvent ? window.casoraFilterAttrsForEvent({ states: states },
+            { title: ev.name, uid: ev.uid, cal: ev.cal, start: ev.start, end: ev.end, allDay: ev.allDay }) : null;
+          consider(Object.assign({}, ev, { cal: c, on: ev.start <= now && ev.end > now }), decided, ev.uid || null);
         });
       }
       var s = states[c.entity], a = s && s.attributes;
@@ -116,7 +119,7 @@
       if (isNaN(st)) return;
       // Inside the fetched window the cache answers; the state covers only distant events.
       if (authoritative && st < cache.end && en > cache.start) return;
-      consider({ name: a.message, start: st, end: en, allDay: !!a.all_day, on: s.state === 'on', cal: c }, a);
+      consider({ name: a.message, start: st, end: en, allDay: !!a.all_day, on: s.state === 'on', cal: c }, a, null);
     });
     return best;
   };
@@ -218,7 +221,7 @@
           var all = !(ev.start && ev.start.dateTime);
           var st = all ? parseYmd(sd) : new Date(sd), en = all ? parseYmd(ed || sd) : new Date(ed || sd);
           if (all && en <= st) en = addD(st, 1);
-          return { name: ev.summary || '', loc: ev.location || '', start: st, end: en, allDay: all, cal: c.entity };
+          return { name: ev.summary || '', loc: ev.location || '', start: st, end: en, allDay: all, cal: c.entity, uid: ev.uid || null };
         });
       }).catch(function () { failed[c.entity] = true; return []; });
     })).then(function (lists) {
