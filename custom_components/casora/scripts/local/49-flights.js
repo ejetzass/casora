@@ -474,8 +474,23 @@
   var ownOf = function (key) {
     try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg(), key); } catch (e) { return ''; }
   };
+  // The Studio's draft (its rooms, which Save writes and Discard drops) wins over the saved dashboard: the preview
+  // follows a draft unit or switch at once. null = not in the Studio (or no draft loaded yet).
+  var draftOf = function (key) {
+    var p = window._casoraStudioPanel;
+    if (!p || !(window.casoraInStudio && window.casoraInStudio())) return null;
+    var rooms = ((p._state || {}).compact || {}).rooms;
+    if (!Array.isArray(rooms)) return null;
+    for (var i = 0; i < rooms.length; i++) {
+      var v = (rooms[i] || {}).variables || {};
+      if (v[key] !== undefined && v[key] !== null && v[key] !== '') return String(v[key]);
+    }
+    return '';
+  };
   // Own value first; a phone takes the rest from its desktop twin (below).
   F.setting = function (key) {
+    var draft = draftOf(key || KEY);
+    if (draft !== null) return draft;
     var own = ownOf(key);
     if (own) return own;
     var t = twinOf();
