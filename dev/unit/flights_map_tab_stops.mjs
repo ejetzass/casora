@@ -138,13 +138,13 @@ assert.ok(link[0].tabIndex >= 0, 'the attribution link can be reached by Tab');
 // Readable: the attribution sits on an opaque box, 12 px or more, with a pointer and a visible focus ring.
 const css = SRC.match(/var MAP_CSS = ([\s\S]*?);\n/);
 assert.ok(css, 'the map stylesheet is found');
-const attribRule = css[1].match(/\.maplibregl-ctrl-attrib\{([^}]*)\}/);
+const attribRule = css[1].match(/\.maplibregl-ctrl-attrib,\.leaflet-control-attribution\{([^}]*)\}/);
 assert.ok(attribRule, 'the attribution has its own rule');
 const size = Number((attribRule[1].match(/font-size:(\d+)px/) || [])[1]);
 assert.ok(size >= 12, 'attribution text is 12 px or more (was ' + size + ' px)');
 assert.match(attribRule[1], /pointer-events:auto/, 'the attribution takes pointer input');
 assert.doesNotMatch(attribRule[1], /background:transparent/, 'the attribution has an opaque background');
-assert.match(css[1], /\.maplibregl-ctrl-attrib a:focus-visible\{[^}]*outline/, 'the attribution link shows a focus ring');
+assert.match(css[1], /\.maplibregl-ctrl-attrib a:focus-visible,\.leaflet-control-attribution a:focus-visible\{[^}]*outline/, 'the attribution link shows a focus ring');
 
 // Leaflet (HA's ha-map in the Test HA): the zoom links are the map's own stops and leave the tab order; the attribution link
 // stays reachable. Both the poll path and the MutationObserver path are checked.
@@ -192,16 +192,10 @@ const attribLinks = (root) => root.querySelectorAll('*').filter((x) => x.tag ===
   assert.deepEqual(stray.map((x) => x.tag), [], 'Leaflet, poll path: no stop outside the attribution is left');
 }
 
-// Leaflet stylesheet: zoom and scale hidden as in 12-tanken.js; the attribution styled like the MapLibre one.
+// Leaflet stylesheet: the attribution rules name the Leaflet class too (one shared selector list), zoom and scale are hidden.
 {
-  const leafRule = css[1].match(/\.leaflet-control-attribution\{([^}]*)\}/);
-  assert.ok(leafRule, 'Leaflet: the attribution has its own rule in MAP_CSS');
-  const leafSize = Number((leafRule[1].match(/font-size:(\d+)px/) || [])[1]);
-  assert.ok(leafSize >= 12, 'Leaflet: attribution text is 12 px or more (was ' + leafSize + ' px)');
-  assert.match(leafRule[1], /pointer-events:auto/, 'Leaflet: the attribution takes pointer input');
-  assert.match(leafRule[1], /background:var\(--card-background-color,#fff\)/, 'Leaflet: the attribution has an opaque card background');
-  assert.match(css[1], /\.leaflet-control-attribution a\{[^}]*text-decoration:underline/, 'Leaflet: the attribution link is underlined');
-  assert.match(css[1], /\.leaflet-control-attribution a:focus-visible\{[^}]*outline/, 'Leaflet: the attribution link shows a focus ring');
+  assert.match(css[1], /\.maplibregl-ctrl-attrib,\.leaflet-control-attribution\{/, 'Leaflet: the attribution rule is shared with MapLibre');
+  assert.match(css[1], /\.maplibregl-ctrl-attrib a,\.leaflet-control-attribution a\{[^}]*text-decoration:underline/, 'Leaflet: the attribution link is underlined');
   assert.match(css[1], /\.leaflet-control-zoom,\.leaflet-control-scale\{display:none!important\}/, 'Leaflet: zoom and scale controls are hidden');
 }
 
