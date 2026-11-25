@@ -3,7 +3,7 @@
 // element that draws on HA's map (with the map failing or missing), and that rendering never writes to HA.
 // Controlled clock; synthetic flights; no browser.
 //   node dev/unit/flights_map.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#distanceKm,progress,progressOf,trailOf,mapView,mapGeo,mapBounds,liveHtml,flightSec,flightPopup
+// @deckt: custom_components/casora/scripts/local/49-flights.js#distanceKm,progress,progressOf,trailOf,greatCircle,mapView,mapGeo,mapBounds,liveHtml,flightSec,flightPopup
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -186,7 +186,7 @@ assert.equal(g.trail.features.length, 1, 'a trail with two points is a line');
 deq(g.trail.features[0].geometry.coordinates.slice(-1)[0], [12, 50.05], 'the line ends at the marker');
 const gNoAir = F.mapGeo(v2);
 assert.equal(gNoAir.points.features.length, 2, 'only the airport with coordinates is drawn, and the aircraft');
-const gBare = F.mapGeo({ cur: [10, 20], heading: null, origin: null, destination: null, trail: [] });
+const gBare = F.mapGeo({ cur: [10, 20], heading: null, origin: null, destination: null, trail: [], route: [] });
 assert.equal(gBare.points.features[0].properties.arrow, 0, 'no heading: no arrow');
 assert.equal(gBare.trail.features.length, 0, 'no line for no trail');
 assert.equal(F.mapGeo(null).points.features.length, 0, 'nothing to draw');
@@ -194,29 +194,59 @@ const b = F.mapBounds(v);
 assert.ok(b[0][0] <= 4 && b[1][0] >= 20 && b[0][1] <= 49.8 && b[1][1] >= 50.05, 'bounds hold every point');
 assert.equal(F.mapBounds(null), null, 'no view, no bounds');
 // The Remaining route: one dashed line from the aircraft to the destination; none without a destination or under 1 km.
+// The route is part of the view (F.mapView), so the layers and the box read it and never compute it again.
 {
+  let n = 0;
+  const viewOf = (extra) => { const hs = house(); const id = 'r' + (++n); const t = moving(hs, fl(id, extra), 'sensor.r' + n); return F.mapView(hs, 'sensor.r' + n, id, t); };
+  const lonsOf = (line) => line.map((c) => c[0]);
+  const steps = (line) => line.slice(1).map((c, i) => Math.abs(c[0] - line[i][0]));
+  assert.ok(v.route.length > 2, 'the view holds the route points');
+  deq(v.route[0], v.cur, 'the route starts at the aircraft');
+  deq(v.route[v.route.length - 1], v.destination, 'the route ends at the destination');
   assert.equal(g.route.features.length, 1, 'a route to the destination is one line');
   const rc = g.route.features[0].geometry.coordinates;
   deq(rc[0], [12, 50.05], 'the route starts at the aircraft ([lon, lat])');
   deq(rc[rc.length - 1], [20, 50], 'the route ends at the destination');
-  assert.ok(rc.length > 2, 'the route is a curve of several points');
   assert.equal(gNoAir.route.features.length, 1, 'the destination is enough (the origin may be missing)');
   assert.equal(gBare.route.features.length, 0, 'no destination: no route');
   assert.equal(F.mapGeo(null).route.features.length, 0, 'no view: no route');
-  const near1 = { ...v, destination: [50.05, 12.005] };
-  assert.equal(F.mapGeo(near1).route.features.length, 0, 'under 1 km: no route');
+  deq(viewOf({ airport_destination_latitude: undefined, airport_destination_longitude: undefined }).route, [], 'no destination: no route points');
+  const close = viewOf({ airport_destination_latitude: 50.05, airport_destination_longitude: 12.005 });
+  deq(close.route, [], 'under 1 km: no route points');
+  assert.equal(F.mapGeo(close).route.features.length, 0, 'under 1 km: no route line');
   // The first view includes the destination and the whole curve, which bows north of both ends.
-  const far = { ...v, cur: [52.31, 4.76], trail: [[52.2, 4.5]], origin: [52.31, 4.76], destination: [40.64, -73.78] };
+  const far = viewOf({ latitude: 52.31, longitude: 4.76, coordinates: [[52.2, 4.5]], airport_origin_latitude: 52.31, airport_origin_longitude: 4.76,
+    airport_destination_latitude: 40.64, airport_destination_longitude: -73.78 });
   const bf = F.mapBounds(far);
   assert.ok(bf[0][0] <= -73.78 && bf[1][0] >= 4.76 && bf[0][1] <= 40.64, 'bounds hold the destination');
   const apex = Math.max(...F.mapGeo(far).route.features[0].geometry.coordinates.map((c) => c[1]));
   assert.ok(apex > 54 && bf[1][1] >= apex, 'bounds hold the top of the curve, north of both ends');
-  // Over the date line the destination point and the bounds follow the continuous route (lon past 180), not a jump.
-  const pac = { ...v, cur: [35.55, 139.78], trail: [], origin: null, destination: [33.94, -118.41] };
+  // Date line, aircraft not yet across (Tokyo to Los Angeles): the destination dot sits where the route ends (past 180).
+  const pac = viewOf({ latitude: 35.55, longitude: 139.78, coordinates: [], airport_origin_latitude: undefined, airport_origin_longitude: undefined,
+    airport_destination_latitude: 33.94, airport_destination_longitude: -118.41 });
   const pg = F.mapGeo(pac), pb = F.mapBounds(pac);
-  const dest = pg.points.features.find((x) => x.properties.role === 'airport').geometry.coordinates;
-  assert.ok(dest[0] > 180, 'the destination dot sits where the route ends');
+  assert.ok(pg.points.features.find((x) => x.properties.role === 'airport').geometry.coordinates[0] > 180, 'the destination dot sits where the route ends');
   assert.ok(pb[1][0] > 180 && pb[1][0] - pb[0][0] < 180, 'the box spans the short way over the date line');
+  // Date line, aircraft already across: trail, origin, route and destination all follow the aircraft's longitude.
+  const east = viewOf({ latitude: 40, longitude: -170, coordinates: [[38, 170], [39, 178], [40, -170]],
+    airport_origin_latitude: 35.55, airport_origin_longitude: 139.78, airport_destination_latitude: 33.94, airport_destination_longitude: -118.41 });
+  const eg = F.mapGeo(east), eb = F.mapBounds(east);
+  assert.ok(eb[1][0] - eb[0][0] < 180, 'eastbound, crossed: the box is under 180 degrees wide: ' + (eb[1][0] - eb[0][0]));
+  assert.ok(Math.max(...steps(eg.trail.features[0].geometry.coordinates)) < 30, 'eastbound, crossed: the trail line is continuous');
+  assert.ok(Math.max(...steps(eg.route.features[0].geometry.coordinates)) < 30, 'eastbound, crossed: the route line is continuous');
+  assert.ok(Math.min(...lonsOf(eg.trail.features[0].geometry.coordinates)) < -180, 'eastbound, crossed: the trail runs on below -180');
+  const eo = eg.points.features[0].geometry.coordinates[0];
+  assert.ok(Math.abs(eo - eg.trail.features[0].geometry.coordinates[0][0]) < 90, 'eastbound, crossed: the origin dot is next to the trail');
+  // The mirror: westbound over the date line, from Los Angeles to Tokyo.
+  const west = viewOf({ latitude: 40, longitude: 170, coordinates: [[38, -170], [39, -178], [40, 170]],
+    airport_origin_latitude: 33.94, airport_origin_longitude: -118.41, airport_destination_latitude: 35.55, airport_destination_longitude: 139.78 });
+  const wg = F.mapGeo(west), wb = F.mapBounds(west);
+  assert.ok(wb[1][0] - wb[0][0] < 180, 'westbound, crossed: the box is under 180 degrees wide: ' + (wb[1][0] - wb[0][0]));
+  assert.ok(Math.max(...steps(wg.trail.features[0].geometry.coordinates)) < 30, 'westbound, crossed: the trail line is continuous');
+  assert.ok(Math.max(...steps(wg.route.features[0].geometry.coordinates)) < 30, 'westbound, crossed: the route line is continuous');
+  assert.ok(Math.max(...lonsOf(wg.trail.features[0].geometry.coordinates)) > 180, 'westbound, crossed: the trail runs on past 180');
+  // An ordinary flight keeps its longitudes as reported.
+  deq(v.trail, F.trailOf(fl('w1')), 'no date line: the trail is as reported');
 }
 
 // ── the popup and the tile: progress text and the map's place; text stays without the map ─────────────────────────
