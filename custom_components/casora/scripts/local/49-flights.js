@@ -1154,7 +1154,9 @@
         this._stop();
         if (this._mo) { this._mo.disconnect(); this._mo = null; }
         if (this._el && this._el.remove) this._el.remove();
-        this._el = this._ml = null; this._layers = this._ok = false; this._sent = this._ident = null;
+        if (this._svg && this._svg.remove) this._svg.remove();
+        this._el = this._ml = this._lm = this._svg = null; this._layers = this._ok = false; this._sent = this._ident = null;
+        this._svgHtml = null;
       }
       _build(hass) {
         var m = document.createElement('ha-map');
@@ -1199,6 +1201,9 @@
         if (!this.isConnected) { this._stop(); return; }
         if (this._el && this._el.shadowRoot) this._unstop(this._el.shadowRoot);
         var H = window._casoraHaMap, ml = H && this._el ? H.ml(this._el) : null, hass = hassNow();
+        // No MapLibre map: HA's ha-map may draw with Leaflet (browsers without WebGL2). Its own handle, drawn on its pixels.
+        var lm = !ml && H && H.lf && this._el ? H.lf(this._el) : null;
+        if (lm) { this._pollLeaflet(lm, hass); return; }
         if (!ml) { if (Date.now() - this._since > F.MAP.READY_MS) this._fail(); return; }
         if (!this._ml) {
           this._ml = ml;
@@ -1212,6 +1217,80 @@
         if (this._layers && hass) this._sync(hass);
         if (!this._ok && this._layers && this._tiles > 0 && ml.loaded()) { this._ok = true; this._el.style.opacity = '1'; this._el.style.visibility = ''; }
         if (!this._ok && Date.now() - this._since > F.MAP.READY_MS) this._fail();
+      }
+      // Leaflet: the same steps as on MapLibre. The flight is drawn as an SVG overlay over the map, in the map's own pixels
+      // (as the fuel prices map draws its pins), so no Leaflet layer is needed. Ready: tiles loaded (counted as there) and the overlay set.
+      _pollLeaflet(lm, hass) {
+        if (!this._lm) {
+          this._lm = lm;
+          ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard', 'tap'].forEach(function (x) {
+            if (lm[x] && lm[x].disable) lm[x].disable();
+          });
+          var self = this;
+          lm.eachLayer(function (l) { if (l.on && l.getTileUrl) l.on('tileload', function () { self._tiles++; }); });
+        }
+        if (!this._layers) {
+          this._layers = true;
+          var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('aria-hidden', 'true');
+          // Same box and fade as the map; no tabindex, so the overlay is no Tab stop.
+          svg.style.position = 'absolute'; svg.style.top = '0'; svg.style.left = '0'; svg.style.width = '100%'; svg.style.height = '100%';
+          svg.style.pointerEvents = 'none'; svg.style.overflow = 'hidden';
+          svg.style.opacity = '0'; svg.style.visibility = 'hidden'; svg.style.transition = this._el.style.transition;
+          this.appendChild(svg); this._svg = svg;
+        }
+        if (hass) this._syncLeaflet(hass, lm);
+        if (!this._ok && this._tiles > 0) { this._ok = true; this._showMap(); }
+        if (!this._ok && Date.now() - this._since > F.MAP.READY_MS) this._fail();
+      }
+      // The map and its overlay become visible together.
+      _showMap() {
+        this._el.style.opacity = '1'; this._el.style.visibility = '';
+        this._svg.style.opacity = '1'; this._svg.style.visibility = '';
+      }
+      _syncLeaflet(hass, lm) {
+        var key = this.getAttribute('data-key'), src = this.getAttribute('data-src');
+        var v = F.mapView(hass, src, key, Date.now());
+        var ident = v ? src + '|' + v.key : null;
+        // Fit once per flight. A map without a size gives a wrong zoom, so the fit waits for one.
+        var size = lm.getSize ? lm.getSize() : null;
+        var fit = !!ident && ident !== this._ident && !!size && size.x > 0 && size.y > 0;
+        if (fit) { lm.invalidateSize({ animate: false }); lm.fitBounds(F.mapBounds(v), { padding: [36, 36], maxZoom: 9, animate: false }); }
+        if (!ident || fit) this._ident = ident;
+        this._drawLeaflet(lm, F.mapGeo(v));
+      }
+      // Trail (casing under a light line), airports, the aircraft and its arrow: the same look as the MapLibre layers.
+      _drawLeaflet(lm, geo) {
+        var svg = this._svg;
+        if (!svg) return;
+        var size = lm.getSize ? lm.getSize() : { x: 0, y: 0 };
+        var round = function (n) { return Math.round(n * 10) / 10; };
+        var pt = function (c) { var q = lm.latLngToContainerPoint([c[1], c[0]]); return [round(q.x), round(q.y)]; };
+        var out = '';
+        var line = geo.trail.features.length ? geo.trail.features[0].geometry.coordinates : [];
+        if (line.length) {
+          var d = line.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
+          out += '<path d="' + d + '" fill="none" stroke="#000000" stroke-opacity="0.6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'
+            + '<path d="' + d + '" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+        }
+        geo.points.features.forEach(function (f) {
+          var p = pt(f.geometry.coordinates);
+          if (f.properties.role === 'airport') {
+            out += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>';
+            return;
+          }
+          out += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="7" fill="#ffcc00" stroke="#000000" stroke-width="2"/>';
+          if (f.properties.arrow) {
+            out += '<polygon transform="translate(' + p[0] + ' ' + p[1] + ') rotate(' + f.properties.heading + ')" points="0,-8 7,7 0,4 -7,7"'
+              + ' fill="#ffffff" stroke="rgba(0,0,0,0.8)" stroke-width="3" stroke-linejoin="round"/>';
+          }
+        });
+        // Only a change is written: the overlay follows the map's view on every tick.
+        var html = '0 0 ' + size.x + ' ' + size.y + '|' + out;
+        if (html === this._svgHtml) return;
+        this._svgHtml = html;
+        svg.setAttribute('viewBox', '0 0 ' + size.x + ' ' + size.y);
+        svg.innerHTML = out;
       }
       // The selected flight's layers; a change of flight clears the old ones first and fits the view once to the new flight.
       _sync(hass) {
