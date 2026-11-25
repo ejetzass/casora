@@ -1158,15 +1158,15 @@
   // fix and dur the measured time between the last two updates. Straight line in latitude and longitude between the fixes
   // (no prediction from speed or heading), so it is never beyond the newest fix: before the start it is the old fix, at and
   // after the end exactly the new one. Longitude runs continuous (the date line is no jump); the heading turns the short way.
-  // Where a glide would show something untrue, the new fix comes at once: `jumps` is the one place for the cases that depend on
-  // the glide itself (reduced motion, no old fix, no usable duration); `jumpsTo` (below, used by F.track) is the one place for the
+  // Where a glide would show something untrue, the new fix comes at once: `cannotGlide` is the one place for the cases that depend on
+  // the glide itself (reduced motion, no old fix, no usable duration); `badPollStep` (below, used by F.track) is the one place for the
   // cases that depend on the poll history (a long gap, a step no aircraft could fly). Without a new fix there is nothing to draw: null.
-  var jumps = function (g, reduce) { return !!reduce || !g.from || !(g.dur > 0) || !isFinite(g.dur); };
+  var cannotGlide = function (g, reduce) { return !!reduce || !g.from || !(g.dur > 0) || !isFinite(g.dur); };
   F.glide = function (g, now, reduce) {
     var to = g && g.to;
     if (!to) return null;
     var atEnd = { cur: [to.cur[0], to.cur[1]], heading: to.heading, done: true };
-    if (jumps(g, reduce)) return atEnd;
+    if (cannotGlide(g, reduce)) return atEnd;
     var t = (now - g.start) / g.dur;
     if (!(t > 0)) t = 0;
     if (t >= 1) return atEnd;
@@ -1195,40 +1195,43 @@
   // The pure state step of the glide. state is null or what the last call returned; view is F.mapView's view (or null);
   // ident names the flight (source and key). Returns {state, view, gliding}: the new state, the view to draw now (the arrow
   // at its drawn position while a glide runs) and whether a glide is running (the caller keeps asking for frames).
-  // state = {ident, cur, heading, at, interval, glide}: the newest reported fix, the time of the last real update (null
+  // state = {ident, cur, heading, at, interval, gapped, glide}: the newest reported fix, the time of the last real update (null
   // until one was seen: the first fix after opening is no update), the measured time between the last two updates (the
-  // normal poll; null until two were seen) and the glide in progress.
+  // normal poll; null until two were seen), whether the last update was a gap jump, and the glide in progress.
   // A poll with the same position and heading is not an update: the sensor state also changes for other reasons (altitude,
   // speed), and counting those would shorten the interval and the glide would end before the next fix.
   // The first update after opening has no earlier update to measure against, so it is drawn as reported; the second one is the
   // first that glides, over the time between the two. A change of flight starts again.
-  // Two more cases jump (`jumpsTo`): a gap over GAP_FACTOR x the normal poll (the old fix is stale), and a step longer than an
+  // Two more cases jump (`badPollStep`): a gap over GAP_FACTOR x the normal poll (the old fix is stale), and a step longer than an
   // aircraft could fly in that time (bad data). A jump for a gap keeps the earlier interval as the normal poll; the gap is not
-  // one, and taking it would make the next glide as long as the gap. A jump for a step is a normal poll and sets the interval.
+  // one, and taking it would make the next glide as long as the gap. But a second gap jump in a row (`gapped`) means the poll
+  // got slower for good: the latest gap becomes the normal poll, and the third update at the new rate glides. A jump for a step
+  // is a normal poll and sets the interval. The second update after opening has no interval yet, so no gap check is possible:
+  // its glide runs over the measured time between the first two updates.
   var GAP_FACTOR = 3;
   // Fixed upper limit for the ground speed, well above any airliner (about 1100 km/h with a strong tailwind). It is not the
   // flight's reported speed: that needs no new HA data this way, and a bad speed value could not widen the limit.
   var MAX_SPEED_KMH = 1500;
   // Steps closer in time than this count as this long: poll jitter (two updates a second apart) is not bad data.
   var MIN_STEP_MS = 10000;
-  var jumpsTo = function (here, to, gap, interval) {
-    if (interval > 0 && gap > GAP_FACTOR * interval) return 'gap';
+  // → {gap, step}: the new fix is too long after the last update for the old one to be current, and/or too far for the time.
+  var badPollStep = function (here, to, gap, interval) {
     var km = F.distanceKm(here, to);
-    if (km > MAX_SPEED_KMH * Math.max(gap, MIN_STEP_MS) / 3600000) return 'step';
-    return '';
+    return { gap: interval > 0 && gap > GAP_FACTOR * interval, step: km > MAX_SPEED_KMH * Math.max(gap, MIN_STEP_MS) / 3600000 };
   };
   F.track = function (state, view, ident, now, reduce) {
     if (!view) return { state: null, view: null, gliding: false };
     if (!state || state.ident !== ident) {
-      return { state: { ident: ident, cur: view.cur, heading: view.heading, at: null, interval: null, glide: null }, view: view, gliding: false };
+      return { state: { ident: ident, cur: view.cur, heading: view.heading, at: null, interval: null, gapped: false, glide: null }, view: view, gliding: false };
     }
-    var st = { ident: ident, cur: state.cur, heading: state.heading, at: state.at, interval: state.interval, glide: state.glide };
+    var st = { ident: ident, cur: state.cur, heading: state.heading, at: state.at, interval: state.interval, gapped: state.gapped, glide: state.glide };
     if (st.cur[0] !== view.cur[0] || st.cur[1] !== view.cur[1] || st.heading !== view.heading) {
       var here = st.glide ? F.glide(st.glide, now, reduce) : { cur: st.cur, heading: st.heading };
       if (st.at != null) {
-        var gap = now - st.at, why = jumpsTo(here.cur, view.cur, gap, st.interval);
-        if (why !== 'gap') st.interval = gap;
-        st.glide = why ? null : { from: { cur: here.cur, heading: here.heading }, to: { cur: view.cur, heading: view.heading }, start: now, dur: gap };
+        var gap = now - st.at, bad = badPollStep(here.cur, view.cur, gap, st.interval);
+        if (!bad.gap || st.gapped) st.interval = gap;
+        st.gapped = bad.gap && !st.gapped;
+        st.glide = bad.gap || bad.step ? null : { from: { cur: here.cur, heading: here.heading }, to: { cur: view.cur, heading: view.heading }, start: now, dur: gap };
       } else st.glide = null;
       st.at = now; st.cur = view.cur; st.heading = view.heading;
     }
