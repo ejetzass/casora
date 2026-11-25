@@ -1036,6 +1036,8 @@
     var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(h)));
   };
+  // One point per ROUTE_STEP_KM of the route, at least ROUTE_MIN_POINTS (a short route still bends) and at most ROUTE_MAX_POINTS.
+  var ROUTE_STEP_KM = 150, ROUTE_MIN_POINTS = 8, ROUTE_MAX_POINTS = 64;
   // The Remaining route: points [lat, lon] along the great circle from `a` (the aircraft) to `b` (the destination), shared by
   // the popup and the screensaver. First point a, last point b; longitudes are continuous (they may run past 180 or below
   // -180 instead of jumping back, so a flight over the date line stays one line). Empty for a missing or invalid point, the
@@ -1049,7 +1051,7 @@
     var va = vec(a), vb = vec(b);
     var dot = Math.max(-1, Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
     var ang = Math.acos(dot), sin = Math.sin(ang);
-    var n = Math.min(64, Math.max(8, Math.ceil(km / 150)));
+    var n = Math.min(ROUTE_MAX_POINTS, Math.max(ROUTE_MIN_POINTS, Math.ceil(km / ROUTE_STEP_KM)));
     // Within about a metre of the antipode the slerp weights blow up: the steps run straight in latitude and longitude.
     var flat = !(sin > 1e-7);
     var out = [[a[0], a[1]]], prev = a[1];
@@ -1094,6 +1096,22 @@
     });
     return out;
   };
+  // The same place with its longitude shifted by whole turns to lie within 180 degrees of `ref`.
+  var lonNear = function (ref, lon) {
+    while (lon - ref > 180) lon -= 360;
+    while (lon - ref < -180) lon += 360;
+    return lon;
+  };
+  // The view's longitudes are continuous with the aircraft's (they may pass 180 or -180 over the date line), so one line or
+  // one box never spans the world the long way. Trail: each point follows the next, from the aircraft back. Origin: follows
+  // the trail's start. Route and destination: the great circle starts at the aircraft, and its end is the destination.
+  var continuous = function (cur, trail, origin, destination) {
+    var out = [], next = cur[1];
+    for (var i = trail.length - 1; i >= 0; i--) { next = lonNear(next, trail[i][1]); out.unshift([trail[i][0], next]); }
+    var route = destination ? F.greatCircle(cur, destination) : [];
+    var end = route.length ? route[route.length - 1] : destination ? [destination[0], lonNear(cur[1], destination[1])] : null;
+    return { trail: out, origin: origin ? [origin[0], lonNear(next, origin[1])] : null, route: route, destination: end };
+  };
   F.mapView = function (hass, src, key, now) {
     var row = F.flight(hass, src, key, now);
     if (!row) return null;
@@ -1101,35 +1119,34 @@
     if (!cur) return null;
     var o = pointOf(f.airport_origin_latitude, f.airport_origin_longitude);
     var d = pointOf(f.airport_destination_latitude, f.airport_destination_longitude);
+    var c = continuous(cur, F.trailOf(f), o, d);
     return { key: row.key, label: row.label, cur: cur, heading: typeof f.heading === 'number' && f.heading >= 0 && f.heading <= 360 ? f.heading : null,
-      origin: o, destination: d, trail: F.trailOf(f), progress: F.progress(o, cur, d) };
+      origin: c.origin, destination: c.destination, trail: c.trail, route: c.route, progress: F.progress(o, cur, d) };
   };
-  // GeoJSON for the map layers ([lon, lat]): the trail as one line ending at the marker, the airports, the aircraft.
+  // GeoJSON for the map layers ([lon, lat]): the trail as one line ending at the marker, the Remaining route as one line
+  // from the marker to the destination, the airports, the aircraft.
   F.mapGeo = function (v) {
     var fc = function (features) { return { type: 'FeatureCollection', features: features }; };
     var pt = function (p, props) { return { type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [p[1], p[0]] } }; };
+    var lineOf = function (points) {
+      return points.length >= 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map(function (p) { return [p[1], p[0]]; }) } }] : [];
+    };
     if (!v) return { trail: fc([]), route: fc([]), points: fc([]) };
     var pts = [];
-    // The Remaining route: the great circle from the aircraft to the destination. Its last point is the destination with
-    // the longitude the route arrived at (past 180 over the date line), so the dot sits where the line ends.
-    var rt = v.destination ? F.greatCircle(v.cur, v.destination) : [];
-    var dest = rt.length ? rt[rt.length - 1] : v.destination;
     if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0 }));
-    if (dest) pts.push(pt(dest, { role: 'airport', arrow: 0 }));
+    if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0 }));
     pts.push(pt(v.cur, { role: 'aircraft', arrow: v.heading == null ? 0 : 1, heading: v.heading == null ? 0 : v.heading }));
     var line = v.trail.slice();
     var last = line[line.length - 1];
     if (!last || last[0] !== v.cur[0] || last[1] !== v.cur[1]) line.push(v.cur);
-    var trail = line.length >= 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line.map(function (p) { return [p[1], p[0]]; }) } }] : [];
-    var route = rt.length ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: rt.map(function (p) { return [p[1], p[0]]; }) } }] : [];
-    return { trail: fc(trail), route: fc(route), points: fc(pts) };
+    return { trail: fc(lineOf(line)), route: fc(lineOf(v.route)), points: fc(pts) };
   };
   // The box that holds every point of the view: [[west, south], [east, north]], or null.
   F.mapBounds = function (v) {
     if (!v) return null;
-    // The route's points (they end at the destination) stand in for the destination, so the box holds the whole curve.
-    var rt = v.destination ? F.greatCircle(v.cur, v.destination) : [];
-    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], rt.length ? rt : v.destination ? [v.destination] : []);
+    // The route's points end at the destination, so the box holds the whole curve; the destination itself is added for a
+    // view without a route (under a kilometre away).
+    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], v.destination ? [v.destination] : [], v.route);
     var lat = pts.map(function (p) { return p[0]; }), lon = pts.map(function (p) { return p[1]; });
     return [[Math.min.apply(null, lon), Math.min.apply(null, lat)], [Math.max.apply(null, lon), Math.max.apply(null, lat)]];
   };
