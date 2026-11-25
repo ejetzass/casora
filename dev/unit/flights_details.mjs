@@ -115,7 +115,9 @@ assert.deepEqual(deep(F.units()), { altitude: '', speed: '', vspeed: '' }, 'no s
 runtime(); hass = house();
 hass.source('sensor.a', [fl('id-old'), fl('id-new')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('id-old'), latitude: 10.05 }, { ...fl('id-new'), latitude: 10.07 }]);
-const html = F.liveHtml(hass, '', T0 + MIN);
+// Two flights: the tile is one line, and the rows are in the list popup (the same full row).
+assert.doesNotMatch(F.liveHtml(hass, '', T0 + MIN), /data-flights-row/, 'two flights: no rows on the tile');
+const html = F.listRows(hass, { pin: '' });
 assert.equal((html.match(/<button type="button" data-flights-row/g) || []).length, 2, 'one tappable row per flight');
 assert.match(html, /data-flights-key="id-old"/);
 assert.match(html, /data-flights-key="id-new"/);
