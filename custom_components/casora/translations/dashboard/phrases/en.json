@@ -5540,6 +5540,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} tracked flights"
+    ],
+    [
+      "^(\\d+) in der Luft$",
+      "{1} in the air"
     ]
   ]
 }

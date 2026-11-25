@@ -5558,6 +5558,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} vuelos seguidos"
+    ],
+    [
+      "^(\\d+) in der Luft$",
+      "{1} en vuelo"
     ]
   ]
 }

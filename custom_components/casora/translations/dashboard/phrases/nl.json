@@ -5558,6 +5558,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} gevolgde vluchten"
+    ],
+    [
+      "^(\\d+) in der Luft$",
+      "{1} in de lucht"
     ]
   ]
 }
