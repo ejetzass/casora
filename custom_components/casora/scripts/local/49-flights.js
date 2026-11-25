@@ -36,7 +36,7 @@
 //   window._casoraFlights.KEY / .UNIT_KEYS → the setting keys (source, units)
 //   window._casoraFlights.progress(o, c, d) / .progressOf(entry) → approximate progress in whole percent, or null
 //   window._casoraFlights.distanceKm(a, b) / .trailOf(entry) → great-circle km and the valid trail points
-//   window._casoraFlights.ROUTE_STYLE                → {width, casingWidth, casingOpacity, dash}: the Remaining route's look, shared with the screensaver
+//   window._casoraFlights.ROUTE_STYLE                → {width, casingWidth, casingOpacity, dash}: the Remaining route's look; the screensaver uses width and dash only
 //   window._casoraFlights.greatCircle(a, b)           → the Remaining route: [lat, lon] points aircraft→destination ([] when none)
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS

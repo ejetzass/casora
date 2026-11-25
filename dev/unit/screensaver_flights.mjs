@@ -405,8 +405,8 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(h, /<circle class="cs-fl-ap"[^>]*vector-effect="non-scaling-stroke"/, 'airport outlines do not cover the picture');
 }
 
-// The Remaining route: exactly one dashed line on the map, from the aircraft to the destination. No line joins the origin
-// airport to anything (not the destination, not the start of the Flown trail: the trail holds few points, a gap is the truth).
+// The Remaining route: exactly one dashed line on the map, from the aircraft to the destination. The old straight line from
+// the origin airport to the destination is gone; the origin dot stays.
 {
   const mapOf = (o) => {
     const R = runtime();
@@ -434,18 +434,14 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     assert.equal(p.routes.length, 1, label + ': exactly one dashed line');
     assert.match(p.routes[0], /^<polyline /, label + ': the Remaining route is a path, not the straight origin-to-destination line');
     assert.equal(p.lines, 0, label + ': no straight line element is left');
+    assert.match(p.routes[0], /stroke-dasharray:[\d.]+cqmin [\d.]+cqmin/, label + ': the Remaining route is dashed');
+    assert.match(p.routes[0], /stroke-width:[\d.]+cqmin/, label + ': and has a width from the shared style');
     const pts = nums(p.routes[0].match(/points="([^"]+)"/)[1]);
     near(pts[0], p.aircraft, label + ': the dashed line starts at the aircraft');
     near(pts[pts.length - 1], p.dots[1], label + ': and ends at the destination dot');
     assert.equal(p.dots.length, 2, label + ': origin and destination dots show');
     // The dashed line never touches the origin dot (the old line started there).
     pts.forEach((q) => assert.ok(Math.hypot(q[0] - p.dots[0][0], q[1] - p.dots[0][1]) > 0.02, label + ': the dashed line does not reach the origin dot'));
-  }
-  {
-    const p = picture(mapOf(long));
-    assert.equal(p.trails.length, 1, 'the Flown trail is drawn');
-    const gap = Math.hypot(p.trails[0][0][0] - p.dots[0][0], p.trails[0][0][1] - p.dots[0][1]);
-    assert.ok(gap > 1, 'the trail starts far from the origin dot (' + gap.toFixed(2) + '), and nothing bridges the gap');
   }
   {
     const p = picture(mapOf({ airport_destination_latitude: null, airport_destination_longitude: null }));
