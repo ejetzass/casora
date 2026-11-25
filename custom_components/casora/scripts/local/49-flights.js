@@ -1095,7 +1095,7 @@
   var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
     + '.maplibregl-ctrl-bottom-right{right:0;bottom:0}'
     // MapLibre and Leaflet (HA's ha-map in the Test HA) attribution: one selector list per rule.
-    + '.maplibregl-ctrl-attrib,.leaflet-control-attribution{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important}'
+    + '.maplibregl-ctrl-attrib,.leaflet-control-attribution{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important;z-index:2!important}'
     + '.maplibregl-ctrl-attrib a,.leaflet-control-attribution a{color:inherit!important;text-decoration:underline}'
     + '.maplibregl-ctrl-attrib a:focus-visible,.leaflet-control-attribution a:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
     + '.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}'
@@ -1240,6 +1240,8 @@
           // Same box and fade as the map; no tabindex, so the overlay is no Tab stop.
           svg.style.position = 'absolute'; svg.style.top = '0'; svg.style.left = '0'; svg.style.width = '100%'; svg.style.height = '100%';
           svg.style.pointerEvents = 'none'; svg.style.overflow = 'hidden';
+          // Below the attribution box (MAP_CSS z-index 2), so the overlay does not paint over it.
+          svg.style.zIndex = '1';
           svg.style.opacity = '0'; svg.style.visibility = 'hidden'; svg.style.transition = this._el.style.transition;
           this.appendChild(svg); this._svg = svg;
         }

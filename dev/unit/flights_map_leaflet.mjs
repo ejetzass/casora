@@ -268,6 +268,22 @@ await withClock(T0, async (setNow) => {
   delete ctx.MutationObserver;
 });
 
+// ── the attribution sits above the SVG overlay: its z-index in the map CSS is higher than the overlay's ────────────────
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const lf = fakeLf();
+  const { f, host } = await mount(lf, hs);
+  const shadow = { kids: [], appendChild(n) { this.kids.push(n); }, querySelectorAll() { return []; } };
+  host.shadowRoot = shadow;
+  tick(); lf.loadTile(); tick();
+  const css = shadow.kids[0].textContent;
+  const attribZ = css.match(/\.maplibregl-ctrl-attrib,\.leaflet-control-attribution\{[^}]*z-index:(\d+)/);
+  assert.ok(attribZ, 'the attribution rule sets a z-index');
+  const overlayZ = Number(svgOf(f).style.zIndex);
+  assert.ok(Number(attribZ[1]) > overlayZ, 'the attribution z-index is higher than the overlay (' + overlayZ + ')');
+});
+
 // ── the MapLibre path wins when it exists: the Leaflet map is not touched ──────────────────────────────────────────
 await withClock(T0, async (setNow) => {
   const hs = house(); const t = moving(hs, fl('w1'));
