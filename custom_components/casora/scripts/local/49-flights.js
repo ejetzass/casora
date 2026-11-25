@@ -1255,7 +1255,12 @@
         // Fit once per flight. A map without a size gives a wrong zoom, so the fit waits for one.
         var size = lm.getSize ? lm.getSize() : null;
         var fit = !!ident && ident !== this._ident && !!size && size.x > 0 && size.y > 0;
-        if (fit) { lm.invalidateSize({ animate: false }); lm.fitBounds(F.mapBounds(v), { padding: [36, 36], maxZoom: 9, animate: false }); }
+        // F.mapBounds is [[lon, lat], [lon, lat]] (MapLibre); Leaflet wants [[lat, lng], [lat, lng]].
+        if (fit) {
+          var b = F.mapBounds(v);
+          lm.invalidateSize({ animate: false });
+          lm.fitBounds([[b[0][1], b[0][0]], [b[1][1], b[1][0]]], { padding: [36, 36], maxZoom: 9, animate: false });
+        }
         if (!ident || fit) this._ident = ident;
         this._drawLeaflet(lm, F.mapGeo(v));
       }

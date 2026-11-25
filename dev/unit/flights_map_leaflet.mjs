@@ -172,7 +172,8 @@ await withClock(T0, async (setNow) => {
   lf.loadTile(); tick();
   assert.equal(lf.fits.length, 1, 'Leaflet: fitted once to the flight');
   const b = lf.fits[0].b;
-  assert.ok(b[0][0] <= 4 && b[1][0] >= 20 && b[0][1] <= 49.8 && b[1][1] >= 50.05, 'Leaflet: the fit holds every point');
+  // Leaflet takes [[lat, lng], [lat, lng]]: the south-west and north-east corners, lat first.
+  assert.ok(b[0][0] <= 49.8 && b[1][0] >= 50.05 && b[0][1] <= 4 && b[1][1] >= 20, 'Leaflet: the fit holds every point, lat first');
   assert.equal(lf.fits[0].o.maxZoom, 9, 'Leaflet: maxZoom 9 as on MapLibre');
   assert.equal(lf.fits[0].o.animate, false, 'Leaflet: no animation');
   // Movement of the same flight: no second fit.
