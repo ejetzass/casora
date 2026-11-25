@@ -161,6 +161,13 @@ assert.ok(outside.includes(F.fmt.altitude(35000, 'm')), 'outside the Studio: the
 assert.ok(outside.includes(F.fmt.speed(450, 'kmh')), 'outside the Studio: the saved speed unit (km/h) is shown');
 assert.ok(!outside.includes(F.fmt.altitude(35000, '')), 'outside the Studio: the stale draft unit is not used');
 
+// ── A Studio page opened on its own has no casora-core.js, so no casoraInStudio: the preview still follows the draft ─────
+studio(DRAFT, SAVED);
+ctx.casoraInStudio = undefined;
+assert.equal(JSON.stringify(F.units()), JSON.stringify({ altitude: 'm', speed: 'kmh', vspeed: 'ms' }), 'no casoraInStudio: the draft units are still read');
+assert.equal(F.tz(), true, 'no casoraInStudio: the draft timezone switch is still read');
+ctx.casoraInStudio = () => !!panel;
+
 // ── No preview action writes: rendering with a draft makes no service call ────────────────────────────────────────────
 studio(DRAFT, SAVED);
 hass = house();

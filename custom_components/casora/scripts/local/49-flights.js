@@ -478,7 +478,8 @@
   // follows a draft unit or switch at once. null = not in the Studio (or no draft loaded yet).
   var draftOf = function (key) {
     var p = window._casoraStudioPanel;
-    if (!p || !(window.casoraInStudio && window.casoraInStudio())) return null;
+    // The panel itself says it is on the page: a Studio opened on its own has no casora-core.js (no casoraInStudio).
+    if (!p || p.isConnected === false) return null;
     var rooms = ((p._state || {}).compact || {}).rooms;
     if (!Array.isArray(rooms)) return null;
     for (var i = 0; i < rooms.length; i++) {
