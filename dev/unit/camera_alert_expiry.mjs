@@ -188,6 +188,30 @@ for (const [name, field] of [
     assert.equal(pending.size, 0, `${name}: no timer remains`);
   }
 }
+// #319: a sensor.time without a usable value (unavailable, unknown, empty) never stops an alert's expiry, in any card.
+for (const clockState of ['unavailable', 'unknown', '']) {
+  for (const [name, field] of [
+    ['casora_cameras', 'state_display'],
+    ['casora_badge_camera_group', 'name'],
+    ['casora_badge_security', 'name'],
+    ['casora_badge_contact_group', 'name'],
+  ]) {
+    const fresh = { isConnected: true, addController(controller) { this.controller = controller; },
+      requestUpdate() { this.output = run(templates[name][field], this, hass, hass.states[camera], vars); } };
+    pending.clear();
+    now = Date.parse('2026-01-01T12:00:00Z');
+    hass.states[ding].state = '2026-01-01T12:00:00Z';
+    hass.states[motion].state = 'unknown';
+    hass.states['sensor.time'] = { state: clockState };
+    assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, `${name} with sensor.time "${clockState}": the alert shows`);
+    assert.equal(pending.size, 1, `${name} with sensor.time "${clockState}": the alert schedules its expiry timer`);
+    now += 301000;
+    fire();
+    assert.match(fresh.output, /Ruhig/, `${name} with sensor.time "${clockState}": the alert expires`);
+    assert.equal(pending.size, 0, `${name} with sensor.time "${clockState}": no timer remains`);
+  }
+}
+delete hass.states['sensor.time'];
 hass.states[ding].state = 'unknown';
 hass.states[motion].state = 'unknown';
 Date.now = realNow;
