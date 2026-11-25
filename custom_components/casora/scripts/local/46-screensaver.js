@@ -860,7 +860,7 @@
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
     + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
-    + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.45);stroke-width:' + u(2) + ';}'
+    + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);stroke-width:' + u(2) + ';}'
     + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
     + '.cs-sv .cs-fl-pic{position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);}'
@@ -1370,10 +1370,9 @@
   // X and Y give numbers in the picture's units. Null without a position.
   S.routeFrame = function (v) {
     if (!v || !v.cur) return null;
-    var ref = v.cur[1];
-    // The longitude nearest to the aircraft's, so a route over the dateline stays one picture.
-    var P = function (p) { return [p[0], ref + ((((p[1] - ref) % 360) + 540) % 360 - 180)]; };
-    var pts = [v.cur].concat(v.trail || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : []).map(P);
+    // The view's longitudes are continuous with the aircraft's (49-flights.js F.mapView), so they are projected as given.
+    var P = function (p) { return p; };
+    var pts = [v.cur].concat(v.trail || [], v.route || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : []);
     var la = pts.map(function (p) { return p[0]; }), lo = pts.map(function (p) { return p[1]; });
     var lo0 = Math.min.apply(null, lo), lo1 = Math.max.apply(null, lo), la0 = Math.min.apply(null, la), la1 = Math.max.apply(null, la);
     var padA = Math.max(0.3, (la1 - la0) * 0.15), padO = Math.max(0.3, (lo1 - lo0) * 0.15);
@@ -1389,10 +1388,13 @@
     if (!fr) return '';
     var X = fr.X, Y = fr.Y, r = fr.r;
     var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
-    if (v.origin && v.destination) {
-      svgHtml += '<line class="cs-fl-route" vector-effect="non-scaling-stroke" x1="' + esc(X(v.origin).toFixed(2)) + '" y1="' + esc(Y(v.origin).toFixed(2))
-        + '" x2="' + esc(X(v.destination).toFixed(2)) + '" y2="' + esc(Y(v.destination).toFixed(2))
-        + '" stroke-dasharray="' + esc((r * 0.6).toFixed(2)) + ' ' + esc((r * 0.6).toFixed(2)) + '"/>';
+    // The Remaining route (shared with the popup): the one dashed line, from the aircraft to the destination. No destination, no line.
+    // Width and dash keep the popup's proportions (49-flights.js ROUTE_STYLE), in saver units.
+    if (v.route && v.route.length > 1) {
+      var rs = FL().ROUTE_STYLE, dash = u(rs.dash);
+      svgHtml += '<polyline class="cs-fl-route" vector-effect="non-scaling-stroke" fill="none" stroke-linejoin="round" style="stroke-width:' + esc(u(rs.width))
+        + ';stroke-dasharray:' + esc(dash) + ' ' + esc(dash) + '" points="'
+        + esc(v.route.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')) + '"/>';
     }
     if (v.trail && v.trail.length > 1) {
       svgHtml += '<polyline class="cs-fl-trail" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
