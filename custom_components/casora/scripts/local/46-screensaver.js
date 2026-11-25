@@ -611,9 +611,9 @@
     else if (!moveOn && at > -1) pos = at;
     else if (!moveOn) pos = before;
     else pos = at > -1 ? (at + 1) % n : before;
-    // A round ends when the pick moves on from the end of the list back to the first flight (a flight that has gone
-    // counts from its old place: past the new end, the round ends there too).
-    var wrapped = moveOn && st.key !== null && (at > -1 ? at === n - 1 : st.pos >= n);
+    // Wrapped: the pick moves on from the last flight, or the flight that has gone sat past the new end (it counts from
+    // its old place, even within its turn).
+    var wrapped = st.key !== null && (at > -1 ? moveOn && at === n - 1 : st.pos >= n);
     var detail = !peek && (wrapped ? !st.detail : st.detail);
     if (!peek) { FLIGHT_TURN.slot = slot; FLIGHT_TURN.key = order[pos].key; FLIGHT_TURN.pos = pos; FLIGHT_TURN.detail = detail; }
     return { row: order[pos], detail: detail };
@@ -1627,8 +1627,10 @@
       if (want === 'flights') {
         var pick = S.flightPick(ctx.flights, now, fresh && !o.sample, !!o.sample);
         ctx.flights = pick ? [pick.row] : [];
-        ctx.flightDetail = pick ? pick.detail : false;
-        if (pick && !o.sample) fresh = false;
+        if (pick) {
+          ctx.flightDetail = pick.detail;
+          if (!o.sample) fresh = false;
+        }
       }
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
