@@ -30,7 +30,7 @@
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
 //   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
-//   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin)
+//   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin; in the Studio the draft)
 //   window._casoraFlights.addView(hass, id) / .submit(hass, id, text) / .paint() / .draft → the Add field's attempt
 //   window._casoraFlights.watch(hass) → the source IDs (and the pin) a card follows; .active(hass) → tile highlight
 //   window._casoraFlights.KEY / .UNIT_KEYS → the setting keys (source, units)
@@ -38,10 +38,10 @@
 //   window._casoraFlights.distanceKm(a, b) / .trailOf(entry) → great-circle km and the valid trail points
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
-//   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit)
+//   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
 //   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
 //   window._casoraFlights.times(hass, entry, tzOn) → {dep, arr}: [{kind: scheduled|real|estimated, text}] (origin/destination + HA-local time)
-//   window._casoraFlights.tz() → the saved "Show timezones" switch (off unless set)
+//   window._casoraFlights.tz() → the saved "Show timezones" switch (off unless set; in the Studio the draft)
 (function () {
   if (window._casoraFlights) return;
   var F = window._casoraFlights = {};
@@ -487,7 +487,7 @@
     }
     return '';
   };
-  // Own value first; a phone takes the rest from its desktop twin (below).
+  // The Studio draft first, then the own value; a phone takes the rest from its desktop twin (below).
   F.setting = function (key) {
     var draft = draftOf(key || KEY);
     if (draft !== null) return draft;

@@ -131,7 +131,35 @@ studio(DRAFT, DRAFT);
 hass = house();
 const rows = moving(hass, fl());
 assert.equal(rows.length, 1, 'the preview sees the qualifying flight');
-assert.ok(tile(hass).includes('XY123') || tile(hass).includes('Testair'), 'the tile shows the flight, with values');
+assert.ok(tile(hass).includes('data-flights-label="XY123"'), 'the tile shows the flight row XY123, with values');
+
+// ── Two sources, draft pin on the second: the preview shows that source's flights (red on the parent, which read the saved one)
+studio({ casora_flights_source: 'sensor.b' }, SAVED);
+hass = house();
+hass.source('sensor.a', [fl()]);
+hass.source('sensor.b', [fl({ id: 'f2', flight_number: 'XY999' })]);
+F.airborne(hass, 'sensor.a', T0); // each source keeps its own baseline
+F.airborne(hass, 'sensor.b', T0);
+hass.source('sensor.a', [fl({ latitude: 10.05 })]);
+hass.source('sensor.b', [fl({ id: 'f2', flight_number: 'XY999', latitude: 10.05 })]);
+F.airborne(hass, 'sensor.a', T0 + MIN);
+F.airborne(hass, 'sensor.b', T0 + MIN);
+const second = F.liveHtml(hass, F.setting(), T0 + MIN); // the pin the preview reads: the draft source
+assert.ok(second.includes('data-flights-label="XY999"'), 'draft pin on sensor.b: the preview shows its flight XY999');
+assert.ok(!second.includes('XY123'), 'draft pin on sensor.b: the saved source sensor.a is not shown');
+
+// ── Live tile outside the Studio: the saved units, even when a stale draft is around (no draft leak) ────────────────────
+studio(SAVED, SAVED); // a Studio draft with source units, left over from an earlier visit
+panel = null; // no Studio open now
+cfg = { views: [{ cards: [{ variables: { casora_flights_source: 'sensor.a', casora_flights_altitude_unit: 'm', casora_flights_speed_unit: 'kmh' } }] }] };
+hass = house();
+hass.source('sensor.a', [fl()]);
+F.airborne(hass, '', T0);
+hass.source('sensor.a', [fl({ latitude: 10.05 })]);
+const outside = tile(hass);
+assert.ok(outside.includes(F.fmt.altitude(35000, 'm')), 'outside the Studio: the saved altitude unit (metres) is shown');
+assert.ok(outside.includes(F.fmt.speed(450, 'kmh')), 'outside the Studio: the saved speed unit (km/h) is shown');
+assert.ok(!outside.includes(F.fmt.altitude(35000, '')), 'outside the Studio: the stale draft unit is not used');
 
 // ── No preview action writes: rendering with a draft makes no service call ────────────────────────────────────────────
 studio(DRAFT, SAVED);
