@@ -202,6 +202,24 @@ await withClock(T0, async (setNow) => {
   });
 });
 
+// ── no Remaining route: without a destination, and when the aircraft is under 1 km from it ──────────────────────────────
+for (const [what, extra] of [
+  ['no destination', { airport_destination_latitude: undefined, airport_destination_longitude: undefined }],
+  ['under 1 km from the destination', { airport_destination_latitude: 50.05, airport_destination_longitude: 12.005 }],
+]) {
+  await withClock(T0, async (setNow) => {
+    const hs = house(); const t = moving(hs, fl('w1', extra));
+    setNow(t);
+    const lf = fakeLf();
+    const { f } = await mount(lf, hs);
+    lf.loadTile(); tick();
+    const markup = svgOf(f).innerHTML;
+    assert.doesNotMatch(markup, /stroke-dasharray/, 'Leaflet: ' + what + ': no dashed route');
+    assert.match(markup, /M320 182 L340 181 L360 179\.5/, 'Leaflet: ' + what + ': the trail is still drawn');
+    assert.match(markup, /<circle cx="360" cy="179\.5" r="7"/, 'Leaflet: ' + what + ': the aircraft is still drawn');
+  });
+}
+
 // ── fit: once per flight, with the same rules as MapLibre (padding, maxZoom 9, no animation) ────────────────────────
 await withClock(T0, async (setNow) => {
   const hs = house(); const t = moving(hs, fl('w1'));
