@@ -1175,11 +1175,7 @@
         m.style.visibility = 'hidden';
         this.appendChild(m); this._el = m;
         if (m.shadowRoot) this._css(m.shadowRoot);
-        // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
-        if (window.MutationObserver && m.shadowRoot) {
-          this._mo = new MutationObserver(() => this._unstop(m.shadowRoot));
-          this._mo.observe(m.shadowRoot, { childList: true, subtree: true });
-        }
+        this._watch(m.shadowRoot);
         this._timer = setInterval(() => this._poll(), F.MAP.TICK_MS);
       }
       // The map's canvas and zoom controls keep tabindex 0. The popup's Tab handling counts them as stops (casora-core.js
@@ -1226,6 +1222,8 @@
           ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard', 'tap'].forEach(function (x) {
             if (lm[x] && lm[x].disable) lm[x].disable();
           });
+          // As on MapLibre: a shadow root that was missing at build is styled now.
+          if (this._el.shadowRoot) { this._css(this._el.shadowRoot); this._watch(this._el.shadowRoot); }
         }
         // Every tile layer is counted, also one added after the first poll. A layer is hooked once.
         var self = this;
@@ -1248,6 +1246,13 @@
         if (hass) this._syncLeaflet(hass, lm);
         if (!this._ok && this._tiles > 0) { this._ok = true; this._showMap(); }
         if (!this._ok && Date.now() - this._since > F.MAP.READY_MS) this._fail();
+      }
+      // Stops that the map adds to its own content later are taken out when they appear, not only on the next poll.
+      // Set up once per element: at build, or on the first Leaflet poll when the shadow root came later.
+      _watch(root) {
+        if (this._mo || !root || !window.MutationObserver) return;
+        this._mo = new MutationObserver(() => this._unstop(root));
+        this._mo.observe(root, { childList: true, subtree: true });
       }
       // The map and its overlay become visible together.
       _showMap() {

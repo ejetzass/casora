@@ -242,6 +242,32 @@ await withClock(T0, async (setNow) => {
   deq(hs.calls, [], 'the Leaflet map and the drawing write nothing to HA');
 });
 
+// ── a shadow root that appears after the build is styled and watched on the first Leaflet poll ─────────────────────
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const observers = [];
+  ctx.MutationObserver = class { constructor(cb) { this.cb = cb; observers.push(this); } observe(n) { this.node = n; } disconnect() { this.gone = true; } };
+  const lf = fakeLf();
+  // The ha-map has no shadow root at build (shadowRoot null in fakeEl), so nothing is styled there yet.
+  const { f, host } = await mount(lf, hs);
+  const shadow = { kids: [], appendChild(n) { this.kids.push(n); }, querySelectorAll() { return []; } };
+  host.shadowRoot = shadow;
+  assert.equal(observers.length, 0, 'no observer while there is no shadow root');
+  tick();
+  const styles = shadow.kids.filter((n) => n.textContent !== undefined);
+  assert.equal(styles.length, 1, 'Leaflet: the attribution style goes into the shadow root on the first poll');
+  assert.match(styles[0].textContent, /\.leaflet-control-attribution\{/, 'Leaflet: the style is the map CSS');
+  assert.equal(observers.length, 1, 'Leaflet: the observer is set up on the first poll');
+  assert.equal(observers[0].node, shadow, 'Leaflet: the observer watches the shadow root');
+  tick();
+  assert.equal(shadow.kids.length, 1, 'Leaflet: the style is added once, not on every poll');
+  assert.equal(observers.length, 1, 'Leaflet: one observer only');
+  f.disconnectedCallback();
+  assert.equal(observers[0].gone, true, 'Leaflet: the observer is disconnected on removal');
+  delete ctx.MutationObserver;
+});
+
 // ── the MapLibre path wins when it exists: the Leaflet map is not touched ──────────────────────────────────────────
 await withClock(T0, async (setNow) => {
   const hs = house(); const t = moving(hs, fl('w1'));
