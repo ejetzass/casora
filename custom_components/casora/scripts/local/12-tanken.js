@@ -519,7 +519,8 @@
   };
   // Shared with the map tile (44-landkarte.js): whether HA's map service exists, loading ha-map, its MapLibre map.
   // Leaflet ha-map (no WebGL2): its own Leaflet map. mlOf never returns it, and lfOf never returns a MapLibre map.
-  var lfOf = function (m) { return m && m.leafletMap ? m.leafletMap : null; };
+  // HA 2026.11 keeps the Leaflet map on ha-map._engine; older HA had it directly on ha-map.
+  var lfOf = function (m) { if (!m) return null; if (m.leafletMap) return m.leafletMap; var e = m._engine && m._engine.leafletMap; return e && typeof e === 'object' && typeof e.getSize === 'function' ? e : null; };
   window._casoraHaMap = { ok: mapOk, defined: haMapDefined, ml: mlOf, lf: lfOf };
   var hmStyleMl = '.maplibregl-canvas{filter:var(--ct-filter,none)}.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-scale{display:none!important}'
     + '.maplibregl-ctrl-attrib{font-size:9px!important;line-height:1.3!important;padding:1px 6px!important;border-radius:8px 0 0 0;background:var(--ct-att-bg)!important;color:var(--ct-att-fg)!important}'
