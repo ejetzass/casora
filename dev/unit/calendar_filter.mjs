@@ -1,7 +1,7 @@
 // Calendar filter: one title rule for the Agenda tile, the greeting, the screensavers and the Studio preview.
 // The tile's pick is Upstream's rule (one event per calendar from the calendar states, a running event wins,
 // then the earliest start); the filter only skips titles.
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarNext,custom_components/casora/scripts/local/46-screensaver.js#S.events,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraFilterAttrsForEvent,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarTimedFirst,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,custom_components/casora/panel/casora-panel-settings.js#_csSaverPreview
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext custom_components/casora/scripts/local/46-screensaver.js#S.context,S.events custom_components/casora/scripts/local/06-kalender.js#K.next custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarNext,casoraFilterAttrsForEvent,casoraCalendarTimedFirst,casoraCalendarAllows custom_components/casora/panel/casora-panel-settings.js#_csSaverPreview
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';

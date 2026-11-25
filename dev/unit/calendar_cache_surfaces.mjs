@@ -1,5 +1,5 @@
 // The greeting line and the day-line screensaver take their next appointment from the shared cache pick.
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#DRAW.linie,S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext custom_components/casora/scripts/local/46-screensaver.js#DRAW.linie,S.context custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
