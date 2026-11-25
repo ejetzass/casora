@@ -192,6 +192,18 @@ const attribLinks = (root) => root.querySelectorAll('*').filter((x) => x.tag ===
   assert.deepEqual(stray.map((x) => x.tag), [], 'Leaflet, poll path: no stop outside the attribution is left');
 }
 
+// Leaflet's own "Leaflet" prefix link stays visible but is not a Tab stop; the OpenStreetMap credit next to it still is.
+{
+  const lf = leafletMap();
+  const prefix = el('a', { href: 'https://leafletjs.com', title: 'A JavaScript library for interactive maps' });
+  const credit = el('a', { href: 'https://www.openstreetmap.org/copyright' });
+  lf.host.shadowRoot.children.push(el('div', { class: 'leaflet-control-attribution' }, [prefix, credit]));
+  lf.map._poll();
+  assert.equal(prefix.tabIndex, -1, 'Leaflet prefix link: not a Tab stop');
+  assert.equal(prefix.style.display, undefined, 'Leaflet prefix link: not hidden');
+  assert.ok(credit.tabIndex >= 0, 'Leaflet prefix link: the OpenStreetMap credit is a Tab stop');
+}
+
 // Leaflet stylesheet: the attribution rules name the Leaflet class too (one shared selector list), zoom and scale are hidden.
 {
   assert.match(css[1], /\.maplibregl-ctrl-attrib,\.leaflet-control-attribution\{/, 'Leaflet: the attribution rule is shared with MapLibre');
