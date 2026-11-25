@@ -1315,9 +1315,10 @@
     var state = event && event.cal && hass && hass.states && hass.states[event.cal];
     var attrs = state && state.attributes;
     if (!attrs || !attrs.casora_filter_match) return null;
-    // An exported event is identified by its uid: its own decision (or none) applies, whatever the state shows now.
-    if (event.uid && attrs.casora_filter_match.events) return { casora_filter_match: attrs.casora_filter_match };
-    // Without a uid, only the state's current message can take the recorded message decision, at the same time.
+    // An exported event is identified by its uid: its own decision applies, whatever the state shows now.
+    var own = event.uid && attrs.casora_filter_match.events;
+    if (own && own[event.uid]) return { casora_filter_match: attrs.casora_filter_match };
+    // Otherwise only the state's current message can take the recorded message decision, at the same time.
     if (String(attrs.message || '') !== String(event.title || '')) return null;
     var stamp = function (value) { return value == null ? NaN : Date.parse(String(value).replace(' ', 'T')); };
     if (stamp(attrs.start_time) !== Number(event.start)) return null;

@@ -23,17 +23,20 @@
   };
   window.casoraCalendarAllows = function (title, settings, attrs, uid) {
     var meta = attrs && attrs.casora_filter_match;
-    var decision = meta && (uid ? meta.events && meta.events[uid] : meta.message);
-    if (decision && decision.title != null && decision.title !== title) decision = null;
+    // A uid with its own decision takes that one; otherwise the state's message decision (the screensaver hands
+    // it over only for the event that is the state's current message). An event decision needs its title.
+    var byEvent = !!(uid && meta && meta.events && meta.events[uid]);
+    var decision = meta && (byEvent ? meta.events[uid] : meta.message);
+    if (decision && (byEvent ? decision.title !== title : decision.title != null && decision.title !== title)) decision = null;
     if (decision && !Array.isArray(decision.matches)) decision = null;
     var known = decision && Array.isArray(meta.entries) ? meta.entries.map(function (e) { return String(e).trim().toLowerCase(); }) : null;
+    var named = decision ? decision.matches.map(function (m) { return String(m).trim().toLowerCase(); }) : [];
     var text = String(title || '').toLowerCase();
     return !String(filterOf(settings).words || '').split(',').some(function (entry) {
       entry = entry.trim().toLowerCase();
       if (!entry) return false;
-      if (decision && (!known || known.indexOf(entry) !== -1)) {
-        return decision.matches.some(function (m) { return String(m).trim().toLowerCase() === entry; });
-      }
+      // The decision speaks for the entries the export knew (meta.entries), or without that list only for the entries it names.
+      if (decision && (known ? known.indexOf(entry) !== -1 : named.indexOf(entry) !== -1)) return named.indexOf(entry) !== -1;
       return text.indexOf(entry) !== -1;
     });
   };
