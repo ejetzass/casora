@@ -75,6 +75,53 @@ runtime();
 near(F.distanceKm([0, 0], [0, 1]), 111.19, 0.05, 'one degree of longitude at the equator');
 near(F.distanceKm([0, 179], [0, -179]), 222.39, 0.05, 'across the dateline: 2 degrees, not 358');
 assert.equal(F.distanceKm([50, 4], [50, 4]), 0, 'same point');
+// ── the Remaining route: F.greatCircle(from, to) → [[lat, lon], …] along the shortest path on the globe ─────────────────
+{
+  const AMS = [52.31, 4.76], JFK = [40.64, -73.78];
+  const gc = F.greatCircle(AMS, JFK);
+  assert.ok(gc.length >= 8, 'a long route has many points');
+  deq(gc[0], AMS, 'the first point is the aircraft');
+  deq(gc[gc.length - 1], JFK, 'the last point is the destination');
+  // The straight line on the flat map (linear in lat/lon) is the reference: the great circle bends north of it.
+  const maxLat = Math.max(...gc.map((p) => p[0]));
+  assert.ok(maxLat > 52.31 + 2, 'Amsterdam to New York rises north of both ends: ' + maxLat);
+  gc.forEach((p) => {
+    const t = (p[1] - AMS[1]) / (JFK[1] - AMS[1]);
+    const straight = AMS[0] + t * (JFK[0] - AMS[0]);
+    assert.ok(p[0] >= straight - 1e-6, 'never south of the straight line at lon ' + p[1]);
+  });
+  const mid = gc[Math.floor(gc.length / 2)];
+  assert.ok(mid[0] > (AMS[0] + JFK[0]) / 2 + 3, 'the middle bends clearly north of the straight line');
+  // Every point lies on the great circle: the distances along it add up to the direct distance.
+  let sum = 0; for (let i = 1; i < gc.length; i++) sum += F.distanceKm(gc[i - 1], gc[i]);
+  near(sum, F.distanceKm(AMS, JFK), 15, 'the path length is the great-circle distance');
+  // Pacific: Tokyo to Los Angeles crosses the date line; longitudes stay continuous (no jump of about 360).
+  const TYO = [35.55, 139.78], LAX = [33.94, -118.41];
+  const pac = F.greatCircle(TYO, LAX);
+  for (let i = 1; i < pac.length; i++) assert.ok(Math.abs(pac[i][1] - pac[i - 1][1]) < 30, 'continuous over the date line at point ' + i);
+  deq(pac[0], TYO, 'Pacific: first point');
+  near(((pac[pac.length - 1][1] - LAX[1]) % 360 + 360) % 360 % 360, 0, 1e-6, 'Pacific: the last point is the destination, shifted by whole turns');
+  assert.equal(pac[pac.length - 1][0], LAX[0], 'Pacific: the last latitude');
+  assert.ok(pac.some((p) => p[1] > 180), 'the route runs on past 180 instead of jumping back');
+  // The other direction, west to east over the date line, stays continuous too.
+  const back = F.greatCircle(LAX, TYO);
+  for (let i = 1; i < back.length; i++) assert.ok(Math.abs(back[i][1] - back[i - 1][1]) < 30, 'continuous eastbound over the date line');
+  // Empty cases.
+  deq(F.greatCircle(null, JFK), [], 'no aircraft point');
+  deq(F.greatCircle(AMS, null), [], 'no destination');
+  deq(F.greatCircle(AMS, [91, 0]), [], 'an invalid point');
+  deq(F.greatCircle(AMS, AMS), [], 'the same point');
+  deq(F.greatCircle([50, 4], [50.005, 4]), [], 'under 1 km');
+  assert.ok(F.greatCircle([50, 4], [50.02, 4]).length >= 2, 'just over 1 km gives a route');
+  // Near-opposite points: finite numbers, first and last as given.
+  for (const b of [[-52.31, -175.24], [-52.31, -175.2400001], [-52.30, -175.24], [-52.31, 4.76 - 180 + 0.0001]]) {
+    const o = F.greatCircle(AMS, b);
+    assert.ok(o.length >= 2, 'near-opposite gives a route');
+    o.forEach((p) => assert.ok(isFinite(p[0]) && isFinite(p[1]), 'finite point'));
+    deq(o[0], AMS, 'near-opposite first'); assert.equal(o[o.length - 1][0], b[0], 'near-opposite last latitude');
+  }
+}
+
 // Progress from origin, current and destination: on the way, at the ends, and bounded.
 assert.equal(F.progress(ALPHA, ALPHA, BETA), 0, 'at origin');
 assert.equal(F.progress(ALPHA, BETA, BETA), 100, 'at destination');

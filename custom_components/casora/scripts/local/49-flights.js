@@ -1035,6 +1035,42 @@
     var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(h)));
   };
+  // The Remaining route: points [lat, lon] along the great circle from `a` (the aircraft) to `b` (the destination), shared by
+  // the popup and the screensaver. First point a, last point b; longitudes are continuous (they may run past 180 or below
+  // -180 instead of jumping back, so a flight over the date line stays one line). Empty for a missing or invalid point, the
+  // same point, or under a kilometre. Near-opposite points have no single shortest path: any path is finite and ends right.
+  F.greatCircle = function (a, b) {
+    if (!pointOk(a) || !pointOk(b)) return [];
+    var km = F.distanceKm(a, b);
+    if (!(km >= MIN_ROUTE_KM)) return [];
+    var rad = Math.PI / 180, deg = 180 / Math.PI;
+    var vec = function (p) { var la = p[0] * rad, lo = p[1] * rad; return [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]; };
+    var va = vec(a), vb = vec(b);
+    var dot = Math.max(-1, Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
+    var ang = Math.acos(dot), sin = Math.sin(ang);
+    var n = Math.min(64, Math.max(8, Math.ceil(km / 150)));
+    // Within about a metre of the antipode the slerp weights blow up: the steps run straight in latitude and longitude.
+    var flat = !(sin > 1e-7);
+    var out = [[a[0], a[1]]], prev = a[1];
+    for (var i = 1; i < n; i++) {
+      var t = i / n, lat, lon;
+      if (flat) { lat = a[0] + t * (b[0] - a[0]); lon = a[1] + t * (b[1] - a[1]); }
+      else {
+        var wa = Math.sin((1 - t) * ang) / sin, wb = Math.sin(t * ang) / sin;
+        var x = wa * va[0] + wb * vb[0], y = wa * va[1] + wb * vb[1], z = wa * va[2] + wb * vb[2];
+        lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * deg; lon = Math.atan2(y, x) * deg;
+      }
+      while (lon - prev > 180) lon -= 360;
+      while (lon - prev < -180) lon += 360;
+      if (!isFinite(lat) || !isFinite(lon)) return [];
+      out.push([lat, lon]); prev = lon;
+    }
+    var end = b[1];
+    while (end - prev > 180) end -= 360;
+    while (end - prev < -180) end += 360;
+    out.push([b[0], end]);
+    return out;
+  };
   F.progress = function (o, c, d) {
     if (!o || !c || !d) return null;
     if (F.distanceKm(o, d) < MIN_ROUTE_KM) return null; // coincident airports: nothing to measure along
