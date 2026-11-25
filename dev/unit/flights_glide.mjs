@@ -3,7 +3,7 @@
 // animation-frame loop (runs only during a glide; stops after it and when the element leaves the page).
 // Controlled clock and a fake frame queue; synthetic flights; no browser.
 //   node dev/unit/flights_glide.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#glide,track,jumps,MAX_SPEED_KMH,mapViewAt,mapView,mapGeo,defineMap
+// @deckt: custom_components/casora/scripts/local/49-flights.js#glide,track,cannotGlide,badPollStep,GAP_FACTOR,MIN_STEP_MS,MAX_SPEED_KMH,mapViewAt,mapView,mapGeo,defineMap
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -172,10 +172,24 @@ const g = (o = {}) => ({ from: { cur: [50, 10], heading: 80 }, to: { cur: [51, 1
     assert.equal(j.gliding, false, 'impossible step: jump'); deq(j.view.cur, [50, 11.02]);
     const n = F.track(j.state, mk(11.03), 'src|a', T + 5 * S, false);
     assert.equal(n.gliding, true, 'after the jump the next normal step glides'); }
-  // Measured from where the arrow is drawn, not from the old fix: a mid-glide fix a short way on still glides.
-  { const r = steady(), a = F.track(r.state, mk(10.03), 'src|a', T + 4 * S, false),
-      b = F.track(a.state, mk(10.04), 'src|a', T + 4 * S + 5000, false);
-    assert.equal(b.gliding, true, 'a normal step mid-glide glides'); }
+  // Measured from where the arrow is drawn, not from the newest reported fix: halfway through a glide (drawn 10.015, fix 10.02)
+  // a fix at 9.96 is 0.055 degrees (3.9 km) from the arrow, which is within the limit for 10 s (4.2 km), but 0.06 degrees (4.3 km)
+  // from the reported fix, which is not.
+  { const r0 = F.track(F.track(F.track(null, mk(10), 'src|a', T, false).state, mk(10.01), 'src|a', T + S, false).state, mk(10.02), 'src|a', T + 2 * S, false),
+      mid = F.track(r0.state, mk(10.02), 'src|a', T + 2 * S + 5000, false);
+    near(mid.view.cur[1], 10.015, 1e-9, 'setup: the arrow is halfway');
+    const b = F.track(mid.state, mk(9.96), 'src|a', T + 2 * S + 5000, false);
+    assert.equal(b.gliding, true, 'the step is measured from the drawn arrow: it glides'); }
+  // The poll gets slower for good (10 s, then 40 s): the first two updates at the new rate jump (a gap each), then the
+  // later gap is the normal poll and the third glides. A single long pause keeps the old interval (above).
+  { const L = 40000, base = T + 2 * S;
+    let r = F.track(F.track(F.track(null, mk(10), 'src|a', T, false).state, mk(10.01), 'src|a', T + S, false).state, mk(10.02), 'src|a', base, false);
+    const a = F.track(r.state, mk(10.05), 'src|a', base + L, false);
+    assert.equal(a.gliding, false, 'slow poll, first update: jump'); assert.equal(a.state.interval, S, 'one long gap keeps the old interval');
+    const b = F.track(a.state, mk(10.08), 'src|a', base + 2 * L, false);
+    assert.equal(b.gliding, false, 'second long gap in a row: jump'); assert.equal(b.state.interval, L, 'the latest gap is now the normal poll');
+    const c = F.track(b.state, mk(10.11), 'src|a', base + 3 * L, false);
+    assert.equal(c.gliding, true, 'third update at the new rate glides'); assert.equal(c.state.interval, L); }
   // Two updates close together are not an impossible step: a few km in 1 s (poll jitter) glides.
   { const r = steady(), a = F.track(r.state, mk(10.03), 'src|a', T + 4 * S, false),
       b = F.track(a.state, mk(10.06), 'src|a', T + 4 * S + 1000, false);
@@ -230,8 +244,8 @@ const moving = (hass, flight, at = T0) => {
   assert.equal(F.mapViewAt(null, drawn, 1), null, 'no view, no view');
 }
 
-// Times here run 10 x slower than the polls of a real flight: one degree of longitude per 200 s stays below the speed limit.
 // ── the element: the frame loop ─────────────────────────────────────────────────────────────────────────────────────
+// Times here run 10 x slower than the polls of a real flight: one degree of longitude per 200 s stays below the speed limit.
 const fakeLf = () => {
   const lf = { size: { x: 480, y: 360 }, layers: [{ getTileUrl() {}, on(t, fn) { this.h = fn; }, load() { this.h && this.h(); } }],
     getSize() { return this.size; }, invalidateSize() {}, fitBounds() {},
