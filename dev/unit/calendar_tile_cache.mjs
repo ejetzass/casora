@@ -1,5 +1,5 @@
 // The Agenda tile's pick reads the shared event cache when it is ready, and falls back to the states.
-// @deckt: custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache,stamp,K.load,K.repaint,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
+// @deckt: custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache,stamp,K.load,K.repaint custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
