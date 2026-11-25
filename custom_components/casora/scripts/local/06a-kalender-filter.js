@@ -40,6 +40,24 @@
       return text.indexOf(entry) !== -1;
     });
   };
+  // The calendar state's exported decision for one event (its casora_filter_match), or null. The screensaver and
+  // the Agenda tile's pick (06-kalender.js) use it; the event's uid decides, the message only for the current event.
+  window.casoraFilterAttrsForEvent = function (hass, event) {
+    var state = event && event.cal && hass && hass.states && hass.states[event.cal];
+    var attrs = state && state.attributes;
+    if (!attrs || !attrs.casora_filter_match) return null;
+    // An exported event is identified by its uid: its own decision applies, whatever the state shows now.
+    var own = event.uid && attrs.casora_filter_match.events;
+    if (own && own[event.uid]) return { casora_filter_match: attrs.casora_filter_match };
+    // Otherwise only the state's current message can take the recorded message decision, at the same time.
+    if (String(attrs.message || '') !== String(event.title || '')) return null;
+    var stamp = function (value) { return value == null ? NaN : Date.parse(String(value).replace(' ', 'T')); };
+    if (stamp(attrs.start_time) !== Number(event.start)) return null;
+    if (typeof attrs.all_day === 'boolean' && attrs.all_day !== !!event.allDay) return null;
+    var stateEnd = stamp(attrs.end_time);
+    if (isFinite(stateEnd) && event.end != null && isFinite(Number(event.end)) && stateEnd !== Number(event.end)) return null;
+    return { casora_filter_match: attrs.casora_filter_match };
+  };
   // The Agenda tile's pick (Upstream's rule): one event per calendar from the calendar states (message,
   // start_time, all_day). A running event wins, then the earliest start. cals: [{ entity, tile }] (tile false is
   // left out); allows(title) skips filtered titles, so a filtered state event leaves its calendar out.

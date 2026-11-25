@@ -1311,22 +1311,6 @@
     if (!ctx.tint && S.on((ctx.vars || {}).casora_screensaver_tint)) ctx.tint = 'rgb(176,104,72)';
     return ctx;
   };
-  var filterAttrsForEvent = function (hass, event) {
-    var state = event && event.cal && hass && hass.states && hass.states[event.cal];
-    var attrs = state && state.attributes;
-    if (!attrs || !attrs.casora_filter_match) return null;
-    // An exported event is identified by its uid: its own decision applies, whatever the state shows now.
-    var own = event.uid && attrs.casora_filter_match.events;
-    if (own && own[event.uid]) return { casora_filter_match: attrs.casora_filter_match };
-    // Otherwise only the state's current message can take the recorded message decision, at the same time.
-    if (String(attrs.message || '') !== String(event.title || '')) return null;
-    var stamp = function (value) { return value == null ? NaN : Date.parse(String(value).replace(' ', 'T')); };
-    if (stamp(attrs.start_time) !== Number(event.start)) return null;
-    if (typeof attrs.all_day === 'boolean' && attrs.all_day !== !!event.allDay) return null;
-    var stateEnd = stamp(attrs.end_time);
-    if (isFinite(stateEnd) && event.end != null && isFinite(Number(event.end)) && stateEnd !== Number(event.end)) return null;
-    return { casora_filter_match: attrs.casora_filter_match };
-  };
   S.context = function (o) {
     o = o || {};
     var hass = o.hass || hassOf(), now = o.now || new Date(), vars = o.vars || {};
@@ -1337,7 +1321,7 @@
     // The calendar asks for its whole grid (the month, or two weeks), the others for the coming eight days.
     var grid = kind === 'kalender' ? S.calGrid(now, hass, vars) : null;
     var events = (o.events !== undefined ? o.events : !cals.length ? [] : grid ? S.events(hass, cals, grid.weeks * 7, grid.start) : S.events(hass, cals, 8)).filter(function (e) {
-      return !window.casoraCalendarAllows || window.casoraCalendarAllows(e.title, o.settings, filterAttrsForEvent(hass, e), e.uid || null);
+      return !window.casoraCalendarAllows || window.casoraCalendarAllows(e.title, o.settings, window.casoraFilterAttrsForEvent(hass, e), e.uid || null);
     });
     // Collapse duplicates only after filtering: distinct coded events can have the same title.
     if (o.events === undefined) {
