@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
 // Flights kind (one flight per native turn, in a fixed order, always on the map; the next start moves on too), updates
@@ -401,8 +401,62 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const vb = (h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || []).slice(1).map(Number);
   assert.equal(vb.length, 2, 'a picture with a box');
   assert.ok(vb[0] > 0 && vb[0] < 20, 'the dateline route is drawn across the line, not across the globe: ' + vb);
-  assert.match(h, /<line class="cs-fl-route"[^>]*vector-effect="non-scaling-stroke"/, 'the route outline does not grow with map scale');
+  assert.match(h, /<polyline class="cs-fl-route"[^>]*vector-effect="non-scaling-stroke"/, 'the route outline does not grow with map scale');
   assert.match(h, /<circle class="cs-fl-ap"[^>]*vector-effect="non-scaling-stroke"/, 'airport outlines do not cover the picture');
+}
+
+// The Remaining route: exactly one dashed line on the map, from the aircraft to the destination. No line joins the origin
+// airport to anything (not the destination, not the start of the Flown trail: the trail holds few points, a gap is the truth).
+{
+  const mapOf = (o) => {
+    const R = runtime();
+    warm(R);
+    const f = (step) => [entry('1', step, o)];
+    move(R, 1, f(1));
+    at(R, SLOT0 + 1000);
+    move(R, 2, f(2));
+    return at(R, SLOT0 + 2000);
+  };
+  const nums = (s) => s.trim().split(/\s+/).map((p) => p.split(',').map(Number));
+  const picture = (h) => {
+    const [W, H] = h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+    const mk = h.match(/<div class="cs-fl-mk"[^>]*style="[^"]*left:([\d.]+)%;top:([\d.]+)%/);
+    const dots = [...h.matchAll(/<circle class="cs-fl-ap"[^>]*cx="([\d.-]+)" cy="([\d.-]+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const routes = [...h.matchAll(/<[a-z]+ class="cs-fl-route"[^>]*>/g)].map((m) => m[0]);
+    const trails = [...h.matchAll(/<polyline class="cs-fl-trail"[^>]*points="([^"]+)"/g)].map((m) => nums(m[1]));
+    return { aircraft: [Number(mk[1]) / 100 * W, Number(mk[2]) / 100 * H], dots, routes, trails, lines: (h.match(/<line\b/g) || []).length };
+  };
+  const near = (a, b, label) => assert.ok(Math.abs(a[0] - b[0]) < 0.02 && Math.abs(a[1] - b[1]) < 0.02, label + ': ' + a + ' vs ' + b);
+  const long = { latitude: 55, longitude: -30, airport_origin_latitude: 52.3, airport_origin_longitude: 4.8,
+    airport_destination_latitude: 40.6, airport_destination_longitude: -73.8, coordinates: [[53.5, -12], [54.5, -22]] };
+  for (const [label, o] of [['short flight', {}], ['long flight, trail far from the origin', long]]) {
+    const h = mapOf(o), p = picture(h);
+    assert.equal(p.routes.length, 1, label + ': exactly one dashed line');
+    assert.match(p.routes[0], /^<polyline /, label + ': the Remaining route is a path, not the straight origin-to-destination line');
+    assert.equal(p.lines, 0, label + ': no straight line element is left');
+    const pts = nums(p.routes[0].match(/points="([^"]+)"/)[1]);
+    near(pts[0], p.aircraft, label + ': the dashed line starts at the aircraft');
+    near(pts[pts.length - 1], p.dots[1], label + ': and ends at the destination dot');
+    assert.equal(p.dots.length, 2, label + ': origin and destination dots show');
+    // The dashed line never touches the origin dot (the old line started there).
+    pts.forEach((q) => assert.ok(Math.hypot(q[0] - p.dots[0][0], q[1] - p.dots[0][1]) > 0.02, label + ': the dashed line does not reach the origin dot'));
+  }
+  {
+    const p = picture(mapOf(long));
+    assert.equal(p.trails.length, 1, 'the Flown trail is drawn');
+    const gap = Math.hypot(p.trails[0][0][0] - p.dots[0][0], p.trails[0][0][1] - p.dots[0][1]);
+    assert.ok(gap > 1, 'the trail starts far from the origin dot (' + gap.toFixed(2) + '), and nothing bridges the gap');
+  }
+  {
+    const p = picture(mapOf({ airport_destination_latitude: null, airport_destination_longitude: null }));
+    assert.equal(p.routes.length, 0, 'no destination: no dashed line');
+    assert.equal(p.lines, 0, 'no destination: no line from the origin either');
+    assert.equal(p.dots.length, 1, 'the origin dot still shows');
+  }
+  {
+    const p = picture(mapOf({ airport_origin_latitude: null, airport_origin_longitude: null }));
+    assert.equal(p.routes.length, 1, 'no origin: the Remaining route still shows');
+  }
 }
 
 // The aircraft marker has one fixed size on every map: a lone flight (a small picture) and a long route (a big one).
