@@ -188,6 +188,12 @@ await withClock(T0, async (setNow) => {
   // Airports: origin 50N 4E, destination 50N 20E.
   assert.match(markup, /<circle cx="280" cy="180" r="4"/, 'Leaflet: origin airport drawn');
   assert.match(markup, /<circle cx="440" cy="180" r="4"/, 'Leaflet: destination airport drawn');
+  // The Remaining route: a dashed line from the aircraft to the destination dot, drawn before (under) trail, dots and arrow.
+  const dashed = markup.match(/<path d="M360 179\.5 [^"]*L440 180"[^>]*stroke-dasharray="6 6"/g) || [];
+  assert.equal(dashed.length, 2, 'Leaflet: the route (casing and line) is dashed, from the aircraft to the destination');
+  assert.ok(markup.indexOf('stroke-dasharray') < markup.indexOf('M320 182'), 'Leaflet: the route lies under the trail');
+  assert.ok(markup.lastIndexOf('stroke-dasharray') < markup.indexOf('<circle'), 'Leaflet: and under the dots and the arrow');
+  assert.doesNotMatch(markup.match(/<path d="M320 182[^>]*>/)[0], /dasharray/, 'Leaflet: the Flown trail stays solid');
   assert.equal(svg.getAttribute('aria-hidden'), 'true', 'Leaflet: the overlay is hidden from assistive technology');
   assert.equal(svg.getAttribute('tabindex'), null, 'Leaflet: the overlay is not a Tab stop');
   assert.equal(svg.style.pointerEvents, 'none', 'Leaflet: the overlay takes no pointer input');

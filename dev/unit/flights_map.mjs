@@ -193,6 +193,31 @@ assert.equal(F.mapGeo(null).points.features.length, 0, 'nothing to draw');
 const b = F.mapBounds(v);
 assert.ok(b[0][0] <= 4 && b[1][0] >= 20 && b[0][1] <= 49.8 && b[1][1] >= 50.05, 'bounds hold every point');
 assert.equal(F.mapBounds(null), null, 'no view, no bounds');
+// The Remaining route: one dashed line from the aircraft to the destination; none without a destination or under 1 km.
+{
+  assert.equal(g.route.features.length, 1, 'a route to the destination is one line');
+  const rc = g.route.features[0].geometry.coordinates;
+  deq(rc[0], [12, 50.05], 'the route starts at the aircraft ([lon, lat])');
+  deq(rc[rc.length - 1], [20, 50], 'the route ends at the destination');
+  assert.ok(rc.length > 2, 'the route is a curve of several points');
+  assert.equal(gNoAir.route.features.length, 1, 'the destination is enough (the origin may be missing)');
+  assert.equal(gBare.route.features.length, 0, 'no destination: no route');
+  assert.equal(F.mapGeo(null).route.features.length, 0, 'no view: no route');
+  const near1 = { ...v, destination: [50.05, 12.005] };
+  assert.equal(F.mapGeo(near1).route.features.length, 0, 'under 1 km: no route');
+  // The first view includes the destination and the whole curve, which bows north of both ends.
+  const far = { ...v, cur: [52.31, 4.76], trail: [[52.2, 4.5]], origin: [52.31, 4.76], destination: [40.64, -73.78] };
+  const bf = F.mapBounds(far);
+  assert.ok(bf[0][0] <= -73.78 && bf[1][0] >= 4.76 && bf[0][1] <= 40.64, 'bounds hold the destination');
+  const apex = Math.max(...F.mapGeo(far).route.features[0].geometry.coordinates.map((c) => c[1]));
+  assert.ok(apex > 54 && bf[1][1] >= apex, 'bounds hold the top of the curve, north of both ends');
+  // Over the date line the destination point and the bounds follow the continuous route (lon past 180), not a jump.
+  const pac = { ...v, cur: [35.55, 139.78], trail: [], origin: null, destination: [33.94, -118.41] };
+  const pg = F.mapGeo(pac), pb = F.mapBounds(pac);
+  const dest = pg.points.features.find((x) => x.properties.role === 'airport').geometry.coordinates;
+  assert.ok(dest[0] > 180, 'the destination dot sits where the route ends');
+  assert.ok(pb[1][0] > 180 && pb[1][0] - pb[0][0] < 180, 'the box spans the short way over the date line');
+}
 
 // ── the popup and the tile: progress text and the map's place; text stays without the map ─────────────────────────
 ctx._casoraSoftKit = { secCard: (watch, code) => ({ watch, code }), layout: (o) => o };
@@ -267,6 +292,19 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
   await settle();
   tick(); tick();
   assert.ok(ml.layers['casora-flight-trail'] && ml.layers['casora-flight-aircraft'], 'layers added');
+  {
+    const ids = Object.keys(ml.layers), at = (id) => ids.indexOf(id);
+    const rl = ml.layers['casora-flight-route'], rc = ml.layers['casora-flight-route-casing'];
+    assert.ok(rl && rc, 'the Remaining route has its layers');
+    assert.ok(Array.isArray(rl.paint['line-dasharray']) && Array.isArray(rc.paint['line-dasharray']), 'the route is dashed, its casing too');
+    assert.equal(ml.layers['casora-flight-trail'].paint['line-dasharray'], undefined, 'the Flown trail stays solid');
+    assert.ok(at('casora-flight-route') < at('casora-flight-airports') && at('casora-flight-route') < at('casora-flight-aircraft')
+      && at('casora-flight-route-casing') < at('casora-flight-route'), 'the route lies under the airport dots and the aircraft');
+    assert.ok(at('casora-flight-route') < at('casora-flight-arrow') || at('casora-flight-arrow') === -1, 'and under the arrow');
+    const rt = ml.sources['casora-flight-route'].data.features;
+    assert.equal(rt.length, 1, 'the route data is set');
+    deq(rt[0].geometry.coordinates.slice(-1)[0], [20, 50], 'the route ends at the destination');
+  }
   assert.ok(ml.images.includes('casora-flight-arrow') || ml.images.length === 0, 'arrow image when a canvas exists');
   assert.equal(ml.fits.length, 1, 'fitted once');
   // Movement of the same flight: its data changes, no second fit.

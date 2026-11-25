@@ -36,6 +36,7 @@
 //   window._casoraFlights.KEY / .UNIT_KEYS → the setting keys (source, units)
 //   window._casoraFlights.progress(o, c, d) / .progressOf(entry) → approximate progress in whole percent, or null
 //   window._casoraFlights.distanceKm(a, b) / .trailOf(entry) → great-circle km and the valid trail points
+//   window._casoraFlights.greatCircle(a, b)           → the Remaining route: [lat, lon] points aircraft→destination ([] when none)
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
 //   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
@@ -1107,21 +1108,28 @@
   F.mapGeo = function (v) {
     var fc = function (features) { return { type: 'FeatureCollection', features: features }; };
     var pt = function (p, props) { return { type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [p[1], p[0]] } }; };
-    if (!v) return { trail: fc([]), points: fc([]) };
+    if (!v) return { trail: fc([]), route: fc([]), points: fc([]) };
     var pts = [];
+    // The Remaining route: the great circle from the aircraft to the destination. Its last point is the destination with
+    // the longitude the route arrived at (past 180 over the date line), so the dot sits where the line ends.
+    var rt = v.destination ? F.greatCircle(v.cur, v.destination) : [];
+    var dest = rt.length ? rt[rt.length - 1] : v.destination;
     if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0 }));
-    if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0 }));
+    if (dest) pts.push(pt(dest, { role: 'airport', arrow: 0 }));
     pts.push(pt(v.cur, { role: 'aircraft', arrow: v.heading == null ? 0 : 1, heading: v.heading == null ? 0 : v.heading }));
     var line = v.trail.slice();
     var last = line[line.length - 1];
     if (!last || last[0] !== v.cur[0] || last[1] !== v.cur[1]) line.push(v.cur);
     var trail = line.length >= 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line.map(function (p) { return [p[1], p[0]]; }) } }] : [];
-    return { trail: fc(trail), points: fc(pts) };
+    var route = rt.length ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: rt.map(function (p) { return [p[1], p[0]]; }) } }] : [];
+    return { trail: fc(trail), route: fc(route), points: fc(pts) };
   };
   // The box that holds every point of the view: [[west, south], [east, north]], or null.
   F.mapBounds = function (v) {
     if (!v) return null;
-    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], v.destination ? [v.destination] : []);
+    // The route's points (they end at the destination) stand in for the destination, so the box holds the whole curve.
+    var rt = v.destination ? F.greatCircle(v.cur, v.destination) : [];
+    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], rt.length ? rt : v.destination ? [v.destination] : []);
     var lat = pts.map(function (p) { return p[0]; }), lon = pts.map(function (p) { return p[1]; });
     return [[Math.min.apply(null, lon), Math.min.apply(null, lat)], [Math.max.apply(null, lon), Math.max.apply(null, lat)]];
   };
@@ -1151,8 +1159,15 @@
   };
   var addLayers = function (ml) {
     ml.addSource('casora-flight-trail', { type: 'geojson', data: EMPTY });
+    ml.addSource('casora-flight-route', { type: 'geojson', data: EMPTY });
     ml.addSource('casora-flight-points', { type: 'geojson', data: EMPTY });
     var arrow = arrowImage(ml);
+    // The Remaining route first, so it lies under the trail, the airports and the aircraft: dashed (dash lengths are in line
+    // widths: 6 px on, 6 px off for the line and for its slightly wider casing), thinner than the solid Flown trail.
+    ml.addLayer({ id: 'casora-flight-route-casing', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
+      paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 4, 'line-dasharray': [1.5, 1.5] } });
+    ml.addLayer({ id: 'casora-flight-route', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [3, 3] } });
     // Dark casing under a light line: visible on light and dark map tiles alike.
     ml.addLayer({ id: 'casora-flight-trail-casing', type: 'line', source: 'casora-flight-trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 5 } });
@@ -1321,6 +1336,13 @@
         var round = function (n) { return Math.round(n * 10) / 10; };
         var pt = function (c) { var q = lm.latLngToContainerPoint([c[1], c[0]]); return [round(q.x), round(q.y)]; };
         var out = '';
+        // The Remaining route first (under everything): dashed, 6 px on and 6 px off, casing and line alike.
+        var ahead = geo.route.features.length ? geo.route.features[0].geometry.coordinates : [];
+        if (ahead.length) {
+          var rd = ahead.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
+          out += '<path d="' + rd + '" fill="none" stroke="#000000" stroke-opacity="0.6" stroke-width="4" stroke-dasharray="6 6" stroke-linejoin="round"/>'
+            + '<path d="' + rd + '" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="6 6" stroke-linejoin="round"/>';
+        }
         var line = geo.trail.features.length ? geo.trail.features[0].geometry.coordinates : [];
         if (line.length) {
           var d = line.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
@@ -1355,8 +1377,10 @@
         if (sig === this._sent) return;
         this._sent = sig;
         var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
-        if (!pts || !trail) return;
+        var route = ml.getSource('casora-flight-route');
+        if (!pts || !trail || !route) return;
         pts.setData(geo ? geo.points : EMPTY);
+        route.setData(geo ? geo.route : EMPTY);
         trail.setData(geo ? geo.trail : EMPTY);
         if (ident && ident !== this._ident) {
           var b = F.mapBounds(v);
