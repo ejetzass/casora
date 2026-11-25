@@ -880,7 +880,8 @@ window.CASORA_EXTRA_ICONS = Object.fromEntries([
           delay_wait: "Empieza más tarde", printing: "Imprimiendo", on: "Encendido" },
   };
   const OURS = new Set((window.CASORA_TILE_TYPES || []).map((t) => t.template));
-  const OWN_DATA = new Set(["casora_trash"]);
+  // Flights tiles: their text comes from scripts/local/49-flights.js, which reads the Studio draft here (#423).
+  const OWN_DATA = new Set(["casora_trash", "casora_flights", "casora_flights_airborne"]);
   // T04 (test 2): lights and locks are the panel's own types (not in CASORA_TILE_TYPES), so the preview guessed
   // "Alle an"/"Entriegelt" while the dashboard counted "24 An"/"2 entriegelt" – their templates run here too.
   // u08-07: plants too (the preview said „Pflanze – Braucht Aufmerksamkeit“ beside the dashboard's „Yucca – Steht zu nass“).
