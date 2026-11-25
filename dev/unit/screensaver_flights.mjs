@@ -1,10 +1,11 @@
 // @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
-// Flights kind (one flight per native turn, in a fixed order, the map and the details alternating per round; the next start moves on too), updates
-// that do not reset the turn, removal and reconnection,
-// the local route picture (no tiles, no links), the preview with nothing to show (the sky, no invented flight), mount and
-// unmount. Controlled clock; synthetic flights; no browser.
+// Flights kind (one flight per native turn, in a fixed order; the map and the details alternate per round, and the next
+// start moves on too). Covered: updates that do not reset the turn, removal and reconnection, flights joining and leaving
+// (also within a turn), an empty list that comes back, a fresh start at the wrap (also with one flight), the preview with
+// its own choice, the local route picture (no tiles, no links), the preview with nothing to show (the sky, no invented
+// flight), mount and unmount. Controlled clock; synthetic flights; no browser.
 //   node dev/unit/screensaver_flights.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -57,6 +58,7 @@ const entry = (id, step, o = {}) => ({
   time_scheduled_arrival: SLOT0 / 1000 + 5400, time_estimated_arrival: SLOT0 / 1000 + 5000,
   coordinates: [[50, 4], [50.1, 5]], ...o,
 });
+const f456 = (step, o = {}) => entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456', ...o });
 const twoFlights = (step) => [entry('1', step), entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456', airport_origin_name: 'Airport C' })];
 const house = (R) => ({
   config: { time_zone: 'Europe/Amsterdam' }, locale: { time_format: '24' }, themes: { darkMode: true }, connection: R.conn,
@@ -71,6 +73,7 @@ const at = (R, ms) => { R.clock.t = ms; R.api.update(); return R.host.innerHTML;
 const warm = (R, kind = 'flights') => { R.vars = { kind }; at(R, SLOT0); };
 const kindOf = (html) => (html.match(/data-kind="([a-z]+)"/) || [])[1];
 const flightOf = (html) => (html.match(/XY(\d+)/) || [])[1];
+const layoutOf = (html) => (/cs-fl-map/.test(html) ? 'map' : /cs-fl-rows/.test(html) ? 'detail' : '?');
 // „mix“ with Flights and wort: Flights takes every other turn, and its map and details alternate between those turns.
 // Returns the first Flights screen in the details layout (flightsOf(step) gives the flights of each step, each a movement).
 const mixDetail = (flightsOf) => {
@@ -141,7 +144,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   for (let i = 0; i < 8; i++) {
     move(R, 1 + i); // each turn the flights move on: observed movement, so they keep qualifying
     const h = at(R, SLOT0 + i * TURN + 1000);
-    if (kindOf(h) === 'flights') seen.push({ flight: flightOf(h), layout: /cs-fl-map/.test(h) ? 'map' : /cs-fl-rows/.test(h) ? 'detail' : '?' });
+    if (kindOf(h) === 'flights') seen.push({ flight: flightOf(h), layout: layoutOf(h) });
     else assert.equal(kindOf(h), 'wort', 'the other turn shows its own kind');
   }
   assert.deepEqual(seen, [
@@ -158,14 +161,14 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
 {
   const R = runtime();
   R.vars = { kind: 'flights' };
-  const three = (step) => [entry('1', step), entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', step)];
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
   move(R, 0, three(0));
   at(R, SLOT0);
   const seen = [];
   for (let i = 0; i < 8; i++) {
     move(R, 1 + i, three(1 + i));
     const h = at(R, SLOT0 + i * TURN + 1000);
-    seen.push({ kind: kindOf(h), flight: flightOf(h), layout: /cs-fl-map/.test(h) ? 'map' : /cs-fl-rows/.test(h) ? 'detail' : '?' });
+    seen.push({ kind: kindOf(h), flight: flightOf(h), layout: layoutOf(h) });
   }
   assert.deepEqual(seen.map((x) => x.flight), ['1', '456', '789', '1', '456', '789', '1', '456'], 'one flight per turn, in order, wrapping round');
   assert.deepEqual(seen.map((x) => x.layout), ['map', 'map', 'map', 'detail', 'detail', 'detail', 'map', 'map'],
@@ -202,7 +205,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     move(R, 1 + i, [entry('1', 1 + i)]);
     const h = at(R, SLOT0 + i * TURN + 1000);
     assert.equal(flightOf(h), '1', 'turn ' + i + ': the only flight stays');
-    layouts.push(/cs-fl-map/.test(h) ? 'map' : /cs-fl-rows/.test(h) ? 'detail' : '?');
+    layouts.push(layoutOf(h));
   }
   assert.deepEqual(layouts, ['map', 'detail', 'map', 'detail'], 'one flight: map and details alternate, one turn each');
 }
@@ -217,7 +220,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   for (let i = 0; i < 5; i++) {
     move(R, 1 + i);
     const h = at(R, SLOT0 + i * TURN + 1000);
-    seen.push(flightOf(h) + ' ' + (/cs-fl-map/.test(h) ? 'map' : 'detail'));
+    seen.push(flightOf(h) + ' ' + layoutOf(h));
   }
   assert.deepEqual(seen, ['1 map', '456 map', '1 detail', '456 detail', '1 map'], 'both flights on the map, then both in detail');
 }
@@ -238,6 +241,89 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const second = restart(SLOT0 + 2000);
   assert.equal(flightOf(second), '456', 'a fresh start shows the next flight');
   assert.match(second, /cs-fl-map/, 'and keeps the layout of the round: the map, mid-round');
+}
+
+// A fresh start that wraps (it starts on the last flight's place, so it moves on to the first) flips the layout too.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0);
+  move(R, 1, three(1));
+  at(R, SLOT0 + 1000); // flight 1, map
+  move(R, 2, three(2));
+  at(R, SLOT0 + TURN + 1000); // flight 456, map
+  move(R, 3, three(3));
+  assert.equal(layoutOf(at(R, SLOT0 + 2 * TURN + 1000)), 'map', 'flight 789 on the map: the last of the round');
+  const restart = (ms) => {
+    const host = { innerHTML: '', getRootNode: () => R.host.getRootNode() };
+    R.S.mount(host, null, { every: 3600000, kind: () => 'flights', context: () => ({ hass: R.hass, vars: R.vars, now: new Date(ms) }) });
+    return host.innerHTML;
+  };
+  const wrapped = restart(SLOT0 + 2 * TURN + 2000);
+  assert.equal(flightOf(wrapped), '1', 'the fresh start moves on from 789 to flight 1');
+  assert.equal(layoutOf(wrapped), 'detail', 'the wrap flips the layout: the details');
+}
+
+// A fresh start with one flight in the list flips the layout at every start: the one flight is its own round.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  move(R, 0, [entry('1', 0)]);
+  at(R, SLOT0);
+  move(R, 1, [entry('1', 1)]);
+  assert.equal(layoutOf(at(R, SLOT0 + 1000)), 'map', 'turn 0: flight 1 on the map');
+  const restart = (ms) => {
+    const host = { innerHTML: '', getRootNode: () => R.host.getRootNode() };
+    R.S.mount(host, null, { every: 3600000, kind: () => 'flights', context: () => ({ hass: R.hass, vars: R.vars, now: new Date(ms) }) });
+    return host.innerHTML;
+  };
+  const layouts = [restart(SLOT0 + 2000), restart(SLOT0 + 3000), restart(SLOT0 + 4000)].map((h) => layoutOf(h));
+  assert.deepEqual(layouts, ['detail', 'map', 'detail'], 'each start flips: the only flight is its own round');
+  assert.equal(flightOf(restart(SLOT0 + 5000)), '1', 'and it stays flight 1');
+}
+
+// The list empties and comes back: the layout survives, and flips only when the old flight was the last one of the round.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0);
+  move(R, 1, three(1));
+  assert.equal(layoutOf(at(R, SLOT0 + 1000)), 'map', 'flight 1 on the map');
+  move(R, 2, []);
+  assert.equal(kindOf(at(R, SLOT0 + TURN + 1000)), 'himmel', 'empty: the sky');
+  move(R, 3, three(3));
+  assert.equal(kindOf(at(R, SLOT0 + 2 * TURN + 1000)), 'himmel', 'back: a baseline first');
+  move(R, 4, three(4));
+  const back = at(R, SLOT0 + 2 * TURN + 2000);
+  assert.equal(flightOf(back), '456', 'back and moving: the next flight, flight 456 (1 was not the last)');
+  assert.equal(layoutOf(back), 'map', 'the layout survives the empty list');
+}
+
+// The same, but the old flight was the last one of the round: it comes back and the round ends there.
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0);
+  move(R, 1, three(1));
+  at(R, SLOT0 + 1000);
+  move(R, 2, three(2));
+  at(R, SLOT0 + TURN + 1000);
+  move(R, 3, three(3));
+  assert.equal(flightOf(at(R, SLOT0 + 2 * TURN + 1000)), '789', 'flight 789 on the map, the last of the round');
+  move(R, 4, []);
+  assert.equal(kindOf(at(R, SLOT0 + 3 * TURN + 1000)), 'himmel', 'empty: the sky');
+  move(R, 5, three(5));
+  at(R, SLOT0 + 3 * TURN + 2000);
+  move(R, 6, three(6));
+  const back = at(R, SLOT0 + 4 * TURN + 1000);
+  assert.equal(flightOf(back), '1', 'back: the round wraps to flight 1');
+  assert.equal(layoutOf(back), 'detail', 'the old flight was last: the layout flips');
 }
 
 // The Studio preview reads the choice and keeps nothing: it shows the map, and the saver's own turn is not moved by it.
@@ -262,23 +348,48 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.equal(flightOf(at(R, SLOT0 + 3 * TURN + 2000)), '456', 'and it is flight 456');
 }
 
-// A flight that leaves mid-round ends the round at the end of the list: 789 was last on the map, so the details start.
+// A flight that leaves at the round boundary ends the round at the end of the list: 789 was last on the map, so the details start.
 {
   const R = runtime();
   R.vars = { kind: 'flights' };
-  const three = (step, ids) => ids.map((id) => entry(id, step, id === '456' ? { flight_number: 'XY456', callsign: 'XYZ456' } : {}));
+  const three = (step, ids) => ids.map((id) => (id === '456' ? f456(step) : entry(id, step)));
+  const shown = (ms) => { const h = at(R, ms); return flightOf(h) + ' ' + layoutOf(h); };
   move(R, 0, three(0, ['1', '456', '789']));
   at(R, SLOT0);
   const seen = [];
   move(R, 1, three(1, ['1', '456', '789']));
-  seen.push(flightOf(at(R, SLOT0 + 1000)) + ' ' + (/cs-fl-map/.test(R.host.innerHTML) ? 'map' : 'detail'));
+  seen.push(shown(SLOT0 + 1000));
   move(R, 2, three(2, ['1', '456', '789']));
-  seen.push(flightOf(at(R, SLOT0 + TURN + 1000)) + ' ' + (/cs-fl-map/.test(R.host.innerHTML) ? 'map' : 'detail'));
+  seen.push(shown(SLOT0 + TURN + 1000));
   move(R, 3, three(3, ['1', '456', '789']));
-  seen.push(flightOf(at(R, SLOT0 + 2 * TURN + 1000)) + ' ' + (/cs-fl-map/.test(R.host.innerHTML) ? 'map' : 'detail'));
+  seen.push(shown(SLOT0 + 2 * TURN + 1000));
   move(R, 4, three(4, ['1', '456']));
-  seen.push(flightOf(at(R, SLOT0 + 3 * TURN + 1000)) + ' ' + (/cs-fl-map/.test(R.host.innerHTML) ? 'map' : 'detail'));
+  seen.push(shown(SLOT0 + 3 * TURN + 1000));
   assert.deepEqual(seen, ['1 map', '456 map', '789 map', '1 detail'], '789 left: the round ends, the next flight is in detail');
+}
+
+// A flight that leaves within its own turn: 789 was last on the map, flight 1 takes its place in that turn, and the round
+// ends there too, so flight 1 starts the details (no fourth map turn).
+{
+  const R = runtime();
+  R.vars = { kind: 'flights' };
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
+  move(R, 0, three(0));
+  at(R, SLOT0);
+  move(R, 1, three(1));
+  assert.equal(layoutOf(at(R, SLOT0 + 1000)), 'map', 'turn 0: flight 1 on the map');
+  move(R, 2, three(2));
+  assert.equal(layoutOf(at(R, SLOT0 + TURN + 1000)), 'map', 'turn 1: flight 456 on the map');
+  move(R, 3, three(3));
+  assert.equal(flightOf(at(R, SLOT0 + 2 * TURN + 1000)), '789', 'turn 2: flight 789 on the map');
+  move(R, 4, [entry('1', 4), f456(4)]);
+  const leftInTurn = at(R, SLOT0 + 2 * TURN + 2000);
+  assert.equal(flightOf(leftInTurn), '1', 'same turn: 789 left, flight 1 takes its place');
+  assert.equal(layoutOf(leftInTurn), 'detail', 'the round ended at the end of the list: the details start');
+  move(R, 5, [entry('1', 5), f456(5)]);
+  assert.equal(layoutOf(at(R, SLOT0 + 3 * TURN + 1000)), 'detail', 'turn 3: flight 456 in detail');
+  move(R, 6, [entry('1', 6), f456(6)]);
+  assert.equal(layoutOf(at(R, SLOT0 + 4 * TURN + 1000)), 'map', 'turn 4: the next round starts on the map');
 }
 
 // A flight that comes in mid-round joins the round in its place: no early flip.
@@ -289,15 +400,15 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   at(R, SLOT0);
   move(R, 1);
   assert.match(at(R, SLOT0 + 1000), /cs-fl-map/, 'turn 0: flight 1 on the map');
-  move(R, 2, [entry('1', 2), entry('456', 2, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', 2)]);
+  move(R, 2, [entry('1', 2), f456(2), entry('789', 2)]);
   const h1 = at(R, SLOT0 + TURN + 1000);
   assert.equal(flightOf(h1), '456', 'turn 1: flight 456');
   assert.match(h1, /cs-fl-map/, 'still the map: 789 joined the round');
-  move(R, 3, [entry('1', 3), entry('456', 3, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', 3)]);
+  move(R, 3, [entry('1', 3), f456(3), entry('789', 3)]);
   const h2 = at(R, SLOT0 + 2 * TURN + 1000);
   assert.equal(flightOf(h2), '789', 'turn 2: flight 789');
   assert.match(h2, /cs-fl-map/, 'still the map');
-  move(R, 4, [entry('1', 4), entry('456', 4, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', 4)]);
+  move(R, 4, [entry('1', 4), f456(4), entry('789', 4)]);
   const h3 = at(R, SLOT0 + 3 * TURN + 1000);
   assert.equal(flightOf(h3), '1', 'turn 3: the round wraps to flight 1');
   assert.match(h3, /cs-fl-rows/, 'and the round has ended: the details');
@@ -324,7 +435,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
 {
   const R = runtime();
   R.vars = { kind: 'flights' };
-  const three = (step) => [entry('1', step), entry('456', step, { flight_number: 'XY456', callsign: 'XYZ456' }), entry('789', step)];
+  const three = (step) => [entry('1', step), f456(step), entry('789', step)];
   move(R, 0, three(0));
   at(R, SLOT0); // the first sight is a baseline
   move(R, 1, three(1));
@@ -408,7 +519,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   warm(R);
   move(R, 1);
   assert.equal(flightOf(at(R, SLOT0 + 1000)), '1');
-  move(R, 2, [entry('456', 2, { flight_number: 'XY456', callsign: 'XYZ456' })]);
+  move(R, 2, [f456(2)]);
   assert.equal(flightOf(at(R, SLOT0 + 2000)), '456', 'flight 1 left the source: the remaining one shows at once');
   move(R, 3, []);
   assert.equal(kindOf(at(R, SLOT0 + 3000)), 'himmel', 'no flights left: the native sky');
