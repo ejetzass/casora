@@ -861,6 +861,7 @@
     + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
+    + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
     + '.cs-sv .cs-fl-pic{position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);}'
@@ -1371,7 +1372,8 @@
   S.routeFrame = function (v) {
     if (!v || !v.cur) return null;
     // Relies on F.mapView: every longitude is continuous with the aircraft's, so points are projected as given.
-    var pts = [v.cur].concat(v.trail || [], v.route || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : []);
+    // The Unreported part's arc is in the box too: it can bow past every other point.
+    var pts = [v.cur].concat(v.trail || [], v.route || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : [], FL() ? FL().unreportedOf(v) : []);
     var la = pts.map(function (p) { return p[0]; }), lo = pts.map(function (p) { return p[1]; });
     var lo0 = Math.min.apply(null, lo), lo1 = Math.max.apply(null, lo), la0 = Math.min.apply(null, la), la1 = Math.max.apply(null, la);
     var padA = Math.max(0.3, (la1 - la0) * 0.15), padO = Math.max(0.3, (lo1 - lo0) * 0.15);
@@ -1395,6 +1397,12 @@
       var dash = u(rs.dash);
       svgHtml += '<polyline class="cs-fl-route" vector-effect="non-scaling-stroke" fill="none" stroke-linejoin="round" style="stroke-width:' + esc(u(rs.width))
         + ';stroke-dasharray:' + esc(dash) + ' ' + esc(dash) + '" points="' + esc(line(v.route)) + '"/>';
+    }
+    // The Unreported part: under the Flown trail (the shared function, as for the popup map). Its arc ends at the trail's start.
+    var arc = FL() ? FL().unreportedOf(v) : [];
+    if (arc.length > 1) {
+      svgHtml += '<polyline class="cs-fl-unrep" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
+        + esc(arc.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')) + '"/>';
     }
     if (v.trail && v.trail.length > 1) {
       svgHtml += '<polyline class="cs-fl-trail" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'

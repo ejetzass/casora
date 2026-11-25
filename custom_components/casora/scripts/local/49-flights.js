@@ -38,6 +38,7 @@
 //   window._casoraFlights.distanceKm(a, b) / .trailOf(entry) → great-circle km and the valid trail points
 //   window._casoraFlights.ROUTE_STYLE                → {width, casingWidth, casingOpacity, dash}: the Remaining route's look; the screensaver uses width and dash only
 //   window._casoraFlights.greatCircle(a, b)           → the Remaining route: [lat, lon] points aircraft→destination ([] when none)
+//   window._casoraFlights.unreportedOf(view)   → the Unreported part: [lat, lon] points, origin airport → oldest Flown trail point ([] when either is missing)
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
 //   window._casoraFlights.glide(g, now, reduce) / .mapViewAt(view, pos, heading) / .track(state, view, ident, now, reduce) → the popup arrow's glide: drawn position and heading, the view drawn there, and the pure state step ({state, view, gliding})
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
@@ -1114,6 +1115,15 @@
     var end = route.length ? route[route.length - 1] : destination ? [destination[0], lonNear(cur[1], destination[1])] : null;
     return { trail: out, origin: origin ? [origin[0], lonNear(next, origin[1])] : null, route: route, destination: end };
   };
+  // The Unreported part: the great circle (F.greatCircle, so the same continuous longitudes) from the departure airport to the
+  // oldest point of the Flown trail, fainter than the trail on both flat maps. Empty without the origin or without any trail
+  // point. The view keeps the arc it was built with (`unreported`), so it stays put while the arrow glides and the trail's end
+  // is cut back: the arc ends at the trail's start, never at the drawn arrow.
+  F.unreportedOf = function (v) {
+    if (!v) return [];
+    if (v.unreported) return v.unreported;
+    return v.origin && v.trail && v.trail.length ? F.greatCircle(v.origin, v.trail[0]) : [];
+  };
   F.mapView = function (hass, src, key, now) {
     var row = F.flight(hass, src, key, now);
     if (!row) return null;
@@ -1123,7 +1133,8 @@
     var d = pointOf(f.airport_destination_latitude, f.airport_destination_longitude);
     var c = continuous(cur, F.trailOf(f), o, d);
     return { key: row.key, label: row.label, cur: cur, heading: typeof f.heading === 'number' && f.heading >= 0 && f.heading <= 360 ? f.heading : null,
-      origin: c.origin, destination: c.destination, trail: c.trail, route: c.route, progress: F.progress(o, cur, d) };
+      origin: c.origin, destination: c.destination, trail: c.trail, route: c.route,
+      unreported: F.unreportedOf({ origin: c.origin, trail: c.trail }), progress: F.progress(o, cur, d) };
   };
   // GeoJSON for the map layers ([lon, lat]): the trail as one line ending at the marker, the Remaining route as one line
   // from the marker to the destination, the airports, the aircraft.
@@ -1133,7 +1144,7 @@
     var lineOf = function (points) {
       return points.length >= 2 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map(function (p) { return [p[1], p[0]]; }) } }] : [];
     };
-    if (!v) return { trail: fc([]), route: fc([]), points: fc([]) };
+    if (!v) return { trail: fc([]), route: fc([]), unreported: fc([]), points: fc([]) };
     var pts = [];
     if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0 }));
     if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0 }));
@@ -1141,14 +1152,14 @@
     var line = v.trail.slice();
     var last = line[line.length - 1];
     if (!last || last[0] !== v.cur[0] || last[1] !== v.cur[1]) line.push(v.cur);
-    return { trail: fc(lineOf(line)), route: fc(lineOf(v.route)), points: fc(pts) };
+    return { trail: fc(lineOf(line)), route: fc(lineOf(v.route)), unreported: fc(lineOf(F.unreportedOf(v))), points: fc(pts) };
   };
   // The box that holds every point of the view: [[west, south], [east, north]], or null.
   F.mapBounds = function (v) {
     if (!v) return null;
     // The route's points end at the destination, so the box holds the whole curve; the destination itself is added for a
     // view without a route (under a kilometre away).
-    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], v.destination ? [v.destination] : [], v.route);
+    var pts = [v.cur].concat(v.trail, v.origin ? [v.origin] : [], v.destination ? [v.destination] : [], v.route, F.unreportedOf(v));
     var lat = pts.map(function (p) { return p[0]; }), lon = pts.map(function (p) { return p[1]; });
     return [[Math.min.apply(null, lon), Math.min.apply(null, lat)], [Math.max.apply(null, lon), Math.max.apply(null, lat)]];
   };
@@ -1243,6 +1254,7 @@
   // The Remaining route's look, for MapLibre and Leaflet alike: a light dashed line (thinner than the Flown trail) over a dark
   // dashed casing; dash and gap are DASH px each.
   var ROUTE_STYLE = { width: 2, casingWidth: 4, casingOpacity: 0.6, dash: 6 };
+  var UNREPORTED_OPACITY = 0.45; // the Unreported part: the Flown trail's white, fainter
   F.ROUTE_STYLE = ROUTE_STYLE; // the screensaver draws its line in the same proportions
   var EMPTY = { type: 'FeatureCollection', features: [] };
   var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
@@ -1269,11 +1281,15 @@
   };
   var addLayers = function (ml) {
     ml.addSource('casora-flight-trail', { type: 'geojson', data: EMPTY });
+    ml.addSource('casora-flight-unreported', { type: 'geojson', data: EMPTY });
     ml.addSource('casora-flight-route', { type: 'geojson', data: EMPTY });
     ml.addSource('casora-flight-points', { type: 'geojson', data: EMPTY });
     var arrow = arrowImage(ml);
     // The Remaining route first, so it lies under the trail, the airports and the aircraft. MapLibre counts dash lengths in line
     // widths, so the line and its wider casing get the same dash in pixels.
+    // The Unreported part below even that: the trail's white at 45 % opacity, solid.
+    ml.addLayer({ id: 'casora-flight-unreported', type: 'line', source: 'casora-flight-unreported', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-opacity': UNREPORTED_OPACITY, 'line-width': 2.5 } });
     ml.addLayer({ id: 'casora-flight-route-casing', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
       paint: { 'line-color': '#000000', 'line-opacity': ROUTE_STYLE.casingOpacity, 'line-width': ROUTE_STYLE.casingWidth,
         'line-dasharray': [ROUTE_STYLE.dash / ROUTE_STYLE.casingWidth, ROUTE_STYLE.dash / ROUTE_STYLE.casingWidth] } });
@@ -1446,7 +1462,7 @@
         if (!ident || fit) this._ident = ident;
         this._drawLeaflet(lm, F.mapGeo(v));
       }
-      // Remaining route and trail (each a dark casing under a light line), airports, the aircraft and its arrow: the same look as
+      // Unreported part, Remaining route and trail (each a dark casing under a light line), airports, the aircraft and its arrow: the same look as
       // the MapLibre layers.
       _drawLeaflet(lm, geo) {
         var svg = this._svg;
@@ -1458,7 +1474,13 @@
         var pathOf = function (coords) { return coords.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' '); };
         var firstLine = function (collection) { return collection.features.length ? collection.features[0].geometry.coordinates : []; };
         var out = '';
-        // The Remaining route first (under everything): dashed, casing and line alike (ROUTE_STYLE, as on MapLibre).
+        // The Unreported part lowest: solid, the trail's white at a fainter opacity (UNREPORTED_OPACITY, as on MapLibre).
+        var unrep = firstLine(geo.unreported);
+        if (unrep.length) {
+          var unrepPath = pathOf(unrep);
+          out += '<path d="' + unrepPath + '" fill="none" stroke="#ffffff" stroke-opacity="' + UNREPORTED_OPACITY + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+        }
+        // The Remaining route next: dashed, casing and line alike (ROUTE_STYLE, as on MapLibre).
         var route = firstLine(geo.route);
         if (route.length) {
           var routePath = pathOf(route), dash = ' stroke-dasharray="' + ROUTE_STYLE.dash + ' ' + ROUTE_STYLE.dash + '" stroke-linejoin="round"/>';
@@ -1517,9 +1539,10 @@
       }
       _putMl(geo) {
         var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
-        var route = ml.getSource('casora-flight-route');
-        if (!pts || !trail || !route) return false;
+        var route = ml.getSource('casora-flight-route'), unrep = ml.getSource('casora-flight-unreported');
+        if (!pts || !trail || !route || !unrep) return false;
         pts.setData(geo ? geo.points : EMPTY);
+        unrep.setData(geo ? geo.unreported : EMPTY);
         route.setData(geo ? geo.route : EMPTY);
         trail.setData(geo ? geo.trail : EMPTY);
         return true;
