@@ -119,7 +119,7 @@
   // i18n/<lang>.json (same ?v= as this file), so a page loads only the language it shows (Ladezeit stage 1:
   // all 8 languages were 1 MB / 291 KB gzip on every dashboard). window.__casoraI18nPhrases preloads
   // languages ({lang: object or JSON text}), e.g. in the unit tests.
-  var PHRASES = {"de":{"exact":{"Ein":"An","Favorites":"Favoriten","Home":"Zuhause","Scenes":"Szenen"},"patterns":[]}};
+  var PHRASES = {"de":{"exact":{"Ein":"An","Favorites":"Favoriten","Home":"Zuhause","Scenes":"Szenen"},"patterns":[["^(\\d+) in der Luft$","{1} in der Luft"]]}};
   var AVAIL = ["en", "es", "fr", "it", "nb", "nl", "pl", "pt"];
   var BASE = '/casora_scripts/i18n/';
   var REMEMBER = 'casora.i18n.lang';

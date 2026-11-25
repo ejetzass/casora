@@ -5509,6 +5509,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} voli monitorati"
+    ],
+    [
+      "^(\\d+) in der Luft$",
+      "{1} in volo"
     ]
   ]
 }

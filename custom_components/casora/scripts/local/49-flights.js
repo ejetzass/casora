@@ -931,7 +931,7 @@
         + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>' : '') + '</button>';
   };
   // The phone tile: one line with the count (a tap on the tile is the action, see F.tapTile). Desktop keeps the rows.
-  var summaryText = function (n) { return tr(n + ' unterwegs'); };
+  var summaryText = function (n) { return tr(n + ' in der Luft'); };
   F.liveHtml = function (hass, pin, now, name) {
     var flights = F.airborne(hass, pin, now);
     if (F.phone()) {
