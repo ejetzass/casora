@@ -1094,13 +1094,13 @@
   var hassNow = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass; };
   var MAP_CSS = '.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-scale,.maplibregl-ctrl-attrib-button{display:none!important}'
     + '.maplibregl-ctrl-bottom-right{right:0;bottom:0}'
-    + '.maplibregl-ctrl-attrib{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important}'
-    + '.maplibregl-ctrl-attrib a{color:inherit!important;text-decoration:underline}.maplibregl-ctrl-attrib a:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
+    // MapLibre and Leaflet (HA's ha-map in the Test HA) attribution: one selector list per rule.
+    + '.maplibregl-ctrl-attrib,.leaflet-control-attribution{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important}'
+    + '.maplibregl-ctrl-attrib a,.leaflet-control-attribution a{color:inherit!important;text-decoration:underline}'
+    + '.maplibregl-ctrl-attrib a:focus-visible,.leaflet-control-attribution a:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
     + '.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}'
-    // Leaflet (HA's ha-map in the Test HA): same look as the MapLibre attribution above; zoom and scale hidden as in 12-tanken.js.
-    + '.leaflet-control-zoom,.leaflet-control-scale{display:none!important}'
-    + '.leaflet-control-attribution{font-size:12px!important;line-height:1.3!important;padding:2px 6px!important;margin:0!important;min-height:0!important;border-radius:6px!important;background:var(--card-background-color,#fff)!important;color:var(--primary-text-color,#212121)!important;pointer-events:auto!important}'
-    + '.leaflet-control-attribution a{color:inherit!important;text-decoration:underline}.leaflet-control-attribution a:focus-visible{outline:2px solid currentColor;outline-offset:2px}';
+    // Leaflet zoom and scale hidden, as in 12-tanken.js.
+    + '.leaflet-control-zoom,.leaflet-control-scale{display:none!important}';
   // The arrow points north at heading 0; MapLibre turns it clockwise on the map. Drawn on a canvas: no file or URL loads.
   var arrowImage = function (ml) {
     try {
@@ -1183,14 +1183,10 @@
       // The map's canvas and zoom controls keep tabindex 0. The popup's Tab handling counts them as stops (casora-core.js
       // _focusables), so Tab from Close would leave the popup: take them out of the tab order. The attribution link stays.
       // Both renderers are handled: MapLibre (its own map) and Leaflet (HA's ha-map in the Test HA). The MapLibre class
-      // alone does not match the Leaflet attribution, so both classes are listed. Inside the attribution a link is made
-      // reachable again, in case something set tabindex -1 on it.
+      // alone does not match the Leaflet attribution, so both classes are listed.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
-          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) {
-            if (x.matches('a[href]') && x.tabIndex < 0) x.removeAttribute('tabindex');
-            return;
-          }
+          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) return;
           if (x.matches('a[href],button,input,select,textarea,[tabindex]') && x.tabIndex >= 0) x.setAttribute('tabindex', '-1');
           if (x.shadowRoot) this._unstop(x.shadowRoot);
         });

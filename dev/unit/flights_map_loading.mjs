@@ -22,7 +22,8 @@ const el = (tag, attrs = {}, kids = []) => {
     },
     get tabIndex() { return 'tabindex' in this.attrs ? Number(this.attrs.tabindex) : (this.matches(STOP) ? 0 : -1); },
     appendChild() {}, remove() {},
-    closest(sel) { for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').includes(sel.slice(1))) return x; return null; },
+    // A selector list ('.a, .b'), as the DOM's closest() takes it.
+    closest(sel) { const names = sel.split(', ').map((s) => s.slice(1)); for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').some((c) => names.includes(c))) return x; return null; },
   };
   kids.forEach((k) => { k.parent = n; });
   n.querySelectorAll = (sel) => { if (sel !== '*') throw new Error('unexpected selector ' + sel); const out = []; (function walk(x) { x.children.forEach((c) => { out.push(c); walk(c); }); })(n); return out; };
