@@ -73,17 +73,19 @@ const moving = (hass, flight, src = 'sensor.a', at = T0) => {
 const deq = (a, b, m) => assert.equal(JSON.stringify(a), JSON.stringify(b), m);
 
 // A fake Leaflet map: 480x360 px, a plain projection (10 px per degree; lon 0 at x 240, lat 50 at y 180), one tile layer.
+// A tile layer with its own tileload handlers; load() fires one tile load.
+const tileLayer = () => {
+  const handlers = {};
+  return { getTileUrl() {}, on(t, fn) { (handlers[t] = handlers[t] || []).push(fn); }, load() { (handlers.tileload || []).forEach((f) => f()); } };
+};
 const fakeLf = () => {
-  const tileHandlers = {};
-  const tileLayer = { getTileUrl() {}, on(t, fn) { (tileHandlers[t] = tileHandlers[t] || []).push(fn); } };
-  const lf = { size: { x: 480, y: 360 }, fits: [], invalidated: 0, disabled: [], tileHandlers,
-    options: {},
+  const lf = { size: { x: 480, y: 360 }, fits: [], invalidated: 0, disabled: [], layers: [tileLayer()],
     getSize() { return this.size; },
     invalidateSize() { this.invalidated++; },
     fitBounds(b, o) { this.fits.push({ b, o }); },
     latLngToContainerPoint(ll) { return { x: 240 + ll[1] * 10, y: 180 + (50 - ll[0]) * 10 }; },
-    eachLayer(fn) { fn(tileLayer); },
-    loadTile() { (tileHandlers.tileload || []).forEach((f) => f()); },
+    eachLayer(fn) { this.layers.forEach((l) => fn(l)); },
+    loadTile() { this.layers.forEach((l) => l.load()); },
   };
   ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard', 'tap'].forEach((x) => {
     lf[x] = { disable() { lf.disabled.push(x); } };
@@ -134,6 +136,31 @@ await withClock(T0, async (setNow) => {
   const { f, host } = await mount(fakeLf(), hs);
   setNow(t + F.MAP.READY_MS + 1000); tick();
   assert.equal(f.style.display, 'none', 'Leaflet: no tiles in time, the element hides');
+  assert.equal(host.style.visibility, 'hidden', 'Leaflet: and the map stays hidden');
+});
+
+// ── tile layers added after the first poll are counted too; a map without any tile layer hides after the ready time ──
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const lf = fakeLf(); lf.layers = [];
+  const { f, host } = await mount(lf, hs);
+  tick();
+  assert.equal(host.style.visibility, 'hidden', 'Leaflet: no tile layer yet, still hidden');
+  lf.layers.push(tileLayer());
+  tick();
+  lf.loadTile();
+  tick();
+  assert.equal(host.style.visibility, '', 'Leaflet: a tile layer added after the first poll is counted and the map shows');
+  assert.notEqual(f.style.display, 'none', 'Leaflet: not hidden');
+});
+await withClock(T0, async (setNow) => {
+  const hs = house(); const t = moving(hs, fl('w1'));
+  setNow(t);
+  const lf = fakeLf(); lf.layers = [];
+  const { f, host } = await mount(lf, hs);
+  setNow(t + F.MAP.READY_MS + 1000); tick();
+  assert.equal(f.style.display, 'none', 'Leaflet: no tile layer at all, the element hides after the ready time');
   assert.equal(host.style.visibility, 'hidden', 'Leaflet: and the map stays hidden');
 });
 
