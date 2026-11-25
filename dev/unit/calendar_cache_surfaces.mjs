@@ -1,5 +1,5 @@
 // The greeting line and the day-line screensaver take their next appointment from the shared cache pick.
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#DRAW.linie,S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,loadCache
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraHomeNext,custom_components/casora/scripts/local/46-screensaver.js#DRAW.linie,S.context,custom_components/casora/scripts/local/06-kalender.js#K.next,K.allowsTitle,loadCache,custom_components/casora/scripts/local/06a-kalender-filter.js#casoraCalendarAllows,casoraFilterAttrsForEvent
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -78,3 +78,28 @@ assert.ok(allDayHtml.includes('Termin Laeuft') && !allDayHtml.includes('Heute ni
 const later = saver.dayLine(lineEvents, at(11, 15), lineCal);
 assert.equal(later.next && later.next.title, 'Termin Danach', 'between appointments the next timed one leads');
 console.log('ok day-line screensaver keeps its timed choice when the tile picks an all-day event');
+
+// 4. Exported decisions reach the greeting's pick through the cache: a no-match decision keeps the event,
+// a recorded match hides it. The state carries no message, so only the uid decision can apply.
+{
+  const greet = async (matches) => {
+    const st = { 'calendar.mock_b': { state: 'off', attributes: { casora_filter_match: {
+      entries: ['lunch'], events: { 'uid-1': { title: 'Lunch Termin', matches } } } } } };
+    const h = { states: st, callApi: (m, path) => Promise.resolve(path.includes('mock_b') ? [
+      { summary: 'Lunch Termin', uid: 'uid-1', start: { dateTime: '2054-11-13T15:00:00' }, end: { dateTime: '2054-11-13T16:00:00' } }] : []) };
+    const w = { casoraSettings: () => ({ calendar_filter: 'lunch' }), addEventListener() {} };
+    loadCalendars(w);
+    const c = vm.createContext({ window: w, document: { querySelector: () => ({ hass: h, shadowRoot: { querySelectorAll: () => [] } }) },
+      Date: ClockDate, setTimeout: () => 0, console });
+    vm.runInContext(read('06a-kalender-filter.js'), c);
+    vm.runInContext(read('06-kalender.js'), c);
+    vm.runInContext(finder.slice(finder.indexOf('// casora-home-next:start'), finder.indexOf('// casora-home-next:end')), c);
+    const cals = [{ entity: 'calendar.mock_b' }];
+    w._casoraCalendar.next(st, { calendars: cals });
+    await settle();
+    return w.casoraHomeNext({ states: st }, { casora_greeting_next: true }, new ClockDate());
+  };
+  assert.equal(await greet([]), 'Heute 15:00 Lunch Termin', 'a recorded no-match decision keeps the cache event in the greeting');
+  assert.equal(await greet(['lunch']), '', 'a recorded match decision hides the cache event from the greeting');
+}
+console.log('ok greeting takes exported decisions on cache events');
