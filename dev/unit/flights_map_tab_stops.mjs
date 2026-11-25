@@ -148,6 +148,8 @@ const size = Number((attribRule[1].match(/font-size:(\d+)px/) || [])[1]);
 assert.ok(size >= 12, 'attribution text is 12 px or more (was ' + size + ' px)');
 assert.match(attribRule[1], /pointer-events:auto/, 'the attribution takes pointer input');
 assert.doesNotMatch(attribRule[1], /background:transparent/, 'the attribution has an opaque background');
+assert.doesNotMatch(attribRule[1], /background:[^;]*var\(/, 'the opaque background does not depend on a theme variable (a theme may set it to transparent)');
+assert.match(attribRule[1], /background:#[0-9a-fA-F]{3,6}!important;/, 'the background is a solid color');
 assert.match(css[1], /\.maplibregl-ctrl-attrib a:focus-visible,\.leaflet-control-attribution a:focus-visible\{[^}]*outline/, 'the attribution link shows a focus ring');
 
 // Leaflet (HA's ha-map when the browser has no WebGL2): the zoom links are the map's own stops and leave the tab order; the attribution link
