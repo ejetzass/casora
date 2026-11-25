@@ -1,6 +1,6 @@
 // The Flights tile on a phone (49-flights.js): one line, "N in the air", and one button for the whole tile. One airborne
 // flight opens its popup (F.open); two or more open the list popup (casora_popup_flights_list), one full row per flight in
-// F.airborne's order. Desktop keeps its rows. The phone check is the tile CSS's media query, read with matchMedia.
+// F.airborne's order. Desktop: flights_tile_desktop.mjs. The phone check is the tile CSS's media query, read with matchMedia.
 // Controlled fake page: the phone flag is set by the test. Synthetic data only.
 //   node dev/unit/flights_tile_phone.mjs
 // @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,liveHidden,airborne,phone,tapTile,openList,open,flight,listRows,listStage,listPopup,sec,popup,defineTileList,setTileMode,closeListPopup
@@ -78,13 +78,13 @@ const seen = (flights) => {
 };
 const text = (html) => html.replace(/<[^>]*>/g, '');
 
-// ── Desktop: the rows, as before ───────────────────────────────────────────────────────────────────────────────────
+// ── Desktop with two flights: the same one line (flights_tile_desktop.mjs covers desktop) ───────────────────────────
 phone = false;
 const two = [fl('1'), fl('2')];
 let now = seen(two);
 let html = F.liveHtml(hass, '', now, 'Flüge');
-assert.equal((html.match(/data-flights-row/g) || []).length, 2, 'desktop: one row button per flight');
-assert.doesNotMatch(html, /data-flights-sum/, 'desktop: no one-line summary');
+assert.equal(html.replace(/<[^>]*>/g, ''), '2 in der Luft', 'desktop with two flights: one line');
+assert.doesNotMatch(html, /data-flights-row/, 'desktop with two flights: no row buttons');
 
 // ── Phone: one line, one button, no rows ───────────────────────────────────────────────────────────────────────────
 phone = true;
@@ -180,10 +180,10 @@ phone = true;
 onPage(null, { 'data-flights-sum': '', 'data-name': 'Flüge' });
 assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone: a button, no label, marked');
 phone = false; flipMode();
-assert.deepEqual(modeOf(), { role: 'group', label: 'Flüge', marker: undefined }, 'desktop after a change: a group named by the card, no marker');
+assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'desktop with the summary line after a change: still one button');
 seen(two); calls.length = 0;
 tap(card);
-assert.equal(calls.length, 0, 'desktop after a change: a tap on the card does not run the tile tap');
+assert.equal(calls.length, 1, 'desktop with two flights: a tap on the card opens the list (one button)');
 phone = true; flipMode();
 assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '' }, 'phone again after a change: the button again');
 calls.length = 0;

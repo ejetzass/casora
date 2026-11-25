@@ -272,9 +272,10 @@ const nineAt = (dy) => Array.from({ length: 9 }, (_, i) => fl("n" + i, { flight_
 hass.source("sensor.a", nineAt(0)); F.airborne(hass, "", T0);
 hass.source("sensor.a", nineAt(0.05));
 const tileMany = F.liveHtml(hass, '', T0 + MIN);
-assert.equal((tileMany.match(/data-flights-row data-flights-src/g) || []).length, 9, 'all nine rows are listed, none cut off');
-assert.match(tileMany, /overflow-y:auto/, 'the rows scroll inside the tile');
-assert.match(tileMany, /height:100%;max-height:100%;overflow-y:auto/, 'the flight list fills and scrolls within its allotted card space');
+// Desktop with two or more flights: one line on the tile, no rows. The list popup's rows: flights_tile_desktop.mjs.
+assert.equal(F.airborne(hass, '', T0 + MIN).length, 9, 'nine flights in the air');
+assert.equal(tileMany.replace(/<[^>]*>/g, ''), '9 in der Luft', 'nine flights: one line on the tile');
+assert.doesNotMatch(tileMany, /data-flights-row/, 'nine flights: no rows on the tile');
 // The tile's CSS is not in the text: it is in the card (casora-flight-list), so it cannot reach the card's name.
 assert.doesNotMatch(tileMany, /<style/, 'the tile text carries no style element');
 const tileCss = F._tileCss;

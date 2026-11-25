@@ -166,7 +166,9 @@ assert.equal(F.sec('fprog', { src: 'sensor.a', flight: 'w2' }, hass.states, hass
 assert.match(F.sec('fstage', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), /STAGE/, 'route text stays');
 assert.match(F.sec('fair', { src: 'sensor.a', flight: 'w1' }, hass.states, hass), /Testair/, 'details stay');
 const tile = F.liveHtml(hass, '', nowB);
-assert.match(tile, new RegExp('Ungefährer Fortschritt: ' + v.progress + ' %'), 'tile progress line');
+// The tile's short row has no progress text line; its bar is the progressbar, at the popup's value.
+assert.doesNotMatch(tile.replace(/<[^>]*>/g, ''), /Ungefährer Fortschritt/, 'tile: no progress text line');
+assert.match(tile, new RegExp('role="progressbar"[^>]*aria-valuenow="' + v.progress + '"'), 'tile progress bar: its value');
 assert.doesNotMatch(F.liveHtml(hass2, '', now2), /Ungefährer Fortschritt/, 'no tile progress without airports');
 // The tile also shows the progress as a bar, at the same value as the popup (the text line above carries the number).
 const tileBar = tile.match(/data-flights-bar[^>]*width:(\d+)%/);

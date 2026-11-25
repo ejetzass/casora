@@ -22,7 +22,7 @@
 //   window._casoraFlights.pinned(cfg)                → the setting from a dashboard config
 //   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
 //   window._casoraFlights.airborne(hass, pin, now)   → the qualifying flights now (the shared rule for every flight surface)
-//   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (rows) and its hidden state
+//   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (one line, or one short row) and its hidden state
 //   window._casoraFlights.phone() → the phone breakpoint (the tile CSS's media query); .tapTile(hass, name) / .openList(hass, src, name)
 //   window._casoraFlights.listStage(hass, c) / .listRows(hass, c) / .listPopup(states, hass, v) → the phone's list popup
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
@@ -921,40 +921,47 @@
 
   var ROW_BTN = 'display:block;width:100%;box-sizing:border-box;min-height:44px;padding:8px 0 12px;margin:0;border:0;background:none;'
     + 'font:inherit;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;';
-  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). Decorative for the tile
-  // (the text line carries the value), and the popup's line uses it too. The fill is a span, so it sits in a button as well.
-  var progressBar = function (pct, h, m) {
-    return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
+  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). attrsHtml (optional) are
+  // the attributes of the track itself. The fill is a span, so it sits in a button as well.
+  var progressBar = function (pct, h, m, attrsHtml) {
+    return '<span' + (attrsHtml ? ' ' + attrsHtml : '') + ' style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
       + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
       + esc(pct) + '%;background:currentColor"></span></span>';
   };
-  // One flight as a button (the tile's row, or a row of the list popup). The text is the same in both; style is the button's.
-  var rowHtml = function (hass, r, style) {
+  // One flight as a button. The list popup and a tile with many flights use the full row (text line and decorative bar).
+  // The desktop tile with one flight uses the short row: no progress text line, the bar is a progressbar for screen readers.
+  var rowHtml = function (hass, r, style, short) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
     var eta = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
+    var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
+    var barHtml = '';
+    if (pct != null && short) {
+      barHtml = progressBar(pct, 4, 6, 'role="progressbar" aria-label="' + esc(tr('Ungefährer Fortschritt')) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'
+        + esc(pct) + '" aria-valuetext="' + esc(pctText(pct)) + '"');
+    } else if (pct != null) {
+      // The same value as a bar; decorative, the text line above is the one screen readers get.
+      barHtml = subHtml(esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct))) + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>';
+    }
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
-      + (extra ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(extra) + '</span>' : '')
-      + (eta ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta) + '</span>' : '')
-      + (pct != null ? '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct)) + '</span>'
-        // The same value as a bar; decorative, the text line above is the one screen readers get.
-        + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>' : '') + '</button>';
+      + (extra ? subHtml(esc(extra)) : '')
+      + (eta ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ': ' + esc(eta)) : '')
+      + barHtml + '</button>';
   };
-  // The phone tile: one line with the count (a tap on the tile is the action, see F.tapTile). Desktop keeps the rows.
+  // The summary line: "N in the air". The whole tile is one button then (F.tapTile opens the list popup).
   var summaryText = function (n) { return tr(n + ' in der Luft'); };
   F.liveHtml = function (hass, pin, now, name) {
     var flights = F.airborne(hass, pin, now);
-    if (F.phone()) {
-      if (!flights.length) return '';
+    if (!flights.length) return '';
+    // The phone, and the desktop with two or more flights: one line.
+    if (F.phone() || flights.length > 1) {
       return '<casora-flight-list data-flights-sum data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere">'
         + esc(summaryText(flights.length)) + '</casora-flight-list>';
     }
-    var rowsHtml = flights.map(function (r) { return rowHtml(hass, r, ROW_BTN); }).join('');
-    if (!rowsHtml) return '';
-    // Many flights scroll inside the tile: the list has a height limit and its own scrollbar, nothing is cut off silently.
-    // The tile's CSS is not in this text (it would reach the card's accessible name): casora-flight-list puts it in the card.
+    // Desktop with one flight: its short row. The list scrolls inside the tile only as a safety net for very small tiles;
+    // the heading stays fixed. The tile's CSS is not in this text (it would reach the card's accessible name): casora-flight-list puts it in the card.
     return '<casora-flight-list data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain">'
-      + rowsHtml + '</casora-flight-list>';
+      + rowHtml(hass, flights[0], ROW_BTN, true) + '</casora-flight-list>';
   };
   // Phone check: the tile CSS's own media query (PHONE_MQ), so the text and the CSS switch at the same width.
   F.phone = function () { return !!(window.matchMedia && window.matchMedia(PHONE_MQ).matches); };
@@ -1214,8 +1221,9 @@
         var name = own || this.getAttribute('data-name') || '';
         if (!card) return;
         tileCards = tileCards.filter(function (t) { return t.card !== card && t.card.isConnected !== false; });
-        tileCards.push({ card: card, name: name });
-        setTileMode(card, name, this.getAttribute('data-flights-sum') !== null);
+        var sum = this.getAttribute('data-flights-sum') !== null;
+        tileCards.push({ card: card, name: name, sum: sum });
+        setTileMode(card, name, sum);
       }
     }
     customElements.define('casora-flight-list', FlightList);
@@ -1225,7 +1233,8 @@
       if (mq && mq.addEventListener) mq.addEventListener('change', function () {
         var phone = F.phone();
         tileCards = tileCards.filter(function (t) { return t.card.isConnected !== false; });
-        tileCards.forEach(function (t) { setTileMode(t.card, t.name, phone); });
+        // A tile with its summary line is a button on every width; a tile with its short row is a group.
+        tileCards.forEach(function (t) { setTileMode(t.card, t.name, phone || t.sum); });
         redrawFlights();
       });
     }
