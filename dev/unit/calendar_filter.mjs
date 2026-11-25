@@ -49,6 +49,20 @@ assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Ter
 settings = { calendar_filter: 'other' };
 assert.equal(window.casoraCalendarAllows('Termin-cccccc', null, codedAttrs, 'Termin-111111'), true, 'an unrelated changed entry does not reuse an old decision');
 settings = {};
+
+// Contract gaps: a uid without its own decision, title-less decisions, and entries the export did not know.
+settings = { calendar_filter: 'foo' };
+const messageOnly = { casora_filter_match: { entries: ['foo'], message: { matches: [] } } };
+assert.equal(window.casoraCalendarAllows('foo bar', null, messageOnly, 'u1'), true,
+  'a uid missing from the events map takes the message decision (as the state message, like uid null)');
+assert.equal(window.casoraCalendarAllows('foo bar', null, messageOnly), true, 'the same with no uid');
+assert.equal(window.casoraCalendarAllows('zzz', null, { casora_filter_match: { events: { u1: { matches: ['foo'] } } } }, 'u1'), true,
+  'a title-less event decision does not hide an edited title');
+settings = { calendar_filter: 't' };
+assert.equal(window.casoraCalendarAllows('t', null, { casora_filter_match: { message: { title: 't', matches: ['foo'] } } }), false,
+  'without the export list, a decision speaks only for the entries it names; a new entry uses normal matching');
+settings = {};
+console.log('ok calendar filter contract gaps');
 console.log('ok exported calendar filter decisions');
 
 // ── Section form (Studio: calendar_filter = { words, timed_first }) ─────────
