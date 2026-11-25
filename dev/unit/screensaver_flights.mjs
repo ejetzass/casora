@@ -455,6 +455,56 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   }
 }
 
+// The Unreported part: a fainter line from the departure airport to the oldest trail point, under the Flown trail. It comes
+// from the same function as the popup map (F.unreportedOf); nothing without an origin or without a trail point.
+{
+  const unrep = (h) => (h.match(/<polyline class="cs-fl-unrep"[^>]*points="([^"]*)"/) || [])[1];
+  const run = (o) => {
+    const R = runtime();
+    warm(R);
+    const fl = (step) => [entry('1', step, { coordinates: [[48, 6], [49, 7]], ...o })];
+    move(R, 1, fl(1));
+    at(R, SLOT0 + 1000);
+    move(R, 2, fl(2));
+    return { R, h: at(R, SLOT0 + 2000) };
+  };
+  const { R, h } = run({});
+  const pts = unrep(h);
+  assert.ok(pts, 'the unreported part is drawn');
+  assert.ok(pts.split(' ').length >= 8, 'a curve of at least 8 points (the shared great circle)');
+  assert.ok(h.indexOf('class="cs-fl-unrep"') < h.indexOf('class="cs-fl-trail"'), 'drawn under the Flown trail');
+  assert.equal((h.match(/class="cs-fl-trail"[^>]*points="([^"]*)"/) || [])[1].split(' ').length, 2, 'the Flown trail is unchanged');
+  assert.ok(SAVER_SRC.includes('.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);'), 'fainter: off-white at 45 %');
+  const real = R.F.unreportedOf;
+  let calls = 0;
+  R.F.unreportedOf = (x) => { calls += 1; return real(x); };
+  at(R, SLOT0 + 3000);
+  assert.ok(calls > 0, 'the saver uses the shared function');
+  R.F.unreportedOf = real;
+  // The picture box holds the arc too, where it bows north of every other point (origin 60N 0E, oldest point 60N 40E).
+  const bow = { origin: [60, 0], trail: [[60, 40]], cur: [60, 20], destination: [50, 60] };
+  const fr = runtime().S.routeFrame(bow);
+  const inside = real(bow).every((p) => fr.X(p) >= 0 && fr.X(p) <= fr.W && fr.Y(p) >= 0 && fr.Y(p) <= fr.H);
+  assert.ok(inside, 'the arc is inside the picture box');
+  // A long flight whose trail starts far from the origin, next to the Remaining route: the arc runs from the origin dot to the
+  // first trail point, and the dashed Remaining route still starts at the aircraft (the three lines do not replace each other).
+  {
+    const long = { latitude: 55, longitude: -30, airport_origin_latitude: 52.3, airport_origin_longitude: 4.8,
+      airport_destination_latitude: 40.6, airport_destination_longitude: -73.8, coordinates: [[53.5, -12], [54.5, -22]] };
+    const { h: hl } = run(long);
+    const nums = (t) => t.trim().split(/\s+/).map((q) => q.split(',').map(Number));
+    const arcPts = nums(unrep(hl)), trailPts = nums(hl.match(/<polyline class="cs-fl-trail"[^>]*points="([^"]+)"/)[1]);
+    const dot = [...hl.matchAll(/<circle class="cs-fl-ap"[^>]*cx="([\d.-]+)" cy="([\d.-]+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const close = (a, b, label) => assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.02, label + ': ' + a + ' vs ' + b);
+    close(arcPts[0], dot[0], 'the arc starts at the origin dot');
+    close(arcPts[arcPts.length - 1], trailPts[0], 'and ends at the first (oldest) trail point');
+    assert.equal((hl.match(/class="cs-fl-route"/g) || []).length, 1, 'the one dashed Remaining route is still drawn');
+    assert.ok(hl.indexOf('class="cs-fl-unrep"') < hl.indexOf('class="cs-fl-trail"'), 'the arc lies under the Flown trail');
+  }
+  assert.equal(unrep(run({ airport_origin_latitude: null, airport_origin_longitude: null }).h), undefined, 'no origin: nothing drawn');
+  assert.equal(unrep(run({ coordinates: [] }).h), undefined, 'no trail: nothing drawn');
+}
+
 // The aircraft marker has one fixed size on every map: a lone flight (a small picture) and a long route (a big one).
 // It is an element in the screen's units, not a part of the picture, so the route's span cannot shrink it.
 {
