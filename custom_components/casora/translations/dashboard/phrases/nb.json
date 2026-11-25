@@ -5551,6 +5551,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} sporede flyvninger"
+    ],
+    [
+      "^(\\d+) in der Luft$",
+      "{1} i luften"
     ]
   ]
 }

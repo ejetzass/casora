@@ -5,5 +5,10 @@
   "Ein": "An",
   "Home": "Zuhause"
  },
- "patterns": []
+ "patterns": [
+    [
+      "^(\\d+) in der Luft$",
+      "{1} in der Luft"
+    ]
+  ]
 }
