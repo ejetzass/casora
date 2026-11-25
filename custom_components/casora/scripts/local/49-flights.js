@@ -478,7 +478,7 @@
     try { return F.pinned(window._casoraLovelaceCfg && window._casoraLovelaceCfg(), key); } catch (e) { return ''; }
   };
   // The Studio's draft (its rooms, which Save writes and Discard drops) wins over the saved dashboard: the preview
-  // follows a draft unit or switch at once. null = not in the Studio (or no draft loaded yet).
+  // follows a draft unit or switch at once. null = not in the Studio, no draft loaded yet, or the draft holds no value for the key.
   var draftOf = function (key) {
     var p = studioPanel();
     if (!p) return null;
@@ -488,7 +488,7 @@
       var v = (rooms[i] || {}).variables || {};
       if (v[key] !== undefined && v[key] !== null && v[key] !== '') return String(v[key]);
     }
-    return '';
+    return null; // the draft holds no value for the key: the saved value and the phone twin answer, as on the live tile
   };
   // The Studio draft first, then the own value; a phone takes the rest from its desktop twin (below).
   F.setting = function (key) {
