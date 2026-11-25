@@ -17,6 +17,7 @@ const el = (tag, attrs = {}, kids = []) => {
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); },
     matches(sel) {
+      if (sel === 'a[href]') return this.tag === 'a' && 'href' in this.attrs;
       if (sel !== STOP) throw new Error('unexpected selector ' + sel);
       return (this.tag === 'a' && 'href' in this.attrs) || this.tag === 'button' || ['input', 'select', 'textarea'].includes(this.tag) || 'tabindex' in this.attrs;
     },
