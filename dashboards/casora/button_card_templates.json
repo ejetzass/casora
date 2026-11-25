@@ -21061,7 +21061,7 @@
         ],
         "title": "[[[ return variables.casora_default_name ]]]",
         "extra": "[[[ return window.casoraPopupExtras ? window.casoraPopupExtras(this) : null; ]]]",
-        "style": "[[[\n  /* One column: the flight's details are short lines (49-flights.js flightSec). */\n  return window.casoraPopupWidth ? window.casoraPopupWidth('one') : '--popup-min-width: min(552px, calc(100vw - 16px)); --popup-max-width: min(552px, calc(100vw - 16px));';\n]]]\n",
+        "style": "[[[\n  /* One column: a list of flight rows, one full row each (49-flights.js F.listRows). */\n  return window.casoraPopupWidth ? window.casoraPopupWidth('one') : '--popup-min-width: min(552px, calc(100vw - 16px)); --popup-max-width: min(552px, calc(100vw - 16px));';\n]]]\n",
         "variant": "v3"
       }
     },
