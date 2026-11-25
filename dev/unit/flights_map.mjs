@@ -307,7 +307,7 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
   const Cls = ctx.customElements.get('casora-flight-map');
   const el = new Cls(); el.setAttribute('data-src', 'sensor.a'); el.setAttribute('data-key', 'w5'); el._conn = true;
   el.connectedCallback(); await settle();
-  const styled = () => shadow.kids.filter((c) => c.textContent && c.textContent.includes('.maplibregl-ctrl-attrib{'));
+  const styled = () => shadow.kids.filter((c) => c.textContent && c.textContent.includes('.maplibregl-ctrl-attrib,.leaflet-control-attribution{'));
   assert.equal(styled().length, 1, 'the attribution style is in the map shadow root after the build');
   tick();
   assert.equal(styled().length, 1, 'a poll does not add the style again');
