@@ -859,6 +859,7 @@
     // Flights: the route picture between the head and the figures; the details as two columns of rows.
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
     + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
+    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';border-radius:' + u(28) + ';pointer-events:none;}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
     + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
@@ -1450,7 +1451,26 @@
         return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
       }).join('') + '</div>';
     }
-    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>';
+    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + (!detail && v ? S.liveMap(r) : '');
+  };
+  // The HA map over the drawn picture (the popup's casora-flight-map, 49-flights.js): it draws the route, the trail, the
+  // airports and the aircraft as map layers from the same view. Until it is ready, and when it fails, the drawn picture
+  // shows through. Always the last child of the scene: mount keeps this element across redraws (S.mountKeep). No attribute
+  // that loads anything; the map takes its tiles from Home Assistant's own map.
+  var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
+  S.liveMap = function (r) {
+    if (!window.customElements || !window.customElements.get('casora-flight-map')) return '';
+    return '<casora-flight-map class="cs-fl-live" data-saver aria-hidden="true" data-src="' + esc(r.src) + '" data-key="' + esc(r.key) + '"></casora-flight-map>';
+  };
+  // Redraw without touching the map element: only when the scene's own tag and the map element are the same as before.
+  // Everything before the map element is replaced; the map element (and so its ha-map, its tiles and its timer) stays.
+  S.mountKeep = function (host, last, html) {
+    var a = MAP_TAG.exec(last || ''), b = MAP_TAG.exec(html), scene = host.firstElementChild, el = host.querySelector && host.querySelector('casora-flight-map');
+    var open = html.slice(0, html.indexOf('>') + 1);
+    if (!a || !b || a[0] !== b[0] || open !== (last || '').slice(0, (last || '').indexOf('>') + 1) || !scene || !el || el.parentNode !== scene) return false;
+    while (el.previousSibling) scene.removeChild(el.previousSibling);
+    el.insertAdjacentHTML('beforebegin', html.slice(open.length, html.length - b[0].length));
+    return true;
   };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
   var TINT_KINDS = ['wort', 'wetter', 'linie', 'woche', 'energie', 'ruhe', 'kalender'];
@@ -1597,7 +1617,7 @@
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
       api.kind = k;
-      if (html !== last) { last = html; host.innerHTML = html; }
+      if (html !== last) { var kept = S.mountKeep(host, last, html); last = html; if (!kept) host.innerHTML = html; }
       // Wander a few pixels so nothing burns in (not in a preview). o.drift: true, or a function asked every time
       // (the Studio switch). A call that sees a new minute (the one that changes the digits) keeps the step it had,
       // also when a throttled timer skipped the step's own moment: the step then follows with the next call.
