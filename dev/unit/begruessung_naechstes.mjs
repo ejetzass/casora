@@ -35,6 +35,15 @@ assert.equal(reg({ 'calendar.workday_sensor': { hidden: true, platform: 'workday
 assert.equal(reg({ 'calendar.familie': { disabled_by: 'user', platform: 'google' } })({ 'calendar.familie': two['calendar.familie'] }), '', 'a disabled calendar is left out');
 assert.equal(reg({ 'calendar.workday_sensor': { platform: 'workday' }, 'calendar.familie': { platform: 'google' } })(two), 'Morgen 15:00 Zahnarzt', 'the Workday calendar is no appointment');
 assert.equal(reg({})(two).includes('Zahnarzt') || reg({})(two).includes('Workday'), true, 'calendars without a registry entry (YAML) still count');
+// A Waste calendar detected by content (window._casoraWasteCals, kept by the calendar module) is no appointment,
+// also when the waste part shows no pickup; a calendar judged "no" or not yet judged still counts.
+{
+  const S = { 'calendar.bins_nl': cal('GFT', '2026-11-10 00:00:00', { all_day: true }) }, E = { 'calendar.bins_nl': { platform: 'ics' } };
+  const run = (verdicts) => { window._casoraWasteCals = verdicts; window.casoraDevice = { waste: () => ({ bins: [] }) }; try { return window.casoraHomeNext({ states: S, entities: E, locale: { language: 'de' } }, on, now); } finally { delete window._casoraWasteCals; } };
+  assert.equal(run({ 'calendar.bins_nl': true }), '', 'detected Waste calendar: left out');
+  assert.equal(run({ 'calendar.bins_nl': false }), 'Morgen GFT', 'judged no: an appointment calendar');
+  assert.equal(run(undefined), 'Morgen GFT', 'not judged yet: an appointment calendar');
+}
 // #189: calendars picked in the Studio (Settings › Home & devices › Calendars) are the ones that count, as on the
 // calendar tile; a calendar left out there no longer stands under the greeting. Without a pick, all of them (above).
 const picked = (list) => (S) => { window.casoraDevice = { waste: () => ({ bins: [] }) }; window.casoraSettings = () => ({ calendars: list }); try { return window.casoraHomeNext({ states: S, entities: {}, locale: { language: 'de' } }, on, now); } finally { delete window.casoraSettings; } };
