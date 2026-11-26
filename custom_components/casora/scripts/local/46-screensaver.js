@@ -872,7 +872,8 @@
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
     // The globe (Flights map = Globe): matte, no glow, no lighting. Its box is the live map's (cs-fl-live), the disc fills it.
     + '.cs-sv.cs-flights.cs-globe{background:radial-gradient(90% 90% at 88% 6%, #1D1A17 0%, #191613 62%);}'
-    + '.cs-sv .cs-gl-svg{width:100%;height:100%;display:block;}'
+    + '.cs-sv .cs-fl-globe{pointer-events:none;}'
+    + '.cs-sv .cs-gl-svg{width:100%;height:100%;display:block;pointer-events:none;touch-action:none;}'
     + '.cs-sv .cs-gl-sea{fill:#24211E;}'
     + '.cs-sv .cs-gl-land{fill:#4A443C;stroke:rgba(25,22,19,.7);stroke-width:1.2;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
@@ -1410,7 +1411,7 @@
     fr = fr || S.routeFrame(v);
     if (!fr) return '';
     var X = fr.X, Y = fr.Y, r = fr.r;
-    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(T('Globus mit dem Flug')) + '">';
     var line = function (list) { return (list.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')); };
     // The Remaining route (shared with the popup): the one dashed line, from the aircraft to the destination. No destination, no line.
     // Width and dash keep the popup's proportions (49-flights.js ROUTE_STYLE), in saver units. Without the flights module: no line.
@@ -1551,7 +1552,7 @@
     var proj = S.globeProjection(v);
     if (!proj) return '';
     var mid = GLOBE_SIZE / 2, layersHtml = S.globeLayers(v, proj);
-    return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
+    return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(T('Globus mit dem Flug')) + '">'
       + '<circle class="cs-gl-sea" cx="' + esc(mid) + '" cy="' + esc(mid) + '" r="' + esc(mid) + '"/>'
       + '<path class="cs-gl-land" d="' + esc(globe.data.d3.geoPath(proj)(globe.data.land) || '') + '"/>' + layersHtml + '</svg>';
   };
