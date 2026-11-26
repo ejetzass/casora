@@ -919,7 +919,9 @@ window.CASORA_EXTRA_ICONS = Object.fromEntries([
     const tn = names(tile && tile.template);
     // Waste: bins and calendar via window.casoraDevice.waste (scripts/local/00-finder.js) – without it the
     // preview said "Automatic" while the dashboard showed "2 days · Organic" (E06).
-    if (!finder && !(window.casoraDevice && window.casoraDevice.waste) && tn.includes("casora_trash")) {
+    // Football needs the same file for window.casoraDayWord ("Heute" / weekday in its text).
+    if (!finder && ((!(window.casoraDevice && window.casoraDevice.waste) && tn.includes("casora_trash"))
+      || (!window.casoraDayWord && tn.includes("casora_football")))) {
       finder = true;
       (window.casoraImportScript || ((p) => import("/casora_scripts/" + p)))("local/00-finder.js").catch(() => {});
     }

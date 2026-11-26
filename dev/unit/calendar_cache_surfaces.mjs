@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { loadCalendars } from './lib/calendars_block.mjs';
+import { loadDayWordIn } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL(`../../custom_components/casora/scripts/local/${p}`, import.meta.url), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -28,6 +29,7 @@ const ha = { hass, shadowRoot: { querySelectorAll: () => [] } };
 const win = { casoraSettings: () => ({}), addEventListener() {} };
 loadCalendars(win);
 const ctx = vm.createContext({ window: win, document: { querySelector: () => ha }, Date: ClockDate, setTimeout: () => 0, console });
+loadDayWordIn(ctx);
 vm.runInContext(read('06a-kalender-filter.js'), ctx);
 vm.runInContext(read('06-kalender.js'), ctx);
 const finder = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/00-finder.js', import.meta.url), 'utf8');
@@ -91,6 +93,7 @@ console.log('ok day-line screensaver keeps its timed choice when the tile picks 
     loadCalendars(w);
     const c = vm.createContext({ window: w, document: { querySelector: () => ({ hass: h, shadowRoot: { querySelectorAll: () => [] } }) },
       Date: ClockDate, setTimeout: () => 0, console });
+    loadDayWordIn(c);
     vm.runInContext(read('06a-kalender-filter.js'), c);
     vm.runInContext(read('06-kalender.js'), c);
     vm.runInContext(finder.slice(finder.indexOf('// casora-home-next:start'), finder.indexOf('// casora-home-next:end')), c);

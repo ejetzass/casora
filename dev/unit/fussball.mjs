@@ -4,8 +4,10 @@
 //   node dev/unit/fussball.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 globalThis.window = globalThis;
+loadDayWord(globalThis);
 // Sprache der Oberfläche fest (sonst gälte die des Rechners): Deutsch, für einzelne Prüfungen Englisch.
 let LANG = 'de';
 globalThis.document = { querySelector: (q) => (q === 'home-assistant' ? { hass: { locale: { language: LANG } } } : null) };

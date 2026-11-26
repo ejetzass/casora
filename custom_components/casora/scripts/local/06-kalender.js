@@ -42,11 +42,10 @@
   var hm = function (d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   var diffDays = function (d) { return Math.round((day0(d) - day0(new Date())) / 86400000); };
   var dayWord = function (d, long) {
-    var n = diffDays(d);
-    if (n === 0) return 'Heute';
-    if (n === 1) return 'Morgen';
-    if (n > 1 && n < 7) return long ? DAYL[d.getDay()] : DAYS[d.getDay()];
-    return (long ? DAYL[d.getDay()] + ', ' : '') + d.getDate() + '. ' + (long ? MON[d.getMonth()] : MONS[d.getMonth()]);
+    return window.casoraDayWord(d, {
+      weekday: function (x) { return long ? DAYL[x.getDay()] : DAYS[x.getDay()]; },
+      date: function (x) { return (long ? DAYL[x.getDay()] + ', ' : '') + x.getDate() + '. ' + (long ? MON[x.getMonth()] : MONS[x.getMonth()]); },
+    });
   };
   /* Weich: die iOS-Standardfarben (automatische Palette, Studio-Vorgabe, übernommene Hemma-Werte)
      in Theme-Farben statt greller Systemtöne; Lila ist in Weich Alarm-Rot, deshalb Petrol.
@@ -480,7 +479,7 @@
       }).join('') : '<div class="hcal-e">' + (data.loading && !data.list.length ? 'Wird geladen …' : esc(empty)) + '</div>';
       return CSS() + (SOFT() ? '<div class="hcal hs">' + sHead(esc(t)) : '<div class="hcal">' + head(esc(t))) + body + '</div>';
     };
-    var dayTitle = function (d, n) { return n === 0 ? 'Heute' : n === 1 ? 'Morgen' : longDate(d); };
+    var dayTitle = function (d, n) { return window.casoraDayWord(n) || longDate(d); };
     var rowsOf = function (d, n) { var s = subOf(n); return on(d).map(function (b) { return { b: b, sub: s }; }); };
     if (k === 'wtoday') {
       /* Phone (issue 117): a fixed card for today on top – today's pickups, else tomorrow's bins to put out tonight. */
@@ -599,7 +598,7 @@
     if (k === 'day') {
       var list = K.ev ? onDay(sel) : [];
       var body = wait || (list.length ? list.map(function (e) { return row(e, cals); }).join('') : '<div class="hcal-e">Keine Termine</div>');
-      var t = diffDays(sel) === 0 ? 'Heute' : diffDays(sel) === 1 ? 'Morgen' : longDate(sel);
+      var t = window.casoraDayWord(diffDays(sel)) || longDate(sel);
       // Issue 146: only where a calendar takes new events.
       var haNow = document.querySelector('home-assistant');
       var addHtml = haNow && haNow.hass && K.writable(variables, haNow.hass.states).length

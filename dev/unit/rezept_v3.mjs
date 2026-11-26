@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const src = fs.readFileSync(ROOT + 'custom_components/casora/scripts/local/03-popups.js', 'utf8');
@@ -23,6 +24,7 @@ const win = {
   _casoraHH: { on: () => true, label: (t) => '<L>' + t, layout: (o) => o },
 };
 const box = { window: win, document: { querySelector: () => null }, setTimeout, console, Date, JSON, Math };
+loadDayWord(win);
 vm.createContext(box);
 vm.runInContext(src.slice(a, b + 6), box);
 const R = win._casoraRecipe;

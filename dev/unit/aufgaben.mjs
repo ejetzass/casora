@@ -3,10 +3,12 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const ctx = { console, setTimeout: () => 0, localStorage: { getItem: () => null, setItem() {} }, document: { querySelector: () => null } };
 ctx.window = ctx; ctx.window.addEventListener = () => {};
+loadDayWord(ctx);
 ctx.window._casoraShopping = { onChange() {}, items() { return null; } };
 vm.createContext(ctx);
 vm.runInContext(read('custom_components/casora/scripts/local/43-aufgaben.js'), ctx);

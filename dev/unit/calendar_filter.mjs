@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { loadCalendars } from './lib/calendars_block.mjs';
+import { loadDayWordIn } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL(`../../custom_components/casora/scripts/local/${p}`, import.meta.url), 'utf8');
 
@@ -20,6 +21,7 @@ loadCalendars(window);
 const context = vm.createContext({ window, document: { querySelector: () => null }, setTimeout: () => 0, console, Date: ClockDate });
 vm.runInContext(read('06a-kalender-filter.js'), context);
 vm.runInContext(read('06-kalender.js'), context);
+loadDayWordIn(context);
 const calendar = window._casoraCalendar;
 
 // ── Title rule ────────────────────────────────────────────────────────────────
@@ -167,6 +169,7 @@ console.log('ok calendar popup remains unfiltered');
   const isolatedWindow = { casoraSettings: () => settings, addEventListener() {} };
   const isolatedContext = vm.createContext({ window: isolatedWindow, document: { querySelector: () => null }, setTimeout: () => 0, console, Date: ClockDate });
   vm.runInContext(read('06-kalender.js'), isolatedContext);
+  loadDayWordIn(isolatedContext);
   assert.equal(isolatedWindow._casoraCalendar.tile(states, variables), 'Keine Termine',
     'a missing shared rule does not throw during startup');
 }
