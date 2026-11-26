@@ -16623,6 +16623,9 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
     // The rule lives in 00-finder.js (one rule for the bell and the Studio list). The old check below is only
     // for the moment before 00-finder.js or hass has loaded.
     if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
+    // The rule lives in 00-finder.js (one rule for the bell and the Studio list). The old check below is only
+    // for the moment before 00-finder.js or hass has loaded.
+    if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
     var h = hassOf();
     if (window.casoraIsDoorbell && h) return window.casoraIsDoorbell(h, id);
     if (id.indexOf('event.') === 0) return dc(st) === 'doorbell';
@@ -18191,7 +18194,8 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   }
   function openTarget(what, fallbackEntity) {
     if (what === DETECTION_OPENS) {
-      openListedPopup(listedDetection(fallbackEntity));
+      // No popup (script not loaded yet, trigger unlisted since the row was built): the entity's info dialog.
+      if (!openListedPopup(listedDetection(fallbackEntity)) && fallbackEntity && window.casoraPopup) window.casoraPopup.moreInfo(fallbackEntity);
       return;
     }
     if (what === DOORBELL_OPENS) {

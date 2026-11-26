@@ -68,12 +68,14 @@ class Element {
 }
 
 async function setup(kind, options = {}) {
-  const source = kind === 'ring' ? 'event.mock_doorbell_ding' : 'binary_sensor.mock_visitor';
+  const source = kind === 'ring' ? 'event.mock_doorbell_ding'
+    : options.bellName ? 'binary_sensor.mock_doorbell_person_occupancy' : 'binary_sensor.mock_visitor';
   const cam = 'camera.mock_doorbell_sub';
   const when = Date.now() - 60000;
   const states = {
     [source]: { state: kind === 'ring' ? new Date(when).toISOString() : 'on',
-      attributes: { friendly_name: 'Mock Doorbell', ...(kind === 'ring' ? { device_class: 'doorbell' } : {}) } },
+      attributes: { friendly_name: 'Mock Doorbell', ...(kind === 'ring' ? { device_class: 'doorbell' } : {}),
+        ...(options.bellName ? { device_class: 'occupancy' } : {}) } },
     [cam]: { state: 'idle', attributes: { friendly_name: 'Mock Camera' } },
   };
   const registry = {
@@ -296,6 +298,29 @@ assert.equal(detection.N.rows.length, 1, 'another dashboard defaults to showing 
 detection.hass.callWS = async () => [];
 await detection.N.refresh();
 assert.equal(detection.N.rows.length, 0, 'missing Logbook history does not fabricate a detection');
+// A detection row whose popup cannot open (script not loaded yet, or the trigger unlisted since the row was built)
+// opens the entity's info dialog, like the doorbell branch; the tap is never dead.
+for (const how of ['no popup script', 'trigger unlisted']) {
+  const dead = await setup('reolink', { detection: true, noTile: true });
+  if (how === 'no popup script') delete dead.ctx.casoraCameraPopup;
+  else dead.ctx.CASORA_SETTINGS = { cameras: [] };
+  await dead.click(dead.list.querySelectorAll('.hui-row')[0]);
+  assert.equal(dead.opened.length, 0, `${how}: no camera popup opens`);
+  assert.deepEqual(dead.moreInfo, [dead.source], `${how}: the detection row falls back to the entity's info dialog`);
+}
+// An explicit list entry beats the doorbell name guess: a sensor named like a doorbell, listed only under detection,
+// is a detection row under the detection category; listed under both lists it stays a ring.
+const named = await setup('reolink', { detection: true, bellName: true, noTile: true });
+assert.equal(named.N.rows[0].label, 'Mock Doorbell erkannt', 'a detection-only listing beats the doorbell name guess');
+assert.equal(named.N.rows[0].opens, 'casora:detection');
+named.N.configureFrom({ notify_doorbell: false });
+await named.N.refresh();
+assert.equal(named.N.rows.length, 1, 'the Doorbell category being off does not hide a listed detection');
+named.N.configureFrom({ notify_camera_detection: false });
+await named.N.refresh();
+assert.equal(named.N.rows.length, 0, 'the detection category hides it');
+const namedBoth = await setup('reolink', { detection: true, listed: true, bellName: true, noTile: true });
+assert.equal(namedBoth.N.rows[0].label, 'Mock hat geklingelt', 'listed under both lists it stays a ring');
 const detectionManual = await setup('reolink', { detection: true, noTile: true, realManual: true });
 await detectionManual.click(detectionManual.list.querySelectorAll('.hui-row')[0]);
 assert.equal(detectionManual.opened[0].entity, detectionManual.cam, 'the real manual camera opener receives the camera');
