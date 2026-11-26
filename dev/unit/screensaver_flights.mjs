@@ -387,7 +387,9 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.ok(!/Registrierung|Rufzeichen|Kurs|Vertikalgeschwindigkeit|Fluggesellschaft|Terminal T/.test(h), 'missing details are left out, not shown as blank or zero');
 }
 
-// The route picture is local: no link, no image, no map tiles. A route over the dateline stays a small picture.
+// The drawn route picture is local: no link, no image, no map tiles (the map element that the map layout may add on top has its
+// own test, screensaver_flights_map.mjs: the saver's HTML around it stays free of images, links and URLs). A route over the dateline
+// stays a small picture.
 {
   const R = runtime();
   warm(R);
