@@ -57,8 +57,9 @@ function panelWith(hass) {
   p.rows = [];
   p._flowGroup = () => { const l = mk('div'); l.parentElement = mk('div'); return l; };
   p._flowRow = (list, o) => { const row = mk('div'); p.rows.push({ o, row }); return { row }; };
-  p._combo = () => ({ wrap: mk('div') });
-  p._entityList = () => [];
+  p.combos = [];
+  p._combo = (value, list, ph, onChange) => { p.combos.push({ value, list, onChange }); return { wrap: mk('div') }; };
+  p._entityList = (d) => d;
   p._status = noop;
   return p;
 }
@@ -73,12 +74,12 @@ let titles = [], calls = 0;
 hass.callApi = (m, path) => { calls++; return Promise.resolve(titles.map((t, i) => ({ summary: t, start: { date: '2026-12-0' + (i + 1) }, end: { date: '2026-12-0' + (i + 2) } }))); };
 const HINT = 'Waste calendar: the greeting line skips it.';
 // Draw the Calendars group for the draft S; returns, per picked calendar, the hint text (or null).
-function hints(S) {
+function hints(S, keys) {
   let again = 0;
   const p = panelWith(hass);
-  P._casoraPersonalGroups.call(p, mk('div'), S, ['calendars'], () => { again++; });
+  P._casoraPersonalGroups.call(p, mk('div'), S, keys || ['calendars'], () => { again++; });
   const rows = p.rows.filter((r) => r.row.classList.contains('casora-calrow'));
-  return { again: () => again, out: rows.map((r) => { const w = r.row.children.find((c) => c.className === 'casora-pwarn'); return w ? w.textContent : null; }) };
+  return { p, again: () => again, out: rows.map((r) => { const w = r.row.children.find((c) => c.className === 'casora-pwarn'); return w ? w.textContent : null; }) };
 }
 const draft = (cals, wasteCal) => { const S = normalize({}); S.calendars = cals.map((entity) => ({ entity, name: '' })); S.waste.calendar = wasteCal || ''; return S; };
 window.CASORA_SETTINGS = {};
@@ -119,4 +120,26 @@ await flush();
 assert.equal(quiet.again(), 0, 'no hint changed: no redraw');
 assert.equal(window._casoraWasteCals['calendar.family'], false, 'the verdict is still kept');
 
+
+// Picking in the draft updates the hint at once (the pick redraws): a Settings calendar, then another one.
+window._casoraWasteCals = {}; window._casoraWasteTs = { 'calendar.family': Date.now(), 'calendar.set': Date.now(), 'calendar.bins_nl': Date.now() };
+{
+  const S = draft(['calendar.family'], 'calendar.set');
+  let d = hints(S, ['waste', 'calendars']);
+  const cal = (d) => d.p.combos.filter((c) => c.list.length === 1 && c.list[0] === 'calendar');
+  assert.deepEqual(d.out, [null], 'family is no Waste calendar');
+  cal(d)[1].onChange('calendar.set');
+  assert.equal(S.calendars[0].entity, 'calendar.set');
+  assert.equal(d.again(), 1, 'a pick redraws');
+  d = hints(S, ['waste', 'calendars']);
+  assert.deepEqual(d.out, [HINT], 'pick the Settings calendar: hint');
+  cal(d)[1].onChange('calendar.family');
+  assert.equal(d.again(), 1, 'a second pick redraws');
+  d = hints(S, ['waste', 'calendars']);
+  assert.deepEqual(d.out, [null], 'pick another: hint gone');
+  cal(d)[0].onChange('calendar.family');
+  assert.equal(S.waste.calendar, 'calendar.family');
+  assert.equal(d.again(), 1, 'changing the Settings waste calendar redraws');
+  assert.deepEqual(hints(S, ['waste', 'calendars']).out, [HINT], 'the hint follows the Settings waste calendar');
+}
 console.log('ok studio_waste_calendar_warning');
