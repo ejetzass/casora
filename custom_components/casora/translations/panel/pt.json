@@ -3235,6 +3235,9 @@
     "Meters per second": "Metros por segundo",
     "The FlightRadar24 source that every flight display on this dashboard reads, and the units its tile and popups show.": "A fonte FlightRadar24 que lê cada vista de voos deste painel, e as unidades que o cartão e os popups mostram.",
     "Show timezones": "Mostrar fusos horários",
+    "Flights map": "Mapa de voos",
+    "Flat": "Plano",
+    "Globe": "Globo",
     "Choose cameras": "Escolher câmaras"
   },
   "patterns": [

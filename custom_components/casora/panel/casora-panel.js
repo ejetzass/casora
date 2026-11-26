@@ -2662,6 +2662,11 @@ const SECTIONS = [
         },
         when: (v) => v.casora_screensaver != null && v.casora_screensaver !== "",
         hint: "Sky follows the sun and the weather. Landscapes are drawn, nothing is loaded. Photos shows this dashboard's room photos." },
+      // How the Flights screensaver draws its map (scripts/local/46-screensaver.js): empty = the flat map, globe = a plain globe
+      // centered on the aircraft. Not only for the kind Flights: "One after the other" can show Flights too.
+      { key: "casora_flights_map", sub: "chrome", label: "Flights map", type: "select", auto: true, scope: "dashboard",
+        options: ["", "globe"], optionLabels: { "": "Flat", globe: "Globe" },
+        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return v.casora_screensaver != null && v.casora_screensaver !== "" && !!(F && F.present(hass)); } },
       // The room photos „Photos“ shows (day photo names); none = all. Picked on the Screensaver page under its preview,
       // never drawn as a field here; listed so a new room takes it over like the other dashboard settings.
       { key: "casora_screensaver_photos", sub: "chrome", label: "Screensaver photos", type: "text", auto: true, scope: "dashboard", when: () => false },

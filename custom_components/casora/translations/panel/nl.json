@@ -3235,6 +3235,9 @@
     "Meters per second": "Meter per seconde",
     "The FlightRadar24 source that every flight display on this dashboard reads, and the units its tile and popups show.": "De FlightRadar24-bron die elke vluchtweergave op dit dashboard leest, en de eenheden die de tegel en pop-ups tonen.",
     "Show timezones": "Tijdzones tonen",
+    "Flights map": "Vluchtenkaart",
+    "Flat": "Plat",
+    "Globe": "Globe",
     "Choose cameras": "Camera’s kiezen"
   },
   "patterns": [
