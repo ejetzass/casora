@@ -16054,6 +16054,8 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   // later, so this upstream check only has to be safe for that moment.
   function isDoorbell(id, st) {
     if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
+    // Listed only under detection: the explicit entry beats the name guess below.
+    if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDetection(id)) return false;
     if (window.casoraIsDoorbell) return window.casoraIsDoorbell(hassOf(), id);
     if (id.indexOf('event.') === 0) return dc(st) === 'doorbell';
     if (id.indexOf('binary_sensor.') === 0) {
@@ -17610,7 +17612,8 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   }
   function openTarget(what, fallbackEntity) {
     if (what === DETECTION_OPENS) {
-      openListedPopup(listedDetection(fallbackEntity));
+      // No popup (script not loaded yet, trigger unlisted since the row was built): the entity's info dialog.
+      if (!openListedPopup(listedDetection(fallbackEntity)) && fallbackEntity && window.casoraPopup) window.casoraPopup.moreInfo(fallbackEntity);
       return;
     }
     if (what === DOORBELL_OPENS) {
