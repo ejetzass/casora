@@ -870,6 +870,11 @@
     // (up to two lines of flight number) and the figures (which wrap on a phone), with a gap. The narrow rule is in the @container below.
     + '.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(300) + ';bottom:' + u(215) + ';border-radius:' + u(28) + ';pointer-events:none;}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
+    // The globe (Flights map = Globe): matte, no glow, no lighting. Its box is the live map's (cs-fl-live), the disc fills it.
+    + '.cs-sv.cs-flights.cs-globe{background:radial-gradient(90% 90% at 88% 6%, #1D1A17 0%, #191613 62%);}'
+    + '.cs-sv .cs-gl-svg{width:100%;height:100%;display:block;}'
+    + '.cs-sv .cs-gl-sea{fill:#24211E;}'
+    + '.cs-sv .cs-gl-land{fill:#4A443C;stroke:rgba(25,22,19,.7);stroke-width:1.2;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
     + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
@@ -1449,7 +1454,10 @@
       var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
       var fr = v ? S.routeFrame(v) : null;
-      bodyHtml = (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
+      // Globe on and its files loaded: the disc in the map box instead of the flat map (and no HA map over it).
+      var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(v) : '';
+      if (globeHtml) { ctx.globeDrawn = true; fr = null; }
+      bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
         + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
         + (eta ? '<div class="cs-fl-stat cs-fl-eta">' + esc(T('Voraussichtliche Ankunft')) + ': ' + esc(eta.text) + '</div>' : '');
     } else {
@@ -1461,7 +1469,7 @@
         return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
       }).join('') + '</div>';
     }
-    var mapHtml = !detail && v ? S.liveMap(r) : '';
+    var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r) : '';
     return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
   };
   // ── Globe view: the files load late ──────────────────────────────────────────────────────────────────────────────────
@@ -1492,6 +1500,22 @@
       .catch(function () { globe.failed = true; })
       .then(function () { globe.pending = null; return !!globe.data; });
     return globe.pending;
+  };
+  // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the map box, as large as the
+  // box allows). Orthographic, the aircraft's position in the middle, north up (no roll). Null until the files are loaded.
+  var GLOBE_SIZE = 1000;
+  S.globeProjection = function (v) {
+    if (!globe.data || !v || !v.cur) return null;
+    return globe.data.d3.geoOrthographic().rotate([-v.cur[1], -v.cur[0]]).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
+  };
+  // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] like the flat map's points.
+  S.globeSvg = function (v) {
+    var proj = S.globeProjection(v);
+    if (!proj) return '';
+    var mid = GLOBE_SIZE / 2, layersHtml = ''; // the flight's layers (Unreported part, Flown trail, Remaining route, airports, aircraft) go here
+    return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
+      + '<circle class="cs-gl-sea" cx="' + esc(mid) + '" cy="' + esc(mid) + '" r="' + esc(mid) + '"/>'
+      + '<path class="cs-gl-land" d="' + esc(globe.data.d3.geoPath(proj)(globe.data.land) || '') + '"/>' + layersHtml + '</svg>';
   };
   // Named so for the escape check (tools/html-escape-check.mjs reads names ending in Html as markup): the map element at the end of a scene.
   var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
@@ -1596,13 +1620,15 @@
     if ((k === 'wetter' && !ctx.wx) || (k === 'musik' && !ctx.media) || (k === 'energie' && !ctx.energy) || (k === 'kameras' && !(ctx.cams && ctx.cams.length))
       || (k === 'flights' && !(ctx.flights && ctx.flights.length))) k = 'himmel';
     // The screensavers with a ground of their own are light by day and deep by night (and with a dark theme).
+    var innerHtml = DRAW[k](ctx); // first: drawing may set flags the scene's classes need (ctx.globeDrawn)
     var dark = ctx.dark || (NIGHT_KINDS.indexOf(k) > -1 && isNight(ctx));
     var cls = (dark ? ' cs-dark' : '') + (!dark && LIGHT_KINDS.indexOf(k) > -1 ? ' cs-light' : '');
     // Weather under clouds: a greyer sky. The house at rest: in the middle while nothing asks for anyone.
     if (k === 'wetter' && !dark && /rain|thunder|snow|fog|mixed|cloudy-fill|lightning/.test(String((ctx.wx || {}).icon || ''))) cls += ' cs-grey';
     if (k === 'ruhe') cls += !(ctx.bell || []).length ? ' cs-calm' : (ctx.bell || []).some(function (r) { return r.tone !== 'info'; }) ? ' cs-busy' : '';
+    if (k === 'flights' && ctx.globeDrawn) cls += ' cs-globe';
     var tintHtml = ctx.tint && ctx.media && TINT_KINDS.indexOf(k) > -1 ? '<div class="cs-tint" style="--cs-t:' + esc(ctx.tint) + '"></div>' : '';
-    return '<div class="cs-sv cs-' + k + cls + '" data-kind="' + k + '"' + (tintHtml ? ' data-tint="1"' : '') + '>' + tintHtml + DRAW[k](ctx) + '</div>';
+    return '<div class="cs-sv cs-' + k + cls + '" data-kind="' + k + '"' + (tintHtml ? ' data-tint="1"' : '') + '>' + tintHtml + innerHtml + '</div>';
   };
   // The wander against burn-in (#230). A step every twenty seconds, at :10, :30 and :50 of the minute: the glide of
   // four seconds is over before the minute ends, so the layout never moves while the clock's digits change.

@@ -5,7 +5,7 @@ custom_components/casora/scripts/local/46-screensaver.js | re:^(?:w|h|H|W|mx|my|
 custom_components/casora/scripts/local/46-screensaver.js | d | SVG path built from numbers | 3
 custom_components/casora/scripts/local/46-screensaver.js | re:^(?:s\.sun\.c|s\.mist|s\.water\.[ab]|s\.sky\[0\]|sky\[[0-3]\]|col|c|mix\(L\.far, L\.near, .*\))$ | colour of the fixed SCENES / SKY tables (or mixed from two of them) | 20
 custom_components/casora/scripts/local/46-screensaver.js | id | element id built from the fixed scene id | 23
-custom_components/casora/scripts/local/46-screensaver.js | re:^(?:stops|ridge\(.*\)|pts\((?:share|1)\)|out\.join\(''\)|defs\.join\(''\)|body\.join\(''\)|DRAW\[k\]\(ctx\)|bar\(ctx, .*\))$ | markup built by the module itself: SVG from numbers, texts through esc() | 10
+custom_components/casora/scripts/local/46-screensaver.js | re:^(?:stops|ridge\(.*\)|pts\((?:share|1)\)|out\.join\(''\)|defs\.join\(''\)|body\.join\(''\)|bar\(ctx, .*\))$ | markup built by the module itself: SVG from numbers, texts through esc() | 9
 custom_components/casora/scripts/local/46-screensaver.js | re:^\(?wx(?: && wx)?\.temp.*$ | the temperature as a rounded number; the weather text next to it goes through esc() | 4
 # The six data screensavers (weather, day line, week, music, energy flow, house at rest): titles of appointments,
 # media and bell rows go through esc(); what is listed here are numbers, fixed tables and the module's own markup.
