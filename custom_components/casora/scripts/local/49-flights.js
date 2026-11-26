@@ -1124,11 +1124,10 @@
     if (v.unreported) return v.unreported;
     if (!(v.origin && v.trail && v.trail.length)) return [];
     var a = v.origin, b = v.trail[0], direct = F.greatCircle(a, b);
-    if (direct.length) return direct;
+    if (direct.length || !(F.distanceKm(a, b) >= MIN_ROUTE_KM)) return direct; // under a kilometre is no arc, not an invalid point
     // The view's longitudes may lie past 180 or -180 (continuous over the date line), which greatCircle takes for invalid:
     // draw the arc between the same places with plain longitudes, then shift it so that it ends at the trail's start as given.
-    var wrap = function (lo) { return lo - 360 * Math.round(lo / 360); };
-    var arc = F.greatCircle([a[0], wrap(a[1])], [b[0], wrap(b[1])]);
+    var arc = F.greatCircle([a[0], lonNear(0, a[1])], [b[0], lonNear(0, b[1])]);
     if (!arc.length) return [];
     var shift = b[1] - arc[arc.length - 1][1];
     return shift === 0 ? arc : arc.map(function (p) { return [p[0], p[1] + shift]; });

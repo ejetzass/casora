@@ -160,6 +160,13 @@ deq(F.trailOf(fl('t', { coordinates: 'nope' })), [], 'trail not a list');
   // Across the dateline the short way round is drawn, not the way round the globe.
   const dl = F.unreportedOf({ origin: [10, 179], trail: [[10, -179]] });
   assert.ok(dl.every((p) => Math.abs(p[1]) > 170 && onArc([10, 179], p, [10, -179])), 'dateline: the short arc');
+  // A continuous trail past 180 (Auckland to Los Angeles over the date line): the arc is not empty, starts at the origin, ends at the trail's start.
+  const akl = [-37, 174.8], past = F.unreportedOf({ origin: akl, trail: [[-30, 185], [-20, 200]] });
+  assert.ok(past.length >= 8, 'past 180: an arc is drawn');
+  deq(past[0], akl, 'past 180: starts at the origin');
+  assert.ok(Math.abs(past[past.length - 1][0] + 30) < 1e-9 && Math.abs(past[past.length - 1][1] - 185) < 1e-9, 'past 180: ends at the trail start, as given');
+  // Origin and trail start under a kilometre apart: nothing drawn (and no second try).
+  deq(F.unreportedOf({ origin: [10, 180.0001], trail: [[10, 180.0002]] }), [], 'under a kilometre: nothing drawn');
   // Nothing drawn without the origin or without any trail point (no error).
   deq(F.unreportedOf({ origin: null, trail: view.trail }), [], 'no origin: nothing drawn');
   deq(F.unreportedOf({ origin: ALPHA, trail: [] }), [], 'no trail: nothing drawn');
