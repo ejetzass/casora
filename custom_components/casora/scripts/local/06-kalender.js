@@ -215,16 +215,11 @@
     var failed = {};
     var q = '?start=' + encodeURIComponent(s.toISOString()) + '&end=' + encodeURIComponent(e.toISOString());
     Promise.all(cals.map(function (c) {
-      // Studio's verdict scan (00-finder.js casoraWasteScan) skips a calendar fetched within 5 minutes.
-      (window._casoraWasteTs = window._casoraWasteTs || {})[c.entity] = Date.now();
       return hass.callApi('GET', 'calendars/' + c.entity + q).then(function (r) {
         r = r || [];
-        // The verdict "Waste calendar" (00-finder.js casoraWasteContent) is kept per calendar and refreshed with every
-        // successful fetch. A failed fetch keeps the old verdict.
-        if (window.casoraWasteContent) {
-          var W = window._casoraWasteCals = window._casoraWasteCals || {};
-          W[c.entity] = window.casoraWasteContent(r.map(function (ev) { return ev.summary || ''; }));
-        }
+        // Each successful fetch also goes to the Waste calendar verdict (00-finder.js casoraWasteJudge; the calendar
+        // module runs without it in some unit tests).
+        if (window.casoraWasteJudge) window.casoraWasteJudge(c.entity, r, { s: s, e: e });
         return r.map(function (ev) {
           var sd = ev.start && (ev.start.dateTime || ev.start.date), ed = ev.end && (ev.end.dateTime || ev.end.date);
           var all = !(ev.start && ev.start.dateTime);
