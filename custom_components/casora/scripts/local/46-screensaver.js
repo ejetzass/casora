@@ -1451,7 +1451,8 @@
         return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
       }).join('') + '</div>';
     }
-    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + (!detail && v ? S.liveMap(r) : '');
+    var mapHtml = !detail && v ? S.liveMap(r) : '';
+    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
   };
   // The HA map over the drawn picture (the popup's casora-flight-map, 49-flights.js): it draws the route, the trail, the
   // airports and the aircraft as map layers from the same view. Until it is ready, and when it fails, the drawn picture
@@ -1469,7 +1470,8 @@
     var open = html.slice(0, html.indexOf('>') + 1);
     if (!a || !b || a[0] !== b[0] || open !== (last || '').slice(0, (last || '').indexOf('>') + 1) || !scene || !el || el.parentNode !== scene) return false;
     while (el.previousSibling) scene.removeChild(el.previousSibling);
-    el.insertAdjacentHTML('beforebegin', html.slice(open.length, html.length - b[0].length));
+    var innerHtml = html.slice(open.length, html.length - b[0].length);
+    el.insertAdjacentHTML('beforebegin', innerHtml);
     return true;
   };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
