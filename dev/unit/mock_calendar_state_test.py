@@ -6,6 +6,7 @@
 """
 import asyncio
 import json
+import os
 from datetime import timedelta
 from pathlib import Path
 import subprocess
@@ -83,8 +84,9 @@ if (window.casoraCalendarAllows) {
 }
 process.exit(0);
 """
+        # HA writes start_time as a naive local string in HA's zone; Node reads it in its own zone, so Node gets HA's zone.
         subprocess.run(["node", "-e", script], input=json.dumps([state, now.isoformat()]),
-                       text=True, cwd=ROOT, check=True)
+                       text=True, cwd=ROOT, check=True, env={**os.environ, "TZ": str(dt_util.DEFAULT_TIME_ZONE)})
 
     def test_empty_replay_drops_old_calendar_fields_and_message_decision(self):
         calendar = self.calendar([], {"message": "Naam-old", "start_time": "Naam-start",
