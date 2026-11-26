@@ -458,7 +458,7 @@
           ], i ? undefined : "The waste sensor and the name the tile and the bell show.");
         });
         addRow(g, "Add bin", () => { S.waste.sensors[""] = ""; });
-        row(g, "Waste calendar", [ent(S.waste.calendar, ["calendar"], (v) => { S.waste.calendar = v; })],
+        row(g, "Waste calendar", [ent(S.waste.calendar, ["calendar"], (v) => { S.waste.calendar = v; render(); })],
           "More dates in the popup");
         // Bin types (stored list; nothing stored = the ready-made list, shown here but stored only after the first edit).
         const readyBins = () => (window.casoraBinReady ? window.casoraBinReady() : []);
@@ -906,7 +906,7 @@
           tog.appendChild(document.createTextNode("On tile"));
           // No row label: the group header (and on its own page the title) already says "Calendars".
           const calRow = row(g, "", [
-            ent(c.entity, ["calendar"], (v) => { c.entity = v; redrawCalendar(); }),
+            ent(c.entity, ["calendar"], (v) => { c.entity = v; redrawCalendar(); render(); }),
             txt(c.name, "Name", (v) => { c.name = v; }, true), col, tog,
             del(() => { S.calendars.splice(i, 1); redrawCalendar(); }),
           ], i ? undefined : "Calendar, name, color and whether it shows on the tile.");
