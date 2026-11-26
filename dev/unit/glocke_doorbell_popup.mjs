@@ -81,6 +81,8 @@ async function setup(kind, options = {}) {
     [cam]: { device_id: 'mock-bell', platform: kind, translation_key: kind === 'ring' ? 'live_view' : 'sub' },
   };
   const entries = [{ entity_id: source, state: states[source].state, when: when / 1000 }];
+  // A listed detection counts only as off-to-on (#188): the logbook shows the sensor off before the press.
+  if (options.detection) entries.unshift({ entity_id: source, state: 'off', when: when / 1000 - 5 });
   if (options.released) {
     entries.push({ entity_id: source, state: 'off', when: when / 1000 + 3 });
     states[source].state = 'off';
@@ -172,6 +174,12 @@ async function setup(kind, options = {}) {
   if (options.hiddenSub) ctx.casoraVisibleIds = async ids => ids.filter(id => id !== cam);
   ctx.customElements = { whenDefined: () => new Promise(() => {}), get: () => null };
   if (!options.noFinder) vm.runInContext(fs.readFileSync(new URL('../../custom_components/casora/scripts/local/00-finder.js', import.meta.url), 'utf8'), ctx);
+  if (options.detection) {
+    const ruleStart = core.indexOf('// The detection rule of the camera tile and the bell');
+    vm.runInContext(core.slice(ruleStart, core.indexOf('\n})();', ruleStart) + 6), ctx);
+    const sinceStart = core.indexOf('  var startC = ');
+    vm.runInContext(core.slice(sinceStart, core.indexOf('    return t;\n  };', sinceStart) + '    return t;\n  };'.length), ctx);
+  }
   vm.runInContext(mod, ctx);
   if (options.realManual) {
     delete ctx.casoraCameraPopup;
