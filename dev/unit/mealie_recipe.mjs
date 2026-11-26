@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const src = fs.readFileSync(ROOT + 'custom_components/casora/scripts/local/03-popups.js', 'utf8');
@@ -55,6 +56,7 @@ const make = (entities, answer) => {
   };
   const ha = { hass, shadowRoot: null };
   const box = { window: win, document: { querySelector: (s) => (s === 'home-assistant' ? ha : null) }, setTimeout: () => 0, clearTimeout() {}, console, Date, JSON, Math, Promise };
+  loadDayWord(win);
   vm.createContext(box);
   vm.runInContext(src.slice(a, b + 6), box);
   return { R: win._casoraRecipe, hass, states, kicks, calls, win };
@@ -191,6 +193,7 @@ const COOKIDOO = {
   const run = (R) => {
     const got = [];
     const window = { _casoraRecipe: R, casoraStateFit: (t, w, alt) => { got.push([t, alt]); return 'FIT'; }, casoraEsc: String };
+    loadDayWord(window);
     // Template JS uses optional calls (?.), Function runs it as is.
     new Function('window', 'entity', 'states', sd)(window, { state: 'x' }, {});
     return got[0];

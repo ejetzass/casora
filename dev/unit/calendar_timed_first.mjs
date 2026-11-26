@@ -7,6 +7,7 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { loadCalendars } from './lib/calendars_block.mjs';
 import { loadCalFetch } from './lib/cal_fetch.mjs';
+import { loadDayWordIn } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL(`../../custom_components/casora/scripts/local/${p}`, import.meta.url), 'utf8');
 
@@ -28,6 +29,7 @@ function setup({ states, settings }) {
   const ctx = vm.createContext({ window: win, document: { querySelector: () => ha }, Date: ClockDate, setTimeout: () => 0, console });
   vm.runInContext(read('06a-kalender-filter.js'), ctx);
   vm.runInContext(read('06-kalender.js'), ctx);
+  loadDayWordIn(ctx);
   loadCalFetch(ctx);
   return { calendar: win._casoraCalendar, variables, states, win };
 }

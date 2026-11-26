@@ -3,11 +3,13 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { phrases } from './lib/i18n_phrases.mjs';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const src = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/00-finder.js', import.meta.url), 'utf8');
 const a = src.indexOf('// casora-calendars:start'), b = src.indexOf('// casora-home-next:end');
 assert.ok(a > 0 && b > a, 'block found');
 const window = {};
+loadDayWord(window);
 new Function('window', src.slice(a, b))(window);
 const now = new Date(2026, 10, 9, 10, 0, 0);
 const cal = (msg, start, extra) => ({ state: 'off', attributes: { message: msg, start_time: start, ...extra } });

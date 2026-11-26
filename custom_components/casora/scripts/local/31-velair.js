@@ -567,9 +567,7 @@
   };
 
   var dayTitle = function (w, today) {
-    if (w === today) return 'Heute';
-    if (WD[(WD.indexOf(today) + 1) % 7] === w) return 'Morgen';
-    return LONG[w];
+    return window.casoraDayWord(w === today ? 0 : WD[(WD.indexOf(today) + 1) % 7] === w ? 1 : 2) || LONG[w];
   };
   var slotIcon = function (b) {
     var a = (b && b.action) || 'set_temperature';

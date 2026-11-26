@@ -147,17 +147,14 @@
   };
   K.when = function (d, now) {
     if (!d) return '';
-    var n = diffDays(d, now);
-    if (n === 0) return 'Heute';
-    if (n === 1) return 'Morgen';
-    if ((n > 1 && n < 7) || (n < 0 && n > -7)) return DAYS[d.getDay()];
-    return DAYS[d.getDay()] + ' ' + dm(d);
+    return window.casoraDayWord(d, { now: now, back: 7,
+      weekday: function (x) { return DAYS[x.getDay()]; },
+      date: function (x) { return DAYS[x.getDay()] + ' ' + dm(x); } });
   };
   /* Popup: immer mit Datum („So 11.10.“), nur heute/morgen als Wort. */
   K.day = function (d, now) {
     if (!d) return '';
-    var n = diffDays(d, now);
-    return n === 0 ? 'Heute' : n === 1 ? 'Morgen' : DAYS[d.getDay()] + ' ' + dm(d);
+    return window.casoraDayWord(d, { now: now, date: function (x) { return DAYS[x.getDay()] + ' ' + dm(x); } });
   };
   K.until = function (d, now) {
     if (!d) return '';

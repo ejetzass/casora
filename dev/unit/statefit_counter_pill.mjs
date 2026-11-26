@@ -5,6 +5,7 @@
 // @deckt: custom_components/casora/scripts/casora-core.js#casoraStateFit dashboards/casora/button_card_templates.json#casora_trash
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const root = new URL('../../', import.meta.url);
 const core = fs.readFileSync(new URL('custom_components/casora/scripts/casora-core.js', root), 'utf8');
@@ -37,6 +38,7 @@ const run = (days, next) => {
     casoraStateFit: (t, wgt, alt) => { calls.push([t, alt]); return t; },
     casoraDevice: { waste: () => ({ days, next, bins: [{}], duty: true }) },
   };
+  loadDayWord(globalThis.window);
   new Function('hass', 'variables', 'entity', code)({}, {}, null);
   return calls.pop();
 };
