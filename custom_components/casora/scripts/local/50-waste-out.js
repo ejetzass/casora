@@ -139,7 +139,7 @@
     var UI = window._casoraUI;
     if (!UI || !UI.group) return '';
     return UI.group([{
-      icon: on ? 'mdi:check' : 'mdi:trash-can-outline', iconTone: on ? 'good' : (W.next.color || null),
+      icon: on ? 'mdi:check' : (W.next.icon || 'mdi:trash-can-outline'), iconTone: on ? 'good' : (W.next.color || null),
       label: 'Rausgestellt',
       sub: on ? 'Kachel bis zur nächsten Abholung ausgeblendet' : W.next.label + ' · ' + (W.days === 0 ? 'Heute' : 'Morgen'),
       active: on, tappable: true, noChev: true, endHtml: switchHtml(key, on),

@@ -118,6 +118,8 @@
     // calendar_filter is a section { words, timed_first }; the old form was a plain text (the words).
     const cf = s.calendar_filter;
     s.calendar_filter = cf && typeof cf === "object" ? cf : { words: typeof cf === "string" ? cf : "" };
+    // Bin types: absent = the ready-made list. Only a stored list gets an array; { list: [] } (all deleted) is kept by prune.
+    s.bin_types = s.bin_types && Array.isArray(s.bin_types.list) ? { list: s.bin_types.list } : {};
     const n = s.notify = s.notify || {};
     n.zone_phrases = n.zone_phrases || {};
     n.battery_exclude = Array.isArray(n.battery_exclude) ? n.battery_exclude : [];

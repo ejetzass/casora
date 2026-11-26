@@ -492,23 +492,43 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
   // ── Waste (Waste Collection Schedule or similar) ───────────────────────────
   // Bin sensors and the waste calendar are detected; own settings from the card variables
   // (trash_*) or CASORA_SETTINGS.waste win.
-  // [pattern, colour, Soft key, Soft fallback colour]. In the Soft look the colour comes from
-  // --casora-waste-<key> (theme_weich.yaml, 05.10.2026), as in the popup; residual waste is
-  // opaque instead of half transparent, and on pickup day the tile got a grey icon on a grey
-  // circle. Hazardous waste has its own colour (red) only in the Soft look; otherwise nothing
-  // changes (colour null = orange, calendar match by name).
-  // Dutch names (#218): GFT (groente-, fruit- en tuinafval), PMD (plastic, metaal en drankenkartons), grofvuil,
-  // huisvuil. "karton" only as a word of its own or in "Altkarton": the drink cartons of PMD ("drankenkartons")
-  // are packaging, not paper – as a part of any word the PMD pickup in the waste calendar counted for the paper bin.
-  var WASTE_KINDS = [
-    [/bio|organ|kompost|green waste|gft|groente|tuinafval|groenafval/i, '#30D158', 'bio', '#6AAE78'],
-    [/papier|paper|pappe|(?:^|[^a-z])karton|altkarton|cardboard/i, '#0A84FF', 'paper', '#5B8FC9'],
-    [/wertstoff|gelb|plastik|plastic|verpack|verpakking|recycl|pmd|pbd|drankenkarton|drankkarton/i, '#FFCC00', 'yellow', '#E8B04A'],
-    [/glas|glass/i, '#00C3D0', 'glass', '#4E9E95'],
-    [/sperr|bulky|grofvuil|grof afval/i, null, 'bulky', '#DE8A4E'],
-    [/problem|schadstoff|sonderm|gift|hazard|chemisch/i, null, 'hazard', '#D35A4E'],
-    [/rest|residual|general|haus|black|huisvuil/i, '#8E8E93', 'rest', '#8F7E6D'],
+  // Bin types (stored list, personal settings key bin_types = { list: [{ key?, words, name?, color?, icon? }] }).
+  // Absent: the ready-made list below. A stored list replaces it (an empty one too) and is read as it is; an entry
+  // with a ready-made key fills in the words, colour and icon it leaves out. Words are plain text, matched
+  // case-insensitive inside the title; the LONGEST matched word wins, a tie goes to the list order. So "drankkarton"
+  // (yellow) beats "karton" (paper): the drink cartons of PMD are packaging, not paper (#218).
+  // In the Soft look a ready-made colour comes from --casora-waste-<key> (theme_weich.yaml, 05.10.2026), as in the
+  // popup; residual waste is opaque instead of half transparent. Hazardous waste has its own colour (red) only in
+  // the Soft look; otherwise nothing changes (no colour = orange, sensor bins match their events by name).
+  // Dutch names (#218): GFT, PMD, grofvuil, huisvuil. Ready-made name: shown by Studio; the tile keeps the title.
+  var BIN_ICON = 'mdi:trash-can-outline';
+  var BIN_READY = [
+    { key: 'bio', name: 'Biomüll', color: '#30D158', soft: '#6AAE78', words: ['bio', 'organ', 'kompost', 'green waste', 'gft', 'groente', 'tuinafval', 'groenafval'] },
+    { key: 'paper', name: 'Papier', color: '#0A84FF', soft: '#5B8FC9', words: ['papier', 'paper', 'pappe', 'karton', 'cardboard'] },
+    { key: 'yellow', name: 'Gelber Sack', color: '#FFCC00', soft: '#E8B04A', words: ['wertstoff', 'gelb', 'plastik', 'plastic', 'verpack', 'verpakking', 'recycl', 'pmd', 'pbd', 'drankenkarton', 'drankkarton'] },
+    { key: 'glass', name: 'Glas', color: '#00C3D0', soft: '#4E9E95', words: ['glas', 'glass'] },
+    { key: 'bulky', name: 'Sperrmüll', color: null, soft: '#DE8A4E', words: ['sperr', 'bulky', 'grofvuil', 'grof afval'] },
+    { key: 'hazard', name: 'Schadstoffe', color: null, soft: '#D35A4E', words: ['problem', 'schadstoff', 'sonderm', 'gift', 'hazard', 'chemisch'] },
+    { key: 'rest', name: 'Restmüll', color: '#8E8E93', soft: '#8F7E6D', words: ['rest', 'residual', 'general', 'haus', 'black', 'huisvuil'] },
   ];
+  function binTypes() {
+    var s = settings('bin_types'), by = {};
+    BIN_READY.forEach(function (t) { by[t.key] = t; });
+    if (!Array.isArray(s.list)) return BIN_READY.map(function (t) {
+      return { key: t.key, words: t.words, color: t.color, soft: t.soft, icon: BIN_ICON, name: '' };
+    });
+    return s.list.map(function (e) {
+      e = e || {};
+      var r = by[e.key] || {}, own = (Array.isArray(e.words) ? e.words : []).map(function (w) { return String(w).trim().toLowerCase(); }).filter(Boolean);
+      return { key: e.key || '', words: own.length ? own : (r.words || []), name: String(e.name || '').trim(),
+        color: e.color || r.color || null, soft: !e.color || e.color === r.color ? r.soft : null, icon: e.icon || BIN_ICON };
+    }).filter(function (t) { return t.words.length; });
+  }
+  function binTypeOf(list, text) {
+    var t = String(text).toLowerCase(), best = null, len = 0;
+    list.forEach(function (k) { k.words.forEach(function (w) { if (w.length > len && t.indexOf(w) > -1) { best = k; len = w.length; } }); });
+    return best;
+  }
   var WASTE_WORDS = [
     [/gr(ü|ue)n|green/i, '#30D158'], [/blau|blue/i, '#0A84FF'], [/braun|brown/i, '#8F7E6D'],
     [/schwarz|grau|black|gr[ae]y/i, '#8E8E93'], [/rot\b|rote|red/i, '#FF453A'],
@@ -562,6 +582,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var ids = named ? (Array.isArray(named) ? named : Object.keys(named))
       : Object.keys(S).filter(function (eid) { return isWasteSensor(hass, eid); }).sort();
     var weich = !!(window._casoraSoft && window._casoraSoft());
+    var BT = binTypes(), stored = Array.isArray(settings('bin_types').list);
     // A configured calendar that is gone (renamed, removed) falls back to the detected one; it only
     // stays when nothing else is found, so the tile can still say the source is unreachable.
     var calGiven = Object.prototype.hasOwnProperty.call(V, 'trash_calendar') ? V.trash_calendar : cfg.calendar || null;
@@ -577,18 +598,20 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       TC.ev.forEach(function (e) {
         var lab = String((e && e.summary) || '').trim(), st0 = e && e.start && (e.start.date || e.start.dateTime);
         var d = st0 ? new Date(String(st0).slice(0, 10) + 'T00:00:00') : null;
-        if (!lab || !d || isNaN(d) || d < t0) return;
+        if (!lab || !d || isNaN(d) || d < t0 || (stored && !binTypeOf(BT, lab))) return;   // stored list: an event with no Bin type is no bin
         var n = Math.round((d - t0) / 86400000), id = calendar + '#' + lab.toLowerCase();
         if (!fromCal[id] || n < fromCal[id].days) fromCal[id] = { label: lab, days: n };
       });
       ids = Object.keys(fromCal).sort();
     }
     var bins = ids.filter(function (id) { return S[id] || fromCal[id]; }).map(function (id) {
-      var label = (named && !Array.isArray(named) && named[id]) || (fromCal[id] ? fromCal[id].label : wasteLabel(hass, id));
-      var kind = WASTE_KINDS.filter(function (k) { return k[0].test(label) || k[0].test(id); })[0];
+      var given = named && !Array.isArray(named) && named[id], title = fromCal[id] ? fromCal[id].label : wasteLabel(hass, id);
+      var kind = binTypeOf(BT, (given || title) + (fromCal[id] ? '' : '\n' + id));
+      // A name the user stored for the Bin type is shown as typed; an explicit sensor name still wins.
+      var label = given || (kind && kind.name) || title;
       // No known kind: a colour word in the name (green, blue …) gives the colour (issue #27).
       var word = !kind && WASTE_WORDS.filter(function (w) { return w[0].test(label); })[0];
-      var color = kind && kind[1] ? kind[1] : word ? word[1] : '#FF9F0A';
+      var color = kind && kind.color ? kind.color : word ? word[1] : '#FF9F0A';
       var st = S[id] || { state: String(fromCal[id].days), attributes: {} };
       // A date as state is a date, not a number of days (parseInt would give the year).
       var stDays = daysUntil(st.state);
@@ -612,19 +635,22 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       }
       if (isNaN(days) && stDays == null) days = wasteCountdown(st.state);
       if (isNaN(days)) days = wasteCountdown(st.attributes && st.attributes.daysTo);
-      var r = parseInt(color.slice(1, 3), 16), g = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
-      var tint = 'rgba(' + r + ',' + g + ',' + b + ',0.25)';
+      var tint = /^#[0-9a-f]{6}$/i.test(color)
+        ? 'rgba(' + parseInt(color.slice(1, 3), 16) + ',' + parseInt(color.slice(3, 5), 16) + ',' + parseInt(color.slice(5, 7), 16) + ',0.25)'
+        : 'color-mix(in srgb, ' + color + ' 25%, transparent)';   // a stored var(…) colour is no hex
       if (weich && !word) {
-        color = 'var(--casora-waste-' + (kind ? kind[2] : 'other') + ', ' + (kind ? kind[3] : '#DE8A4E') + ')';
+        color = kind && kind.soft ? 'var(--casora-waste-' + kind.key + ', ' + kind.soft + ')'
+          : kind && kind.color ? kind.color : 'var(--casora-waste-other, #DE8A4E)';
         // Tile on pickup day: full bin circle with a light glyph like the Soft glyphs
         // (casora_trash sets --casora-icon-off-ink to --casora-waste-glyph for it).
         tint = color;
       }
       return {
-        id: id, label: label, color: color, tint: tint,
+        id: id, label: label, color: color, tint: tint, icon: kind ? kind.icon : BIN_ICON,
         // Calendar bins match their own title exactly, so a green bin and green cuttings stay apart.
-        re: fromCal[id] ? new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i')
-          : kind && kind[1] ? kind[0] : new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        re: fromCal[id] ? new RegExp('^' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i')
+          : kind && (kind.color || !kind.soft) ? { test: function (t) { return binTypeOf(BT, t) === kind; } }
+          : new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
         days: isNaN(days) ? null : days, cal: !!fromCal[id],
       };
     });
@@ -662,7 +688,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       dutyBySensor: !!(dutyEnt && S[dutyEnt]),
       next: nextBins.length ? { label: nextBins.map(function (b) { return b.label; }).join(' + '),
                                 first: nextBins[0].label, count: nextBins.length,
-                                tint: nextBins[0].tint, color: nextBins[0].color } : null,
+                                tint: nextBins[0].tint, color: nextBins[0].color, icon: nextBins[0].icon } : null,
     };
   }
 
