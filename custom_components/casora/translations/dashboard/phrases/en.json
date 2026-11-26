@@ -3029,6 +3029,7 @@
     "Quelle für verfolgte Flüge auswählen": "Select a tracked-flights source",
     "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Choose the source in Studio under Settings → Tapping & tablet → Tracked flights.",
     "1 verfolgter Flug": "1 tracked flight",
+    "1 Flug": "1 flight",
     "Geplant": "Scheduled",
     "Am Boden": "On the ground",
     "Höhe": "Altitude",
@@ -5540,6 +5541,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} tracked flights"
+    ],
+    [
+      "^(\\d+) Flüge$",
+      "{1} flights"
     ],
     [
       "^(\\d+) in der Luft$",

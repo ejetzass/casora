@@ -3047,6 +3047,7 @@
     "Quelle für verfolgte Flüge auswählen": "Elige una fuente de vuelos seguidos",
     "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Elige la fuente en Studio, en Ajustes → Tocar y tableta → Vuelos seguidos.",
     "1 verfolgter Flug": "1 vuelo seguido",
+    "1 Flug": "1 vuelo",
     "Geplant": "Programado",
     "Am Boden": "En tierra",
     "Höhe": "Altitud",
@@ -5558,6 +5559,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} vuelos seguidos"
+    ],
+    [
+      "^(\\d+) Flüge$",
+      "{1} vuelos"
     ],
     [
       "^(\\d+) in der Luft$",

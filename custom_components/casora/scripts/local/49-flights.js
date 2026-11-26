@@ -20,7 +20,7 @@
 //   window._casoraFlights.choices(hass, pin)         → Studio select: {options, labels, empty, note}
 //   window._casoraFlights.firstValue(list, key)       → first nonempty dashboard setting
 //   window._casoraFlights.pinned(cfg)                → the setting from a dashboard config
-//   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
+//   window._casoraFlights.tile(hass, pin) / .tileShort(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
 //   window._casoraFlights.airborne(hass, pin, now, units) → the qualifying flights now (the shared rule for every flight surface; units optional, a draft's)
 //   window._casoraFlights.details(entry)             → {airline, model, registration, callsign, origin, destination} ('' when missing)
 //   window._casoraFlights.timeRows(hass, entry, tzOn) → [[label, text]] departure and arrival timestamps (the popup's rows)
@@ -571,6 +571,8 @@
   // Casora's own setting: Studio → Settings → Tapping & tablet → Tracked flights.
   var SOURCE_HINT = 'Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.';
   var countWord = function (n) { return n === 1 ? '1 verfolgter Flug' : n + ' verfolgte Flüge'; };
+  // The tile's short form for a narrow tile (casoraStateFit alt): the count without "tracked".
+  var countShort = function (n) { return n === 1 ? '1 Flug' : n + ' Flüge'; };
   var model = function (hass, pin) {
     var r = F.resolve(hass, pin);
     if (r.state === 'loading') return { text: '', tone: 'off', rows: null };
@@ -578,7 +580,7 @@
     if (r.state === 'none' || r.state === 'missing' || !r.source) return { text: T_MISSING, tone: 'bad', rows: null };
     var rows = F.entries(hass, r.id);
     if (rows == null) return { text: T_MISSING, tone: 'bad', rows: null };
-    return { text: rows.length ? countWord(rows.length) : T_EMPTY, tone: rows.length ? 'good' : 'off', rows: rows };
+    return { text: rows.length ? countWord(rows.length) : T_EMPTY, short: rows.length ? countShort(rows.length) : '', tone: rows.length ? 'good' : 'off', rows: rows };
   };
   // The sources' IDs (and the pin): what a tile or popup reads so it follows their states.
   F.watch = function (hass) {
@@ -589,6 +591,8 @@
   // Highlighted while the selected list has entries.
   F.active = function (hass) { var m = model(hass, F.setting()); return !!(m.rows && m.rows.length); };
   F.tile = function (hass, pin) { return F.present(hass) || pin ? model(hass, pin).text : ''; };
+  // The short form of F.tile for casoraStateFit: only the count has one, every other text is already short or a notice.
+  F.tileShort = function (hass, pin) { return F.present(hass) || pin ? model(hass, pin).short || '' : ''; };
 
   F.sec = function (part, c, states, hass) {
     var UI = window._casoraUI;

@@ -3047,6 +3047,7 @@
     "Quelle für verfolgte Flüge auswählen": "Wybierz źródło śledzonych lotów",
     "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Źródło wybierzesz w Studio: Ustawienia → Dotyk i tablet → Śledzone loty.",
     "1 verfolgter Flug": "1 śledzony lot",
+    "1 Flug": "1 lot",
     "Geplant": "Zaplanowany",
     "Am Boden": "Na ziemi",
     "Höhe": "Wysokość",
@@ -5558,6 +5559,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "Śledzonych lotów: {1}"
+    ],
+    [
+      "^(\\d+) Flüge$",
+      "Loty: {1}"
     ],
     [
       "^(\\d+) in der Luft$",

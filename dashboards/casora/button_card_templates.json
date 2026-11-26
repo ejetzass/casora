@@ -20894,7 +20894,7 @@
       "active_entities": [],
       "active_override": "[[[\n  /* Highlighted while the tracked list has entries. */\n  return window._casoraFlights ? window._casoraFlights.active(hass) : false;\n]]]\n"
     },
-    "state_display": "[[[\n  const fit = (t) => window.casoraStateFit?.(t) ?? (window.casoraEsc || String)(t);\n  const F = window._casoraFlights;\n  /* Reading the sources' states here makes the tile follow them (button-card tracks states[...]). */\n  if (F) F.watch(hass).forEach((id) => { states[id]; });\n  return F ? fit(F.tile(hass, F.setting())) : '';\n]]]\n",
+    "state_display": "[[[\n  const fit = (t, a) => window.casoraStateFit?.(t, undefined, a || undefined) ?? (window.casoraEsc || String)(t);\n  const F = window._casoraFlights;\n  /* Reading the sources' states here makes the tile follow them (button-card tracks states[...]). */\n  if (F) F.watch(hass).forEach((id) => { states[id]; });\n  /* The count has a short form (\"3 Flüge\"): the tile keeps one line at one size on a narrow phone tile. */\n  return F ? fit(F.tile(hass, F.setting()), F.tileShort(hass, F.setting())) : '';\n]]]\n",
     "styles": {
       "card": [
         {

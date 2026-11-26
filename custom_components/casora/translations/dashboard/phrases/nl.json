@@ -3047,6 +3047,7 @@
     "Quelle für verfolgte Flüge auswählen": "Kies een bron voor gevolgde vluchten",
     "Die Quelle wählst du im Studio unter Einstellungen → Bedienen → Verfolgte Flüge.": "Kies de bron in Studio onder Instellingen → Tikken & tablet → Gevolgde vluchten.",
     "1 verfolgter Flug": "1 gevolgde vlucht",
+    "1 Flug": "1 vlucht",
     "Geplant": "Gepland",
     "Am Boden": "Op de grond",
     "Höhe": "Hoogte",
@@ -5558,6 +5559,10 @@
     [
       "^(\\d+) verfolgte Flüge$",
       "{1} gevolgde vluchten"
+    ],
+    [
+      "^(\\d+) Flüge$",
+      "{1} vluchten"
     ],
     [
       "^(\\d+) in der Luft$",
