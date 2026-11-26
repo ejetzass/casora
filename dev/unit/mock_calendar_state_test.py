@@ -6,6 +6,7 @@
 """
 import asyncio
 import json
+import os
 from datetime import timedelta
 from pathlib import Path
 import subprocess
@@ -83,8 +84,11 @@ if (window.casoraCalendarAllows) {
 }
 process.exit(0);
 """
+        # start_time is a local string without offset: node must read it in the zone HA served it in. The pytest
+        # plugin sets HA's zone to US/Pacific, not the process zone.
+        env = {**os.environ, "TZ": str(dt_util.get_default_time_zone())}
         subprocess.run(["node", "-e", script], input=json.dumps([state, now.isoformat()]),
-                       text=True, cwd=ROOT, check=True)
+                       text=True, cwd=ROOT, check=True, env=env)
 
     def test_empty_replay_drops_old_calendar_fields_and_message_decision(self):
         calendar = self.calendar([], {"message": "Naam-old", "start_time": "Naam-start",
