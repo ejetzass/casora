@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount,html,DRAW
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount,html,DRAW,liveMap,mountKeepingMap
 // The Flights screensaver's map layout shows the HA map (the casora-flight-map element of 49-flights.js) and keeps that
 // element across the saver's redraws: the same flight and layout keep the same element (no flicker, no tile reload, no
 // jump back to the drawn picture); a new flight or another layout drops it; destroy removes it. The saver's own HTML has
@@ -169,6 +169,34 @@ const runtime = ({ withMap }) => {
   assert.ok(!MAP_TAG.test(html), 'the details layout has no map element');
   R.host.innerHTML = html; // what the saver does for a changed layout
   assert.equal(el.connected, false, 'the map element is gone with the layout');
+}
+
+// ── Only the scene's opening tag changes (dark to light): the element is rebuilt, as documented ──────────────────────
+{
+  const R = runtime({ withMap: true });
+  R.draw(SLOT0 + 1000, 1);
+  const el = R.host.querySelector('casora-flight-map');
+  R.hass.themes.darkMode = false;
+  const h = R.draw(SLOT0 + 2000, 2);
+  assert.ok(!/cs-dark/.test(h), 'precondition: the scene tag changed');
+  const el2 = R.host.querySelector('casora-flight-map');
+  assert.ok(el2 && el2 !== el, 'another scene tag: a new map element');
+  assert.equal(el.connected, false, 'the old one left the page');
+}
+
+// ── A kept element that already failed stays hidden for the same flight; the drawn picture stays ─────────────────────
+{
+  const R = runtime({ withMap: true });
+  R.draw(SLOT0 + 1000, 1);
+  const el = R.host.querySelector('casora-flight-map');
+  el.style = { display: 'none' }; // what the element does when its map failed
+  for (let i = 2; i <= 4; i++) {
+    const h = R.draw(SLOT0 + 1000 * i, i);
+    assert.equal(R.host.querySelector('casora-flight-map'), el, 'the failed element is kept, not retried');
+    assert.equal(el.style.display, 'none', 'and stays hidden');
+    assert.match(h, /cs-fl-pic/, 'the drawn picture is still there');
+    assert.match(h, /cs-fl-stat/, 'and the figures');
+  }
 }
 
 console.log('ok screensaver_flights_map');
