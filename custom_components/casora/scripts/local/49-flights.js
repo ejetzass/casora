@@ -1287,7 +1287,9 @@
     var arrow = arrowImage(ml);
     // The Remaining route first, so it lies under the trail, the airports and the aircraft. MapLibre counts dash lengths in line
     // widths, so the line and its wider casing get the same dash in pixels.
-    // The Unreported part below even that: the trail's white at 45 % opacity, solid.
+    // The Unreported part below even that: the trail's white at 45 % opacity, solid, on a dark casing like the trail's (it reads on light tiles).
+    ml.addLayer({ id: 'casora-flight-unreported-casing', type: 'line', source: 'casora-flight-unreported', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#000000', 'line-opacity': 0.6, 'line-width': 5 } });
     ml.addLayer({ id: 'casora-flight-unreported', type: 'line', source: 'casora-flight-unreported', layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#ffffff', 'line-opacity': UNREPORTED_OPACITY, 'line-width': 2.5 } });
     ml.addLayer({ id: 'casora-flight-route-casing', type: 'line', source: 'casora-flight-route', layout: { 'line-join': 'round' },
@@ -1474,10 +1476,11 @@
         var pathOf = function (coords) { return coords.map(function (c, i) { var p = pt(c); return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' '); };
         var firstLine = function (collection) { return collection.features.length ? collection.features[0].geometry.coordinates : []; };
         var out = '';
-        // The Unreported part lowest: solid, the trail's white at a fainter opacity (UNREPORTED_OPACITY, as on MapLibre).
+        // The Unreported part lowest: solid, the trail's white at a fainter opacity (UNREPORTED_OPACITY, as on MapLibre), on a dark casing.
         var unrep = firstLine(geo.unreported);
         if (unrep.length) {
           var unrepPath = pathOf(unrep);
+          out += '<path d="' + unrepPath + '" fill="none" stroke="#000000" stroke-opacity="0.6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
           out += '<path d="' + unrepPath + '" fill="none" stroke="#ffffff" stroke-opacity="' + UNREPORTED_OPACITY + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
         }
         // The Remaining route next: dashed, casing and line alike (ROUTE_STYLE, as on MapLibre).
