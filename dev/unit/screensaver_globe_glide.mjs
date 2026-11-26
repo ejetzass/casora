@@ -87,6 +87,23 @@ const P1 = [50.21, 10.12], P2 = [50.35, 10.27], P3 = [50.49, 10.42]; // about 20
   centred(R, P2, 'reduced motion jumps'); assert.equal(R.pending(), 0, 'and asks for no frames');
 }
 
+// Frames come at most 10 times a second: a glide that is asked for a frame every 16 ms redraws only about every 100 ms, and still
+// ends exactly on the reported position.
+{
+  const R = await start();
+  R.move(P2[0], P2[1], POLL);
+  let draws = 0, tries = 0;
+  const count = () => { Object.defineProperty(R.globe, 'innerHTML', { configurable: true, get: () => R.globe._h || '', set: (h) => { R.globe._h = h; draws++; } }); };
+  count();
+  const t0 = R.clock;
+  while (R.pending() && R.clock - t0 < POLL + 2000 && tries < 20000) { R.frame(16); tries++; }
+  assert.ok(tries > 3000, 'the loop kept asking for frames: ' + tries);
+  assert.ok(draws < tries / 4, 'frames 16 ms apart do not all redraw (' + draws + ' draws in ' + tries + ' frames)');
+  assert.ok(draws >= (POLL / 100) * 0.8 && draws <= POLL / 100 + 3, 'about 10 draws a second (' + draws + ' in a minute)');
+  assert.equal(R.pending(), 0, 'the loop stops when the glide ends');
+  centred(R, P2, 'after many small frames, exactly on the reported position');
+}
+
 // The loop ends with the saver and with the kind or the flight on show.
 {
   const R = await start();

@@ -1512,6 +1512,7 @@
   // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the map box, as large as the
   // box allows). Orthographic, the aircraft's position in the middle, north up (no roll). Null until the files are loaded.
   var GLOBE_SIZE = 1000, GLOBE_AP_R = 9;
+  var GLOBE_FRAME_MS = 100; // the glide redraws at most this often
   S.globeProjection = function (v) {
     if (!globe.data || !v || !v.cur) return null;
     return globe.data.d3.geoOrthographic().rotate([-v.cur[1], -v.cur[0]]).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
@@ -1721,16 +1722,21 @@
       if (gl.raf && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(gl.raf);
       gl.raf = 0;
     };
+    // At most 10 pictures a second: the globe moves well under a pixel per frame (500 units = 6371 km), and every picture
+    // projects the land again. A frame closer than FRAME_MS to the last drawn one only asks for the next frame.
+    var drawnAt = 0;
     var nextFrame = function () {
       if (gl.raf || typeof window.requestAnimationFrame !== 'function') return;
       gl.raf = window.requestAnimationFrame(function () {
         gl.raf = 0;
+        if (Date.now() - drawnAt < GLOBE_FRAME_MS) { nextFrame(); return; }
         var box = !gone && host.isConnected !== false && gl.base && host.querySelector ? host.querySelector('.cs-fl-globe') : null;
         if (!box) { gl.state = null; return; }
         var gt = { state: gl.state, now: Date.now() }, view = S.globeStep(gt, gl.base.v, gl.base.ident);
         gl.state = gt.out.state;
         box.innerHTML = S.globeSvg(view); // only the globe's picture; the page around it stays
-        last = ''; // the picture is no longer the last html: the next redraw writes it whole
+        drawnAt = gt.now;
+        last = ''; // the picture is no longer the last html: the next redraw writes it whole (only a drawn frame changes the page)
         if (gt.out.gliding) nextFrame();
       });
     };
