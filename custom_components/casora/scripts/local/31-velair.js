@@ -567,7 +567,8 @@
   };
 
   var dayTitle = function (w, today) {
-    return window.casoraDayWord(w === today ? 0 : WD[(WD.indexOf(today) + 1) % 7] === w ? 1 : 2) || LONG[w];
+    var ahead = (WD.indexOf(w) - WD.indexOf(today) + 7) % 7;   // 0 = today, 1 = tomorrow
+    return window.casoraDayWord(ahead) || LONG[w];
   };
   var slotIcon = function (b) {
     var a = (b && b.action) || 'set_temperature';

@@ -1760,13 +1760,15 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
   // casora-calendars:end
   // casora-day-word:start
   /* The day wording, written once: "Heute" / "Morgen" / weekday / date. day: a Date, or the day count (0 = today).
-     o.now: the clock (Date); o.tr: translator for the two words; o.weekday(d): text for the days 2..o.week-1 ahead
-     (o.week 7) and, with o.back, up to o.back-1 days behind today; o.date(d): the rest (default "d.m.");
-     o.past 'today': a day before today says "Heute". A day count gives the two words, else ''. */
+     o.now: the clock (Date); o.tr: translator for the two words; o.weekday(d): text for the days 2..6 ahead
+     and, with o.back, up to o.back-1 days behind today; o.date(d): the rest (default "d.m.");
+     o.past 'today': a day before today says "Heute". A day count gives the two words, else ''.
+     Anything else (undefined, a string, an invalid Date) gives ''. */
   window.casoraDayWord = function (day, o) {
     o = o || {};
     var n = day, d = null;
     if (typeof day !== 'number') {
+      if (Object.prototype.toString.call(day) !== '[object Date]' || isNaN(day.getTime())) return '';
       var t = o.now ? new Date(o.now) : new Date();
       d = new Date(day);
       n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
@@ -1775,8 +1777,8 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     if (n === 0 || (n < 0 && o.past === 'today')) return tr('Heute');
     if (n === 1) return tr('Morgen');
     if (!d) return '';
-    var week = o.week == null ? 7 : o.week, back = o.back || 0;
-    if (o.weekday && ((n > 1 && n < week) || (n < 0 && n > -back))) return o.weekday(d);
+    var back = o.back || 0;
+    if (o.weekday && ((n > 1 && n < 7) || (n < 0 && n > -back))) return o.weekday(d);
     return o.date ? o.date(d) : d.getDate() + '.' + (d.getMonth() + 1) + '.';
   };
   // casora-day-word:end

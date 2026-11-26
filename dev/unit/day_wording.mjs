@@ -31,7 +31,6 @@ assert.equal(word(at(7), { now, weekday }), '26.11.');
 assert.equal(word(at(-2), { now, weekday }), '17.11.', 'no window back by default');
 assert.equal(word(at(-2), { now, weekday, back: 7 }), 'Di');
 assert.equal(word(at(-7), { now, weekday, back: 7 }), '12.11.');
-assert.equal(word(at(9), { now, weekday, week: 14 }), 'Sa', 'the window can be wider');
 // Own date format for what is left.
 assert.equal(word(at(10), { now, date: (d) => 'on ' + d.getDate() }), 'on 29');
 // Days before today: a date by default, "Heute" where the caller wants a line that never says yesterday.
@@ -43,6 +42,11 @@ assert.equal(word(0), 'Heute');
 assert.equal(word(1), 'Morgen');
 assert.equal(word(2), '');
 assert.equal(word(1, { tr: (x) => x.toUpperCase() }), 'MORGEN');
+// Not a Date and not a count: nothing, never "NaN.NaN.".
+assert.equal(word(undefined), '');
+assert.equal(word('2026-11-20', { now }), '');
+assert.equal(word(new Date('x'), { now }), '');
+assert.equal(word(null), '');
 // Without options "now" is the real clock.
 assert.equal(word(new Date()), 'Heute');
 console.log('day_wording ok');
