@@ -41,6 +41,7 @@
 //   window._casoraFlights.unreportedOf(view)   → the Unreported part: [lat, lon] points, origin airport → oldest Flown trail point ([] when either is missing)
 //   window._casoraFlights.mapView(hass, src, id, now) / .mapGeo(view) / .mapBounds(view) → the map's flight, layers and box
 //   window._casoraFlights.glide(g, now, reduce) / .mapViewAt(view, pos, heading) / .track(state, view, ident, now, reduce) → the popup arrow's glide: drawn position and heading, the view drawn there, and the pure state step ({state, view, gliding})
+//   window._casoraFlights.glideT(g, now) / .lonNear(ref, lon) → how far a glide has come (0 to 1), and a longitude shifted by whole turns to lie within 180 degrees of ref
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
 //   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
 //   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
@@ -1105,6 +1106,7 @@
     while (lon - ref < -180) lon += 360;
     return lon;
   };
+  F.lonNear = lonNear; // for the globe's glide (46-screensaver.js)
   // The view's longitudes are continuous with the aircraft's (they may pass 180 or -180 over the date line), so one line or
   // one box never spans the world the long way. Trail: each point follows the next, from the aircraft back. Origin: follows
   // the trail's start. Route and destination: the great circle starts at the aircraft, and its end is the destination.
@@ -1181,13 +1183,17 @@
   // the glide itself (reduced motion, no old fix, no usable duration); `badPollStep` (below, used by F.track) is the one place for the
   // cases that depend on the poll history (a long gap, a step no aircraft could fly). Without a new fix there is nothing to draw: null.
   var cannotGlide = function (g, reduce) { return !!reduce || !g.from || !(g.dur > 0) || !isFinite(g.dur); };
+  // How far a glide has come at `now`: 0 before its start, 1 at and after its end.
+  F.glideT = function (g, now) {
+    var t = (now - g.start) / g.dur;
+    return t > 0 ? Math.min(1, t) : 0;
+  };
   F.glide = function (g, now, reduce) {
     var to = g && g.to;
     if (!to) return null;
     var atEnd = { cur: [to.cur[0], to.cur[1]], heading: to.heading, done: true };
     if (cannotGlide(g, reduce)) return atEnd;
-    var t = (now - g.start) / g.dur;
-    if (!(t > 0)) t = 0;
+    var t = F.glideT(g, now);
     if (t >= 1) return atEnd;
     var from = g.from, lon0 = lonNear(to.cur[1], from.cur[1]);
     var heading = to.heading;
