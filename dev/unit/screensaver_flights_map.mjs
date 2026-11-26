@@ -130,11 +130,13 @@ const runtime = ({ withMap }) => {
   const el = R.host.querySelector('casora-flight-map');
   assert.ok(el, 'the map element is in the page');
   const first = R.host.created.length;
+  let prev = R.host.innerHTML;
   for (let i = 2; i <= 6; i++) {
     const h = R.draw(SLOT0 + 1000 * i, i);
     assert.equal(R.host.querySelector('casora-flight-map'), el, 'update ' + i + ': the same element object stays');
     assert.equal(el.connected, true, 'and it was never taken out of the page');
-    assert.match(h, new RegExp('latitude|cs-fl-mk'), 'the drawn parts are redrawn');
+    assert.notEqual(h, prev, 'update ' + i + ': the drawn parts changed (the flight moved)');
+    prev = h;
   }
   assert.equal(R.host.created.length, first, 'no new map element was made across five updates');
   // The text and the drawn picture did follow the moving flight (the text is part of the redraw).

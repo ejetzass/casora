@@ -100,6 +100,7 @@ const settle = () => new Promise((r) => setImmediate(r));
   assert.equal(R.link.tabIndex, -1, 'the attribution link is no Tab stop in the saver');
   assert.equal(R.canvas.tabIndex, -1, 'nor is the canvas');
   assert.ok(!m.style.position, 'the saver\'s stylesheet gives the box: no inline position or width');
+  assert.ok(!m.style.borderRadius, 'and the rounded corners: no inline radius that would hide the stylesheet\'s');
 }
 // The popup's map keeps its rule and its link.
 {

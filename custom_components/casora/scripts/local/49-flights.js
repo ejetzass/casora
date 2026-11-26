@@ -1326,9 +1326,9 @@
         // Only the properties the element needs: the popup's own box (its 4:3 aspect ratio) stays, so the box has a height.
         // The screensaver's map (data-saver, 46-screensaver.js) has its box from the saver's stylesheet and takes no pointer input.
         this._saver = !!(this.hasAttribute && this.hasAttribute('data-saver'));
-        this.style.display = 'block'; this.style.overflow = 'hidden'; this.style.borderRadius = 'inherit';
-        if (this._saver) this.style.pointerEvents = 'none';
-        else { this.style.position = 'relative'; this.style.width = '100%'; }
+        this.style.display = 'block'; this.style.overflow = 'hidden';
+        if (this._saver) this.style.pointerEvents = 'none'; // the corners come from the saver's stylesheet (.cs-fl-live)
+        else { this.style.borderRadius = 'inherit'; this.style.position = 'relative'; this.style.width = '100%'; }
         this._since = Date.now(); this._tiles = 0; this._ml = this._el = this._timer = null; this._layers = false; this._ok = false;
         this._sent = null; this._ident = null; this._track = this._base = null; this._raf = 0;
         var H = window._casoraHaMap, hass = hassNow();
