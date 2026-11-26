@@ -211,6 +211,44 @@ for (const clockState of ['unavailable', 'unknown', '']) {
     assert.equal(pending.size, 0, `${name} with sensor.time "${clockState}": no timer remains`);
   }
 }
+// A listed detection trigger (Settings: camera detection_triggers) expires on the same timer, in every card, also with
+// an unusable sensor.time (#525, #319).
+const trigger = 'binary_sensor.testring_person';
+window.CASORA_SETTINGS = { cameras: [{ entity_id: camera, detection_triggers: [trigger] }] };
+for (const clockState of [undefined, 'unavailable']) {
+  for (const [name, field] of [
+    ['casora_cameras', 'state_display'],
+    ['casora_badge_camera_group', 'name'],
+    ['casora_badge_security', 'name'],
+    ['casora_badge_contact_group', 'name'],
+  ]) {
+    const label = `${name} with sensor.time '${clockState === undefined ? 'missing' : clockState}'`;
+    const fresh = { isConnected: true, addController(controller) { this.controller = controller; },
+      requestUpdate() { this.output = run(templates[name][field], this, hass, hass.states[camera], vars); } };
+    pending.clear();
+    now = Date.parse('2026-01-01T12:00:00Z');
+    hass.states[ding].state = 'unknown';
+    hass.states[motion].state = 'unknown';
+    if (clockState === undefined) delete hass.states['sensor.time'];
+    else hass.states['sensor.time'] = { state: clockState };
+    // A detection is an off-to-on change seen by the card: it renders the idle sensor first.
+    delete window._casoraListedCameraAlerts;
+    hass.states[trigger] = { entity_id: trigger, state: 'off', attributes: { friendly_name: 'Person' } };
+    assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /Ruhig/, `${label}: idle before the detection`);
+    pending.clear();
+    hass.states[trigger] = { entity_id: trigger, state: 'on', last_changed: new Date(now).toISOString(),
+      attributes: { friendly_name: 'Person' } };
+    assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /Person erkannt/,
+      `${label}: the listed detection shows while its window is open`);
+    assert.equal(pending.size, 1, `${label}: the listed detection schedules its own expiry timer`);
+    now += 301000;
+    fire();
+    assert.match(fresh.output, /Ruhig/, `${label}: the listed detection is gone after its window`);
+    assert.equal(pending.size, 0, `${label}: no timer remains`);
+  }
+}
+delete hass.states[trigger];
+delete window.CASORA_SETTINGS;
 delete hass.states['sensor.time'];
 hass.states[ding].state = 'unknown';
 hass.states[motion].state = 'unknown';
