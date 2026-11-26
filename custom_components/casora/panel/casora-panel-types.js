@@ -919,9 +919,7 @@ window.CASORA_EXTRA_ICONS = Object.fromEntries([
     const tn = names(tile && tile.template);
     // Waste: bins and calendar via window.casoraDevice.waste (scripts/local/00-finder.js) – without it the
     // preview said "Automatic" while the dashboard showed "2 days · Organic" (E06).
-    // Football needs the same file for window.casoraDayWord ("Heute" / weekday in its text).
-    if (!finder && ((!(window.casoraDevice && window.casoraDevice.waste) && tn.includes("casora_trash"))
-      || (!window.casoraDayWord && tn.includes("casora_football")))) {
+    if (!finder && !(window.casoraDevice && window.casoraDevice.waste) && tn.includes("casora_trash")) {
       finder = true;
       (window.casoraImportScript || ((p) => import("/casora_scripts/" + p)))("local/00-finder.js").catch(() => {});
     }
@@ -939,7 +937,9 @@ window.CASORA_EXTRA_ICONS = Object.fromEntries([
     // Football: text ("Sat 18:30 · vs …") from window._casoraFootball (scripts/local/11-fussball.js).
     if (!fussball && !window._casoraFootball && tn.includes("casora_football")) {
       fussball = true;
-      (window.casoraImportScript || ((p) => import("/casora_scripts/" + p)))("local/11-fussball.js").catch(() => {});
+      // After the finder: the football text takes its day words from window.casoraDayWord (00-finder.js).
+      const imp = window.casoraImportScript || ((p) => import("/casora_scripts/" + p));
+      imp("local/00-finder.js").catch(() => {}).then(() => imp("local/11-fussball.js")).catch(() => {});
     }
     if (medien || (window._casoraVent && window._casoraSolar)) return;
     if (!tn.some((n) => n === "casora_vent" || n === "casora_solar_tip")) return;
