@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { loadCalendars } from './lib/calendars_block.mjs';
+import { loadDayWordIn } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL(`../../custom_components/casora/scripts/local/${p}`, import.meta.url), 'utf8');
 
@@ -31,6 +32,7 @@ loadCalendars(mod);
 const ctx = vm.createContext({ window: mod, document: { querySelector: () => null }, setTimeout: () => 0, console, Date: ClockDate });
 vm.runInContext(read('06a-kalender-filter.js'), ctx);
 vm.runInContext(read('06-kalender.js'), ctx);
+loadDayWordIn(ctx);
 const tile = (variables) => mod._casoraCalendar.tile(states, variables);
 
 // Literal expectations from the rule, not computed by the code under test.

@@ -8,6 +8,7 @@
 // @deckt: custom_components/casora/panel/casora-panel-b-ux.js#BY_DOMAIN,WORDS,typeFor
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const noop = () => {};
@@ -136,6 +137,7 @@ const panel = () => {
   const templates = JSON.parse(read('dashboards/casora/button_card_templates.json'));
   globalThis.DOMParser = class { parseFromString(t) { return { body: { textContent: t, querySelectorAll: () => [] } }; } };
   window.casoraDevice = { waste: () => ({ bins: [{ label: 'Bio' }], calendar: null, days: 2, next: { label: 'Bio' } }) };
+  loadDayWord(window);   // comes with 00-finder.js, like casoraDevice
   const txt = window.casoraTileState({ type: 'custom:button-card', template: 'casora_trash', entity: '' }, null, hass, templates);
   assert.equal(txt, '2 Tage · Bio', 'same text as the dashboard, not "Automatic"');
   assert.equal(window.casoraTileState({ type: 'custom:button-card', template: 'casora_light', entity: '' }, null, hass, templates), null,

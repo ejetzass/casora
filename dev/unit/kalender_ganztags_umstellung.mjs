@@ -5,9 +5,11 @@
 process.env.TZ = 'Europe/Berlin';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const hass = { states: { 'calendar.family': { state: 'off', attributes: { friendly_name: 'Family' } } }, entities: {} };
 globalThis.window = globalThis;
+loadDayWord(globalThis);
 globalThis.document = { querySelector: (q) => (q === 'home-assistant' ? { hass } : null) };
 globalThis.addEventListener = () => {};
 globalThis.setTimeout = () => 0;

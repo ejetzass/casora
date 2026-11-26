@@ -51,7 +51,7 @@
     var two = function (n) { return String(n).padStart(2, '0'); };
     var clock = dateOnly ? '' : ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
     var over = dateOnly ? days < 0 : d.getTime() < at.getTime();
-    var word = days === 0 ? 'Heute' : days === 1 ? 'Morgen' : d.getDate() + '.' + (d.getMonth() + 1) + '.';
+    var word = window.casoraDayWord(d, { now: at });
     return { text: over && days !== 0 ? 'Überfällig · ' + word : word + clock, over: over };
   };
   // Due ones first, soonest on top; the rest keep the list's own order.

@@ -5,6 +5,7 @@
 //   node dev/unit/waste_out.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 const TPL = JSON.parse(read('dashboards/casora/button_card_templates.json')).casora_trash;
@@ -13,6 +14,7 @@ const body = (s) => s.replace(/^\s*\[\[\[/, '').replace(/\]\]\]\s*$/, '');
 const store = {};
 const listeners = {};
 globalThis.window = globalThis;
+loadDayWord(globalThis);
 globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } };
 globalThis.document = { querySelector: () => null };
 window.addEventListener = (type, fn) => { (listeners[type] = listeners[type] || []).push(fn); };
