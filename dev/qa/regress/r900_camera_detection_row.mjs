@@ -58,5 +58,5 @@ const result = await page.evaluate((id) => {
   const row = [...document.querySelectorAll('.casora-notify-menu .hui-row')].find((el) => el._casoraRow?.entity === id);
   return row && { tappable: row.classList.contains('hui-tap'), cursor: row.style.cursor, target: row.dataset.casoraOpen, moreInfo: row.dataset.casoraMi };
 }, entity);
-await check('detection row opens the camera popup, one row per ring', !!result && result.tappable && result.target === 'casora:detection', result);
+await check('detection row opens the camera popup, one row per detection', !!result && result.tappable && result.target === 'casora:detection', result);
 await finish();

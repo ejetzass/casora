@@ -1,5 +1,5 @@
 // Repeated detections of one listed detection trigger stack into one bell row (newest time, a count, a timeline on
-// tap); a single detection row stays untappable; a busy trigger no longer pushes other news out of the bell.
+// tap); a single detection row opens the camera popup; a busy trigger no longer pushes other news out of the bell.
 //   node dev/unit/glocke_camera_stapel.mjs
 // @deckt: custom_components/casora/scripts/casora-core.js#_casoraNotify,stackUp,rebuild,sections
 import assert from 'node:assert/strict';
