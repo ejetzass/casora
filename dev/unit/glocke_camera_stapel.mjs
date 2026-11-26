@@ -62,7 +62,7 @@ const stackRow = drawn.find(r => r.label === 'Person erkannt');
 const singleRow = drawn.find(r => r.label === 'Lone erkannt');
 assert.equal(stackRow.tappable, true, 'a stacked detection row is tappable (opens the timeline)');
 assert.equal(stackRow.entity, null, 'a stacked detection row opens no device');
-assert.equal(singleRow.tappable, false, 'a single detection row is not tappable');
+assert.equal(singleRow.tappable, true, 'a single detection row is tappable (opens the camera popup)');
 assert.equal(stackRow.stackOpen, false, 'a stacked detection row starts closed');
 
 // The tap on a stacked row opens its stack (bindOpens flips _openStacks[stackKey]); the open stack is a timeline of the

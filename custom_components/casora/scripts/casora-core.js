@@ -16177,12 +16177,6 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       return null;
     }
 
-    if (listedDetection(id)) {
-      if (!on('camera_detection')) return null;
-      if (window.casoraDetectionAt(id, s, prev, Math.round(Number(entry.when) * 1000), hassOf()) === null) return null;
-      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS };
-    }
-
     if (isDoorbell(id, st)) {
       if (!on('doorbell')) return null;
       if (id.indexOf('binary_sensor.') === 0 && s !== 'on') return null;
@@ -16190,6 +16184,11 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
       // "Front Door Ding" is the entity, "Front Door" is the thing that rang.
       var who = name.replace(/\s+(ding|doorbell|chime|button)$/i, '');
       return { label: (who || name) + ' hat geklingelt', icon: 'doorbell', tone: 'accent', opens: DOORBELL_OPENS };
+    }
+    if (listedDetection(id)) {
+      if (!on('camera_detection')) return null;
+      if (window.casoraDetectionAt(id, s, prev, Math.round(Number(entry.when) * 1000), hassOf()) === null) return null;
+      return { label: name + ' erkannt', icon: 'camera', tone: 'accent', opens: DETECTION_OPENS };
     }
 
     var appl = applianceFor(id);
@@ -17237,7 +17236,7 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
         // mit führendem „·“ in eine eigene Zeile.
         sub: r.ongoing ? r.sub : (r.sub ? (toned ? [r.sub, ago(r.when)].filter(Boolean).join(' · ') : [r.sub, ago(r.when)]) : ago(r.when)),
         value: r.value || null,
-        entity: r.passive ? null : (r.entity || null),
+        entity: r.passive || (many && r.opens === DETECTION_OPENS) ? null : (r.entity || null),
         image: r.image,
         imageFit: r.imageFit,
         tappable: many || (!r.passive && !!(r.entity || r.opens)),
