@@ -1,7 +1,7 @@
 // Waste calendar detected by content: 3+ fetched events and more than half match a Bin type, whatever the
 // integration or language. Detection only leaves the calendar out of the greeting line.
 //   node dev/unit/waste_calendar_detect.mjs
-// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraWasteContent,casoraHomeNext,casoraWasteCalendar custom_components/casora/scripts/local/06-kalender.js#load
+// @deckt: custom_components/casora/scripts/local/00-finder.js#casoraWasteContent,casoraWasteJudge,casoraCalSpan,casoraHomeNext,casoraWasteCalendar custom_components/casora/scripts/local/06-kalender.js#load
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
@@ -50,6 +50,16 @@ assert.match(line(), /GFT/, '2 events: appointments again (refreshed with the fe
 titles = ['GFT', 'PMD', 'Tandarts', 'Verjaardag'];
 await K.load(hass, {}, true); await flush();
 assert.match(line(), /GFT/, 'exactly 50%: appointments');
+
+// Browsing the popup to another month (an empty one) does not change the verdict: only the default window judges.
+titles = ['GFT', 'PMD', 'Restafval'];
+await K.load(hass, {}, true); await flush();
+assert.equal(window._casoraWasteCals[ID], true);
+titles = [];
+K.month = new Date(new Date().getFullYear() + 1, 5, 1);
+await K.load(hass, {}, true); await flush();
+assert.equal(window._casoraWasteCals[ID], true, 'another month writes no verdict');
+K.month = null;
 
 // A detected calendar does not feed the waste tile: waste() is unchanged by the verdict.
 const wasteOf = () => JSON.stringify(window.casoraDevice.waste(hass, {}));
