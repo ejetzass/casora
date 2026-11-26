@@ -1390,8 +1390,7 @@
   var esc = window.casoraEsc || function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var dayStart = function (d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
   var dayName = function (d) {
-    var diff = Math.round((dayStart(d) - dayStart(new Date())) / 86400000);
-    return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYL[d.getDay()];
+    return window.casoraDayWord(d, { date: function (x) { return DAYL[x.getDay()]; } });
   };
   var mins = function (m) {
     m = Number(m); if (!m) return null;

@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { phrases } from './lib/i18n_phrases.mjs';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const read = (f) => fs.readFileSync(new URL('../../' + f, import.meta.url), 'utf8');
 const i18n = read('custom_components/casora/scripts/casora-i18n.js');
@@ -25,6 +26,7 @@ const js = (s) => s.trim().replace(/^\[\[\[/, '').replace(/\]\]\]$/, '');
 const tile = (label, days, lang) => {
   const window = { casoraTr: lang === 'en' ? tr : null, casoraEsc: (x) => String(x), casoraStateFit: (t) => t,
     casoraDevice: { waste: () => ({ next: { label }, days, bins: [{}], calendar: null }) }, _casoraTrashFetch: () => {} };
+  loadDayWord(window);
   return new Function('window', 'states', 'hass', 'variables', 'entity', js(tpl.state_display))(window, {}, {}, {}, {});
 };
 for (const name of ['paper', 'Restmüll 240 l', 'GFT (groen)', 'recycling bin']) {

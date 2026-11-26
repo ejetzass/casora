@@ -5,6 +5,7 @@
 //   node dev/unit/trash_short_form.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { loadDayWord } from './lib/day_word.mjs';
 
 const T = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url), 'utf8'));
 const code = T.casora_trash.state_display.replace(/^\s*\[\[\[/, '').replace(/\]\]\]\s*$/, '');
@@ -15,6 +16,7 @@ const run = (next, days = 2) => {
     casoraStateFit: (t, w, alt) => { calls.push([t, alt]); return t; },
     casoraDevice: { waste: () => ({ days, next, bins: [{}], duty: true }) },
   };
+  loadDayWord(globalThis.window);
   new Function('hass', 'variables', 'entity', code)({}, {}, null);
   return calls.pop();
 };

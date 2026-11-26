@@ -1758,6 +1758,28 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     return out;
   };
   // casora-calendars:end
+  // casora-day-word:start
+  /* The day wording, written once: "Heute" / "Morgen" / weekday / date. day: a Date, or the day count (0 = today).
+     o.now: the clock (Date); o.tr: translator for the two words; o.weekday(d): text for the days 2..o.week-1 ahead
+     (o.week 7) and, with o.back, up to o.back-1 days behind today; o.date(d): the rest (default "d.m.");
+     o.past 'today': a day before today says "Heute". A day count gives the two words, else ''. */
+  window.casoraDayWord = function (day, o) {
+    o = o || {};
+    var n = day, d = null;
+    if (typeof day !== 'number') {
+      var t = o.now ? new Date(o.now) : new Date();
+      d = new Date(day);
+      n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
+    }
+    var tr = o.tr || function (x) { return x; };
+    if (n === 0 || (n < 0 && o.past === 'today')) return tr('Heute');
+    if (n === 1) return tr('Morgen');
+    if (!d) return '';
+    var week = o.week == null ? 7 : o.week, back = o.back || 0;
+    if (o.weekday && ((n > 1 && n < week) || (n < 0 && n > -back))) return o.weekday(d);
+    return o.date ? o.date(d) : d.getDate() + '.' + (d.getMonth() + 1) + '.';
+  };
+  // casora-day-word:end
   // casora-home-next:start
   // The line under the Home greeting (#157, variables.casora_greeting_next): next calendar event and next waste pickup.
   window.casoraHomeNext = function (hass, vars, now) {
@@ -1765,11 +1787,9 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var S = hass.states || {}, tr = function (x) { return window.casoraTr ? window.casoraTr(x) : x; };
     var t = now || new Date(), day0 = new Date(t); day0.setHours(0, 0, 0, 0);
     var word = function (d) {
-      var n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - day0) / 86400000);
-      if (n <= 0) return tr('Heute');
-      if (n === 1) return tr('Morgen');
-      var lang = (hass.locale && hass.locale.language) || hass.language || 'de';
-      return n < 7 ? d.toLocaleDateString(lang, { weekday: 'long' }) : d.getDate() + '.' + (d.getMonth() + 1) + '.';
+      return window.casoraDayWord(d, { now: t, tr: tr, past: 'today', weekday: function (x) {
+        return x.toLocaleDateString((hass.locale && hass.locale.language) || hass.language || 'de', { weekday: 'long' });
+      } });
     };
     var W = null;
     try { W = window.casoraDevice && window.casoraDevice.waste ? window.casoraDevice.waste(hass, {}) : null; } catch (e) { W = null; }
