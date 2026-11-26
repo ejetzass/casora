@@ -61,12 +61,12 @@ assert.equal(wasteOf(), before, 'waste() ignores the detected verdict');
 assert.notEqual(window.casoraDevice.waste(hass, {}).calendar, ID, 'not picked as the waste calendar');
 
 // The greeting line starts the fetch itself (no calendar tile on the dashboard), in the same window as the tile's.
-window._casoraWasteCals = {};
+window._casoraWasteCals = {}; window._casoraWasteTs = {};
 titles = ['GFT', 'PMD', 'Restafval'];
 urls = [];
 await K.load(hass, {}, true); await flush();
 const tileUrl = urls[0]; 
-window._casoraWasteCals = {}; urls = [];
+window._casoraWasteCals = {}; window._casoraWasteTs = {}; urls = [];
 hass.states[ID] = { ...hass.states[ID], last_updated: 'x' }; // a state change makes the next pick fetch again
 window.casoraDevice = { waste: () => ({ bins: [] }) };
 line(); await flush();
