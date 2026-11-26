@@ -57,7 +57,8 @@
     + ".frow.casora-calrow .casora-pctl>input.fin.casora-short{flex:1 1 72px}"
     + ".frow.casora-calrow .casora-pctl>.casora-x{margin-left:auto}"
     // Hint under a picked calendar that is the Waste calendar.
-    + ".frow .casora-pwarn{flex:0 0 100%;font-size:var(--t-foot);color:var(--casora-popup-ui-warn, #FF9F0A)}"
+    + ".frow .casora-pwarn{flex:0 0 100%;font-size:var(--t-foot);color:var(--casora-studio-warn, #DE8A4E)}"
+    + ":host(.is-light) .frow .casora-pwarn{color:var(--casora-studio-warn, #9A4E1C)}"
     + ".fgroup.casora-pfocus .flist{box-shadow:0 0 0 2px var(--casora-studio-done, #0a84ff);transition:box-shadow .3s}"
     + ".frow.casora-pmore .rtext b{color:var(--casora-studio-link, #0a84ff);font-weight:500}"
     + ".frow.casora-pmore .rchev{transform:rotate(90deg);transition:transform .2s}"
@@ -878,11 +879,18 @@
         const redrawCalendar = () => { if (self._rebuildPreview) self._rebuildPreview(); };
         g = group("calendars", { header: "Calendars",
           footer: "Without calendars here, the calendar tile, the greeting and the screensaver show all of them except holidays, working days and waste." });
-        // Waste calendar hint (detected, Settings draft, or Waste Collection Schedule): the greeting line skips it. The
-        // verdict comes from a fetch of the events; Studio asks for the picked calendars once and draws again.
+        // Waste calendar hint (detected, Settings draft, or Waste Collection Schedule): the same rule as the greeting line
+        // (casoraWasteCalendar). The verdict comes from a fetch of the events; Studio asks for the picked calendars once and
+        // draws again only when a hint changed (no redraw while the user types).
+        const isWaste = (c) => !!(c && c.entity && window.casoraWasteCalendar && window.casoraWasteCalendar(hass, c.entity, S.waste && S.waste.calendar));
+        const hintState = () => S.calendars.map((c) => (isWaste(c) ? 1 : 0)).join("");
         const imp = window.casoraImportScript || ((p) => import("/casora_scripts/" + p));
-        if (!window.casoraWasteScan) { if (!self._casoraWsImp) { self._casoraWsImp = true; imp("local/00-finder.js").then(render).catch(() => {}); } }
-        else window.casoraWasteScan(hass, S.calendars.map((c) => c && c.entity), null).then((did) => { if (did) render(); });
+        if (!window.casoraWasteScan) {
+          if (!self._casoraWsImp) { self._casoraWsImp = true; imp("local/00-finder.js").then(render).catch(() => { self._casoraWsImp = false; }); }
+        } else {
+          const before = hintState();
+          window.casoraWasteScan(hass, S.calendars.map((c) => c && c.entity)).then(() => { if (hintState() !== before) render(); });
+        }
         S.calendars.forEach((c, i) => {
           const col = colorPick(c.color || CAL_DEFAULT, (v) => { c.color = v; });
           const tog = document.createElement("label");
@@ -901,7 +909,7 @@
             del(() => { S.calendars.splice(i, 1); redrawCalendar(); }),
           ], i ? undefined : "Calendar, name, color and whether it shows on the tile.");
           calRow.classList.add("casora-calrow");
-          if (c.entity && window.casoraWasteCalendar && window.casoraWasteCalendar(hass, c.entity, S.waste && S.waste.calendar)) {
+          if (isWaste(c)) {
             const w = document.createElement("div");
             w.className = "casora-pwarn";
             w.textContent = "Waste calendar: the greeting line skips it.";

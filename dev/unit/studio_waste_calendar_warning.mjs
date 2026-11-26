@@ -1,8 +1,7 @@
 // Studio: a picked calendar that is the Waste calendar (detected, the draft Settings one, or Waste Collection Schedule)
 // shows a hint under its row; nothing is filtered or stored. Real panel class, fake hass.
 //   node dev/unit/studio_waste_calendar_warning.mjs
-// @deckt: custom_components/casora/panel/casora-panel-personal.js#_casoraPersonalGroups, custom_components/casora/scripts/local/00-finder.js#casoraWasteScan,casoraWasteCalendar,casoraCalendars
-// @deckt: custom_components/casora/panel/casora-panel-personal.js#_casoraPersonalGroups, custom_components/casora/panel/casora-panel-personal.js#binTypesBad, custom_components/casora/panel/casora-panel.js#_iconSheet
+// @deckt: custom_components/casora/panel/casora-panel-personal.js#_casoraPersonalGroups, custom_components/casora/scripts/local/00-finder.js#casoraWasteScan,casoraWasteJudge,casoraWasteCalendar,casoraCalendars
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
@@ -112,4 +111,12 @@ assert.equal(first.again(), 1, 'drawn again once the verdicts arrived');
 assert.deepEqual(hints(draft(['calendar.bins_nl'])).out, [HINT], 'after the verdict: hint');
 const n = calls; hints(draft(['calendar.bins_nl'])); await flush();
 assert.equal(calls, n, 'no second fetch within 5 minutes');
+// A scan that changes no hint does not redraw (the user may be typing).
+window._casoraWasteCals = {}; window._casoraWasteTs = {};
+titles = ['Tandarts', 'Verjaardag', 'Borrel'];
+const quiet = hints(draft(['calendar.family']));
+await flush();
+assert.equal(quiet.again(), 0, 'no hint changed: no redraw');
+assert.equal(window._casoraWasteCals['calendar.family'], false, 'the verdict is still kept');
+
 console.log('ok studio_waste_calendar_warning');
