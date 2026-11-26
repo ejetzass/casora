@@ -1411,7 +1411,7 @@
     fr = fr || S.routeFrame(v);
     if (!fr) return '';
     var X = fr.X, Y = fr.Y, r = fr.r;
-    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(T('Globus mit dem Flug')) + '">';
+    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
     var line = function (list) { return (list.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')); };
     // The Remaining route (shared with the popup): the one dashed line, from the aircraft to the destination. No destination, no line.
     // Width and dash keep the popup's proportions (49-flights.js ROUTE_STYLE), in saver units. Without the flights module: no line.
