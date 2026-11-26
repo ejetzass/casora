@@ -14,10 +14,15 @@ const el = (tag, attrs = {}, kids = []) => {
   const n = { tag, attrs: { ...attrs }, children: kids, shadowRoot: null, style: {}, removed: false,
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); },
-    matches(sel) { assert.equal(sel, STOP); return (this.tag === 'a' && 'href' in this.attrs) || 'tabindex' in this.attrs; },
+    matches(sel) { assert.ok([STOP, 'a[href]'].includes(sel)); if (sel === 'a[href]') return this.tag === 'a' && 'href' in this.attrs; return (this.tag === 'a' && 'href' in this.attrs) || 'tabindex' in this.attrs; },
     get tabIndex() { return 'tabindex' in this.attrs ? Number(this.attrs.tabindex) : (this.matches(STOP) ? 0 : -1); },
     appendChild() {}, remove() { this.removed = true; },
-    closest(sel) { for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').includes(sel.slice(1))) return x; return null; },
+    closest(sel) {
+      const names = sel.split(',').map((c) => c.trim().slice(1));
+      for (let x = this; x; x = x.parent) if (x.attrs.class && x.attrs.class.split(' ').some((c) => names.includes(c))) return x;
+      return null;
+    },
+    matches(sel) { assert.ok([STOP, 'a[href]'].includes(sel)); if (sel === 'a[href]') return this.tag === 'a' && 'href' in this.attrs; return (this.tag === 'a' && 'href' in this.attrs) || 'tabindex' in this.attrs; },
   };
   kids.forEach((k) => { k.parent = n; });
   n.querySelectorAll = () => { const out = []; (function walk(x) { x.children.forEach((c) => { out.push(c); walk(c); }); })(n); return out; };
@@ -34,9 +39,9 @@ const runtime = () => {
   root.appendChild = (s) => { styles.push(s.textContent); };
   const haMap = el('ha-map');
   haMap.shadowRoot = root;
-  const R = { link, canvas, haMap, styles, ready: false, clock: 1000000, timers: [], appended: [] };
+  const R = { link, canvas, haMap, styles, ready: false, sources: [], layers: [], clock: 1000000, timers: [], appended: [] };
   haMap.appendChild = undefined;
-  const ml = { isStyleLoaded: () => true, loaded: () => R.ready, on: (_e, fn) => { R.onData = fn; }, getSource: () => null, addSource() {}, addLayer() {}, addImage() {}, fitBounds() {} };
+  const ml = { isStyleLoaded: () => true, loaded: () => R.ready, on: (_e, fn) => { R.onData = fn; }, getSource: () => null, addSource: (id) => R.sources.push(id), addLayer: (l) => R.layers.push(l), addImage() {}, fitBounds() {} };
   ['dragPan', 'scrollZoom', 'boxZoom', 'doubleClickZoom', 'touchZoomRotate', 'keyboard', 'dragRotate', 'touchPitch'].forEach((x) => { ml[x] = { disable() {} }; });
   class ClockDate extends Date { constructor(...a) { if (a.length) super(...a); else super(R.clock); } static now() { return R.clock; } }
   const ctx = {
@@ -65,6 +70,11 @@ const runtime = () => {
   vm.runInContext(SRC, ctx);
   const Cls = ctx.customElements.get('casora-flight-map');
   assert.ok(Cls, 'casora-flight-map is defined');
+  R.F = () => ctx._casoraFlights;
+  R.useLeaflet = (lm, svg) => {
+    ctx._casoraHaMap.ml = () => null; ctx._casoraHaMap.lf = () => lm;
+    ctx.document.createElementNS = () => svg;
+  };
   R.make = (saver) => {
     const m = new Cls();
     if (saver) m.setAttribute('data-saver', '');
@@ -101,6 +111,40 @@ const settle = () => new Promise((r) => setImmediate(r));
   assert.ok(!/ctrl-attrib[^}]*pointer-events:none/.test(R.styles.join('')), 'the popup keeps its clickable attribution link');
   R.tick();
   assert.equal(R.link.tabIndex, 0, 'and its Tab stop');
+}
+
+// ── The saver's map gets the Remaining route and the Unreported part through the shared layers, no layer of its own ─────
+{
+  const R = runtime(); R.make(true); await settle(); R.tick();
+  const P = runtime(); P.make(false); await settle(); P.tick();
+  const ids = (x) => x.layers.map((l) => l.id);
+  for (const id of ['casora-flight-route', 'casora-flight-unreported', 'casora-flight-trail', 'casora-flight-airports', 'casora-flight-aircraft']) {
+    assert.ok(ids(R).includes(id), 'saver map layer: ' + id);
+  }
+  assert.deepEqual(ids(R), ids(P), 'the saver map has exactly the popup\'s layers (one shared set, nothing saver-only)');
+  assert.deepEqual(R.sources, P.sources, 'and the same sources');
+}
+
+// ── Without WebGL2 the shared element draws with Leaflet; the saver rules hold there too ─────────────────────────────────
+{
+  const R = runtime();
+  const lLink = el('a', { href: 'https://example.invalid/credit' });
+  const lPrefix = el('a', { href: 'https://leafletjs.com' });
+  const lAttrib = el('div', { class: 'leaflet-control-attribution' }, [lPrefix, lLink]);
+  R.haMap.shadowRoot.children.push(lAttrib); lAttrib.parent = R.haMap.shadowRoot;
+  const svg = { style: {}, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, appendChild() {} };
+  const lm = { dragging: { disable() {} }, eachLayer() {}, getSize: () => ({ x: 400, y: 300 }), invalidateSize() {}, fitBounds() {},
+    latLngToContainerPoint: (ll) => ({ x: ll[1], y: ll[0] }) };
+  R.useLeaflet(lm, svg);
+  const m = R.make(true); await settle();
+  R.tick();
+  assert.equal(svg.style.pointerEvents, 'none', 'Leaflet: the overlay takes no pointer input');
+  assert.equal(m.style.pointerEvents, 'none', 'Leaflet: nor does the host');
+  assert.ok(/leaflet-control-attribution[^}]*pointer-events:none!important/.test(R.styles.join('')), 'Leaflet: nor does its attribution box');
+  assert.equal(lLink.tabIndex, -1, 'Leaflet: the credit link is no Tab stop in the saver');
+  assert.equal(lPrefix.tabIndex, -1, 'Leaflet: nor the prefix link');
+  assert.equal(R.haMap.themeMode, 'dark', 'Leaflet: the dark look as well');
+  assert.ok(!/https?:/.test(svg.innerHTML || ''), 'Leaflet: the overlay loads nothing');
 }
 
 // ── Fallback: not ready in the ready time -> the element hides itself (the drawn picture shows), no text ─────────────

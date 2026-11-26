@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount,liveMap,mountKeepingMap
 // Screensaver mount (46-screensaver.js): a preview the Studio drew again leaves its old box behind. Its timer and its
 // repaint listener must go with it (the Studio never calls destroy), and destroy twice must not take another mount's
 // listener with it.
@@ -23,6 +23,7 @@ vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js')
 // A stand-in for the Flights rule (49-flights.js): one flight with a view, so the saver draws its map layout with the map element.
 win._casoraFlights = {
   mapView: () => ({ key: 'k1', label: 'XY1', cur: [50.2, 10.1], heading: 90, origin: [50, 4], destination: [52, 20], trail: [[50, 4], [50.1, 5]], progress: 40 }),
+  unreportedOf: () => [], ROUTE_STYLE: { width: 2, dash: 6 },
   details: () => ({}), times: () => ({ arr: [] }), timeRows: () => [],
 };
 const S = win._casoraSaver;
