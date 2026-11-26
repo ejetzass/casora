@@ -544,6 +544,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var BT = binTypes(), n = titles ? titles.length : 0;
     return n >= 3 && titles.filter(function (t) { return binTypeOf(BT, t || ''); }).length * 2 > n;
   };
+  // casora-cal-fetch:start (dev/unit/lib/cal_fetch.mjs loads this block for tests that run 06-kalender.js alone)
   // Fetch window for calendar events, the same for every calendar: the month grid of `month` (6 weeks, default this
   // month) plus 32 days from today. Used by the calendar module and by the verdict scan below.
   window.casoraCalSpan = function (month) {
@@ -554,19 +555,29 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var e0 = add(gs, 42), e1 = add(today, 32);
     return { s: gs < ws ? gs : ws, e: e0 > e1 ? e0 : e1 };
   };
-  // Keeps the Waste calendar verdict per calendar id (window._casoraWasteCals) from a fetch of its events; a calendar
-  // fetched within 5 minutes (window._casoraWasteTs) is skipped. Resolves true when something was fetched.
-  window.casoraWasteScan = function (hass, ids, month) {
+  // The one place that judges and stores the Waste calendar verdict (window._casoraWasteCals[id], when it was judged in
+  // window._casoraWasteTs[id]). Only events of the default window (casoraCalSpan(null), today-based) count: a popup
+  // browsing another month must not flip the verdict. events: raw calendar API events.
+  window.casoraWasteJudge = function (id, events, span) {
+    var d = window.casoraCalSpan(null);
+    if (span && (+span.s !== +d.s || +span.e !== +d.e)) return;
+    (window._casoraWasteCals = window._casoraWasteCals || {})[id] = window.casoraWasteContent((events || []).map(function (ev) { return ev.summary || ''; }));
+    (window._casoraWasteTs = window._casoraWasteTs || {})[id] = Date.now();
+  };
+  // Fetch the events of one calendar in a window (the one query for the calendar module and the scan below).
+  window.casoraCalFetch = function (hass, id, span) {
+    return hass.callApi('GET', 'calendars/' + id + '?start=' + encodeURIComponent(span.s.toISOString()) + '&end=' + encodeURIComponent(span.e.toISOString()));
+  };
+  // casora-cal-fetch:end
+  // Verdict scan: fetch (default window) the calendars not judged within 5 minutes. Resolves true when something was
+  // fetched. A failed fetch keeps the old verdict.
+  window.casoraWasteScan = function (hass, ids) {
     if (!hass || !hass.callApi) return Promise.resolve(false);
-    var T = window._casoraWasteTs = window._casoraWasteTs || {}, span = window.casoraCalSpan(month);
-    var q = '?start=' + encodeURIComponent(span.s.toISOString()) + '&end=' + encodeURIComponent(span.e.toISOString());
+    var T = window._casoraWasteTs = window._casoraWasteTs || {}, span = window.casoraCalSpan(null);
     var todo = ids.filter(function (id) { return id && Date.now() - (T[id] || 0) >= 300000; });
     return Promise.all(todo.map(function (id) {
       T[id] = Date.now();
-      return hass.callApi('GET', 'calendars/' + id + q).then(function (r) {
-        var W = window._casoraWasteCals = window._casoraWasteCals || {};
-        W[id] = window.casoraWasteContent((r || []).map(function (ev) { return ev.summary || ''; }));
-      }).catch(function () { /* keep the old verdict */ });
+      return window.casoraCalFetch(hass, id, span).then(function (r) { window.casoraWasteJudge(id, r, span); }).catch(function () { /* keep the old verdict */ });
     })).then(function () { return todo.length > 0; });
   };
   var WASTE_WORDS = [
@@ -1703,6 +1714,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
   }
   // A Waste calendar for the greeting line: Settings/WCS rule (isWasteCalendar) or detected by content (06-kalender.js
   // keeps the verdict per calendar in window._casoraWasteCals). Detection alone never touches waste() or the tile list.
+  // The one rule for the greeting line and the Studio hint.
   window.casoraWasteCalendar = function (hass, id, wasteCal) {
     return isWasteCalendar(hass, id, wasteCal) || !!(window._casoraWasteCals && window._casoraWasteCals[id]);
   };
@@ -1785,8 +1797,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     } else cals.forEach(function (c) {
       var id = c.entity;
       if (c.tile === false || !S[id]) return;
-      if (window._casoraWasteCals && window._casoraWasteCals[id]) return;
-      if (bins.length && isWasteCalendar(hass, id, W && W.calendar)) return;
+      if (window.casoraWasteCalendar(hass, id, W && W.calendar)) return;
       var a = S[id].attributes || {};
       if (!a.message || !a.start_time) return;
       if (window.casoraCalendarAllows && !window.casoraCalendarAllows(a.message, null, a)) return;

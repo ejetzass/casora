@@ -43,6 +43,10 @@ assert.equal(reg({})(two).includes('Zahnarzt') || reg({})(two).includes('Workday
   assert.equal(run({ 'calendar.bins_nl': true }), '', 'detected Waste calendar: left out');
   assert.equal(run({ 'calendar.bins_nl': false }), 'Morgen GFT', 'judged no: an appointment calendar');
   assert.equal(run(undefined), 'Morgen GFT', 'not judged yet: an appointment calendar');
+  // One rule (Studio hint too): a Settings or Waste Collection Schedule calendar is skipped with no pickup shown as well.
+  const one = (entities, W) => { window.casoraDevice = { waste: () => W }; window.casoraSettings = () => ({ calendars: ['calendar.bins_nl'] }); try { return window.casoraHomeNext({ states: S, entities, locale: { language: 'de' } }, on, now); } finally { delete window.casoraSettings; } };
+  assert.equal(one({ 'calendar.bins_nl': { platform: 'waste_collection_schedule' } }, { bins: [] }), '', 'WCS calendar, no bins: skipped');
+  assert.equal(one(E, { calendar: 'calendar.bins_nl', bins: [] }), '', 'Settings calendar, no bins: skipped');
 }
 // #189: calendars picked in the Studio (Settings › Home & devices › Calendars) are the ones that count, as on the
 // calendar tile; a calendar left out there no longer stands under the greeting. Without a pick, all of them (above).
@@ -65,7 +69,7 @@ assert.equal(picked(['calendar.arbeit'])(both), 'Heute 11:00 Meeting', 'a pick g
   assert.equal(line(pick, wcs, { 'calendar.abfall': pickup, 'calendar.familie': cal('Zahnarzt', '2026-11-12 15:00:00') }, bin), 'Donnerstag 15:00 Zahnarzt · Mittwoch Restmüll', '#205: the next own event, even after the pickup');
   assert.equal(line(pick, { 'calendar.familie': { platform: 'google' } }, { 'calendar.abfall': pickup }, { calendar: 'calendar.abfall', ...bin }), 'Mittwoch Restmüll', '#205: the waste calendar set in the settings too');
   assert.equal(line(pick, { 'calendar.familie': { platform: 'google' }, 'calendar.abfall': { platform: 'local_calendar' } }, { 'calendar.abfall': pickup }, bin), 'Mittwoch Restmüll', '#205: an own calendar with the same pickup (same day, same bin)');
-  assert.equal(line(pick, wcs, { 'calendar.abfall': pickup }, { bins: [] }), 'Mittwoch Restmüll', '#205: without a pickup in the waste part the picked waste calendar still shows');
+  assert.equal(line(pick, wcs, { 'calendar.abfall': pickup }, { bins: [] }), '', 'one rule: without a pickup in the waste part the picked waste calendar is skipped as well');
   assert.equal(line(pick, wcs, { 'calendar.familie': cal('Restmüll rausstellen', '2026-11-10 19:00:00') }, bin), 'Morgen 19:00 Restmüll rausstellen · Mittwoch Restmüll', '#205: an own event on another day stays');
   assert.equal(line(pick, wcs, { 'calendar.familie': cal('Bio-Markt', '2026-11-11 09:00:00') }, { bins: [{ label: 'Bio', days: 2, re: /bio/i }] }), 'Mittwoch 09:00 Bio-Markt · Mittwoch Bio', '#205: an own event on the pickup day with another name stays');
 }
