@@ -215,6 +215,7 @@ const MODULES = [
   '05-weich-mehr',
   '06a-kalender-filter',
   '06-kalender',
+  '06-abfall-fetch',
   '07-weich-spezial',
   '08-weich-kompakt',
   '08-weich-szenen',
