@@ -198,7 +198,11 @@ await withClock(T0, async (setNow) => {
   const unrep = markup.match(/<path d="M280 180 [^"]*L320 182"[^>]*stroke-opacity="0\.45"[^>]*>/);
   assert.ok(unrep, 'Leaflet: the Unreported part runs from the origin airport to the start of the Flown trail, at 45 %');
   assert.doesNotMatch(unrep[0], /dasharray/, 'Leaflet: the Unreported part is solid');
-  assert.equal(markup.indexOf(unrep[0]), 0, 'Leaflet: the Unreported part lies under the route, the trail, the dots and the arrow');
+  // Its dark casing (black, 60 %, 5 wide, as the trail's) comes first, then the white line: both under the route, the trail, the dots and the arrow.
+  const unrepCasing = markup.match(/<path d="M280 180 [^"]*L320 182"[^>]*stroke="#000000"[^>]*stroke-opacity="0\.6"[^>]*stroke-width="5"[^>]*>/);
+  assert.ok(unrepCasing, 'Leaflet: the Unreported part has a dark casing, like the trail');
+  assert.equal(markup.indexOf(unrepCasing[0]), 0, 'Leaflet: the casing is the lowest path');
+  assert.equal(markup.indexOf(unrep[0]), unrepCasing[0].length, 'Leaflet: the Unreported line follows its casing, under the route, the trail, the dots and the arrow');
   assert.equal(svg.getAttribute('aria-hidden'), 'true', 'Leaflet: the overlay is hidden from assistive technology');
   assert.equal(svg.getAttribute('tabindex'), null, 'Leaflet: the overlay is not a Tab stop');
   assert.equal(svg.style.pointerEvents, 'none', 'Leaflet: the overlay takes no pointer input');

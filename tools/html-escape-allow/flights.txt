@@ -8,5 +8,5 @@ custom_components/casora/scripts/local/49-flights.js | p[1] | number: rounded pi
 custom_components/casora/scripts/local/49-flights.js | f.properties.heading | number: arrow heading, checked to 0..360 by the view (else 0) | 1
 custom_components/casora/scripts/local/49-flights.js | out | markup built by the module itself: the Leaflet overlay SVG from the values above | 1
 custom_components/casora/scripts/local/49-flights.js | routePath | markup built by the module itself: SVG path data of the Remaining route, M/L and rounded pixel numbers | 2
-custom_components/casora/scripts/local/49-flights.js | unrepPath | markup built by the module itself: SVG path data of the Unreported part, M/L and rounded pixel numbers | 1
+custom_components/casora/scripts/local/49-flights.js | unrepPath | markup built by the module itself: SVG path data of the Unreported part, M/L and rounded pixel numbers | 2
 custom_components/casora/scripts/local/49-flights.js | dash | markup built by the module itself: the dash attributes of the Remaining route, from ROUTE_STYLE numbers | 2
