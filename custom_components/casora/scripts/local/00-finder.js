@@ -544,6 +544,31 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var BT = binTypes(), n = titles ? titles.length : 0;
     return n >= 3 && titles.filter(function (t) { return binTypeOf(BT, t || ''); }).length * 2 > n;
   };
+  // Fetch window for calendar events, the same for every calendar: the month grid of `month` (6 weeks, default this
+  // month) plus 32 days from today. Used by the calendar module and by the verdict scan below.
+  window.casoraCalSpan = function (month) {
+    var d0 = function (d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+    var add = function (d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    var m = month || new Date(), first = new Date(m.getFullYear(), m.getMonth(), 1), today = d0(new Date());
+    var gs = add(first, -((first.getDay() + 6) % 7)), ws = add(today, -((today.getDay() + 6) % 7));
+    var e0 = add(gs, 42), e1 = add(today, 32);
+    return { s: gs < ws ? gs : ws, e: e0 > e1 ? e0 : e1 };
+  };
+  // Keeps the Waste calendar verdict per calendar id (window._casoraWasteCals) from a fetch of its events; a calendar
+  // fetched within 5 minutes (window._casoraWasteTs) is skipped. Resolves true when something was fetched.
+  window.casoraWasteScan = function (hass, ids, month) {
+    if (!hass || !hass.callApi) return Promise.resolve(false);
+    var T = window._casoraWasteTs = window._casoraWasteTs || {}, span = window.casoraCalSpan(month);
+    var q = '?start=' + encodeURIComponent(span.s.toISOString()) + '&end=' + encodeURIComponent(span.e.toISOString());
+    var todo = ids.filter(function (id) { return id && Date.now() - (T[id] || 0) >= 300000; });
+    return Promise.all(todo.map(function (id) {
+      T[id] = Date.now();
+      return hass.callApi('GET', 'calendars/' + id + q).then(function (r) {
+        var W = window._casoraWasteCals = window._casoraWasteCals || {};
+        W[id] = window.casoraWasteContent((r || []).map(function (ev) { return ev.summary || ''; }));
+      }).catch(function () { /* keep the old verdict */ });
+    })).then(function () { return todo.length > 0; });
+  };
   var WASTE_WORDS = [
     [/gr(ü|ue)n|green/i, '#30D158'], [/blau|blue/i, '#0A84FF'], [/braun|brown/i, '#8F7E6D'],
     [/schwarz|grau|black|gr[ae]y/i, '#8E8E93'], [/rot\b|rote|red/i, '#FF453A'],

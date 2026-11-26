@@ -56,6 +56,8 @@
     // Calendar: name, color, switch and ✕ in one line (the ✕ used to wrap into a line of its own on the phone).
     + ".frow.casora-calrow .casora-pctl>input.fin.casora-short{flex:1 1 72px}"
     + ".frow.casora-calrow .casora-pctl>.casora-x{margin-left:auto}"
+    // Hint under a picked calendar that is the Waste calendar.
+    + ".frow .casora-pwarn{flex:0 0 100%;font-size:var(--t-foot);color:var(--casora-popup-ui-warn, #FF9F0A)}"
     + ".fgroup.casora-pfocus .flist{box-shadow:0 0 0 2px var(--casora-studio-done, #0a84ff);transition:box-shadow .3s}"
     // "Advanced" has one look everywhere (u03-08, owner 26.11.2026): like the settings page's disclosure row (.cn-adv) –
     // the word bold in text colour, " ›" after it, " ⌄" when open; no chevron on the right.
@@ -878,6 +880,11 @@
         const redrawCalendar = () => { if (self._rebuildPreview) self._rebuildPreview(); };
         g = group("calendars", { header: "Calendars",
           footer: "Without calendars here, the calendar tile, the greeting and the screensaver show all of them except holidays, working days and waste." });
+        // Waste calendar hint (detected, Settings draft, or Waste Collection Schedule): the greeting line skips it. The
+        // verdict comes from a fetch of the events; Studio asks for the picked calendars once and draws again.
+        const imp = window.casoraImportScript || ((p) => import("/casora_scripts/" + p));
+        if (!window.casoraWasteScan) { if (!self._casoraWsImp) { self._casoraWsImp = true; imp("local/00-finder.js").then(render).catch(() => {}); } }
+        else window.casoraWasteScan(hass, S.calendars.map((c) => c && c.entity), null).then((did) => { if (did) render(); });
         S.calendars.forEach((c, i) => {
           const col = colorPick(c.color || CAL_DEFAULT, (v) => { c.color = v; });
           const tog = document.createElement("label");
@@ -890,11 +897,18 @@
           tog.appendChild(cb);
           tog.appendChild(document.createTextNode("On tile"));
           // No row label: the group header (and on its own page the title) already says "Calendars".
-          row(g, "", [
+          const calRow = row(g, "", [
             ent(c.entity, ["calendar"], (v) => { c.entity = v; redrawCalendar(); }),
             txt(c.name, "Name", (v) => { c.name = v; }, true), col, tog,
             del(() => { S.calendars.splice(i, 1); redrawCalendar(); }),
-          ], i ? undefined : "Calendar, name, color and whether it shows on the tile.").classList.add("casora-calrow");
+          ], i ? undefined : "Calendar, name, color and whether it shows on the tile.");
+          calRow.classList.add("casora-calrow");
+          if (c.entity && window.casoraWasteCalendar && window.casoraWasteCalendar(hass, c.entity, S.waste && S.waste.calendar)) {
+            const w = document.createElement("div");
+            w.className = "casora-pwarn";
+            w.textContent = "Waste calendar: the greeting line skips it.";
+            calRow.appendChild(w);
+          }
         });
         addRow(g, "Add calendar", () => { S.calendars.push({ entity: "", name: "", color: CAL_DEFAULT }); redrawCalendar(); });
         row(g, "Hide when the title contains", [txt(S.calendar_filter.words, "", (v) => { S.calendar_filter.words = v; redrawCalendar(); })],
