@@ -93,6 +93,7 @@
     classes: { binary_sensor: ["connectivity"] }, placeholder: "This camera",
     hint: "Optional. Another camera or a connection sensor that tells whether the camera is reachable, e.g. when the picture comes through a proxy (go2rtc, Frigate, Scrypted) that stays ready although the camera is gone. Picture and popup stay with this camera.",
   };
+  const BIN_DEFAULT = "var(--casora-color-orange, #FF9F0A)";
   const ICONS = ["", "tv", "apple_tv", "homepod", "playstation", "speaker"];
   // #202: room types of the room climate (keys of casoraComfortTable, 01-basis.js) and its fields.
   const TYPE_LABELS = { wohnen: "Living", schlafen: "Sleeping", bad: "Bath", kueche: "Kitchen", nebenraum: "Hallway and utility",
@@ -204,6 +205,12 @@
       });
   }
 
+  // Save check: a Bin type with no word can never match (an emptied ready-made one included).
+  function binTypesBad(S) {
+    const l = S && S.bin_types && S.bin_types.list;
+    return Array.isArray(l) && l.some((e) => !e || (Array.isArray(e.words) ? !e.words.length : !e.key));
+  }
+
   async function fileSettings() {
     const before = window.CASORA_SETTINGS;
     try {
@@ -283,7 +290,7 @@
     return result;
   }
 
-  window.casoraPersonal = { normalize, prune, cameraCandidates, triggerCandidates, cameraPopupValues, fileSettings, CSS };
+  window.casoraPersonal = { normalize, prune, cameraCandidates, triggerCandidates, cameraPopupValues, fileSettings, CSS, binTypesBad };
 
   customElements.whenDefined("casora-panel").then(() => {
     const P = customElements.get("casora-panel").prototype;
@@ -449,6 +456,41 @@
         addRow(g, "Add bin", () => { S.waste.sensors[""] = ""; });
         row(g, "Waste calendar", [ent(S.waste.calendar, ["calendar"], (v) => { S.waste.calendar = v; })],
           "More dates in the popup");
+        // Bin types (stored list; nothing stored = the ready-made list, shown here but stored only after the first edit).
+        const READY = () => (window.casoraBinReady ? window.casoraBinReady() : []);
+        const binRows = Array.isArray(S.bin_types.list) ? S.bin_types.list : READY().map((e) => Object.assign(e, { name: "" }));
+        const binEdit = (i, fn) => {
+          if (!Array.isArray(S.bin_types.list)) S.bin_types.list = READY().map((e) => ({ key: e.key, words: e.words, color: e.color, icon: e.icon }));
+          fn(S.bin_types.list[i]);
+        };
+        if (!window.casoraBinReady) (window.casoraImportScript || ((p) => import("/casora_scripts/" + p)))("local/00-finder.js").then(render).catch(() => {});
+        const trName = (n) => (typeof window.casoraTr === "function" ? window.casoraTr(n) : n);
+        binRows.forEach((e, i) => {
+          const ready = READY().find((x) => x.key && x.key === e.key);
+          const icon = document.createElement("button");
+          icon.type = "button";
+          icon.className = "scpick";
+          icon.setAttribute("data-no-i18n", "");
+          const ic = document.createElement("ha-icon");
+          ic.setAttribute("icon", e.icon || "mdi:trash-can-outline");
+          icon.appendChild(ic);
+          icon.setAttribute("aria-label", (window.casoraI18n ? window.casoraI18n.t("Icon") : "Icon") + ": " + (e.icon || "mdi:trash-can-outline"));
+          icon.onclick = async () => {
+            const names = await self._mdiList();
+            // No list to browse: the picker says so; there is no text field for an icon.
+            self._iconSheet(null, names || [], { title: "Bin icon", current: e.icon || "",
+              onPick: (n) => { binEdit(i, (x) => { x.icon = n; }); render(); } });
+          };
+          const words = txt((e.words || []).join(", "), "Words, comma-separated", (v) => {
+            binEdit(i, (x) => { x.words = v.split(",").map((w) => w.trim()).filter(Boolean); });
+          });
+          row(g, i ? "" : "Bin types", [
+            txt(e.name, ready ? trName(ready.name) : "Name", (v) => { binEdit(i, (x) => { x.name = v; }); }, true), words,
+            colorPick(e.color || BIN_DEFAULT, (v) => { binEdit(i, (x) => { x.color = v; }); }), icon,
+            del(() => { binEdit(i, () => {}); S.bin_types.list.splice(i, 1); }),
+          ], i ? undefined : "Words in the pickup title, then name, color and icon.").classList.add("casora-binrow");
+        });
+        addRow(g, "Add bin type", () => { binEdit(binRows.length, () => {}); S.bin_types.list.push({ words: [], name: "", color: BIN_DEFAULT, icon: "" }); });
         // Month calendar in the waste popup (03.10.2026), on by default since 20.10.2026; only "off" is stored (false).
         const calSw = self._flowRow(g, { title: "Calendar in the waste popup", sub: "Month with the pickup days in the bin colors" });
         if (typeof self._boolSwitch === "function") {
