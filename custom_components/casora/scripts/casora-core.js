@@ -16622,9 +16622,8 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   function isDoorbell(id, st) {
     // The rule lives in 00-finder.js (one rule for the bell and the Studio list). The old check below is only
     // for the moment before 00-finder.js or hass has loaded.
-    if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
-    // The rule lives in 00-finder.js (one rule for the bell and the Studio list). The old check below is only
-    // for the moment before 00-finder.js or hass has loaded.
+    // Listed only under detection: the explicit entry beats the name guess below (listed in both lists: a ring).
+    if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDetection(id) && !listedDoorbell(id)) return false;
     if ((id.indexOf('binary_sensor.') === 0 || id.indexOf('event.') === 0) && listedDoorbell(id)) return true;
     var h = hassOf();
     if (window.casoraIsDoorbell && h) return window.casoraIsDoorbell(h, id);
