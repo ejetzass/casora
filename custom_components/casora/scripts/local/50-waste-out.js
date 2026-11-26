@@ -141,7 +141,7 @@
     return UI.group([{
       icon: on ? 'mdi:check' : (W.next.icon || 'mdi:trash-can-outline'), iconTone: on ? 'good' : (W.next.color || null),
       label: 'Rausgestellt',
-      sub: on ? 'Kachel bis zur nächsten Abholung ausgeblendet' : W.next.label + ' · ' + window.casoraDayWord(W.days === 0 ? 0 : 1),
+      sub: on ? 'Kachel bis zur nächsten Abholung ausgeblendet' : W.next.label + ' · ' + window.casoraDayWord(W.days),
       active: on, tappable: true, noChev: true, endHtml: switchHtml(key, on),
     }]);
   };
