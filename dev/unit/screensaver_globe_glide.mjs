@@ -2,7 +2,7 @@
 // one (the popup arrow's rules from 49-flights.js F.track: one poll behind, ends on the reported position, jumps on a long gap, an
 // impossible step and with reduced motion). Frames run only while a glide runs. A fake clock and a fake requestAnimationFrame.
 //   node dev/unit/screensaver_globe_glide.mjs
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount,globeStep,globeFrame,DRAW
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#mount,globeStep,globeSvg,DRAW
 import assert from 'node:assert/strict';
 import { page, globeFiles, settle, SLOT0 } from './lib/globe_page.mjs';
 
