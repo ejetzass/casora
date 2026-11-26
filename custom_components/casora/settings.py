@@ -38,8 +38,9 @@ STORAGE_KEY = f"{DOMAIN}.settings"
 STORAGE_VERSION = 1
 # Only these sections are known to Casora; anything else is not stored. security: covers in security (#76).
 # climate: room types and changed recommended values of the room climate (#202).
-SECTIONS = ("waste", "calendars", "notify", "scenes", "contacts", "security", "media", "night_entity", "ebike", "umzug", "basis", "welcome", "community", "climate", "calendar_filter", "cameras", "camera_popup")
 # camera_popup: the house switch of the camera popup (absent or false = off).
+# bin_types: {"list": [...]} replaces the ready-made waste bin types; an empty list is kept on purpose.
+SECTIONS = ("waste", "calendars", "notify", "scenes", "contacts", "security", "media", "night_entity", "ebike", "umzug", "basis", "welcome", "community", "climate", "calendar_filter", "cameras", "camera_popup", "bin_types")
 
 
 def ai_text_language(hass: HomeAssistant) -> str:
