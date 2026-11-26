@@ -1540,7 +1540,7 @@
   S.wanders = function (vars) { var v = vars && vars.casora_screensaver_wander; return !(v === false || v === 'false' || v === 0 || v === '0'); };
   S.mount = function (host, kind, o) {
     o = o || {};
-    var last = '', timer = 0, step = null, minute = null, moved = false, n = 0, fresh = true; // fresh: this saver has not shown a flight yet (its start)
+    var last = '', timer = 0, step = null, minute = null, moved = false, fresh = true; // fresh: this saver has not shown a flight yet (its start)
     if (!document.getElementById('cs-sv-css')) {
       var st = document.createElement('style');
       st.id = 'cs-sv-css';
