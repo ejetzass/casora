@@ -43,13 +43,13 @@ export const page = (files) => {
     if (files[name] == null) throw new Error('404 ' + url);
     vm.runInContext(files[name], box);
   };
-  const R = { box, S, clock: SLOT0 + 1000, vars: {}, hass: {
+  const R = { box, S, clock: SLOT0 + 1000, vars: {}, flight: { ...flight }, hass: {
     config: { time_zone: 'Europe/Amsterdam' }, locale: { time_format: '24' }, themes: { darkMode: true }, connection: { addEventListener() {} },
     entities: { [SRC]: { platform: 'flightradar24', translation_key: 'additional_tracked', device_id: 'd1' } }, devices: { d1: { name: 'Tracker' } },
     states: { [SRC]: { state: '1', attributes: { flights: [flight] } } } } };
   R.host = { isConnected: true, firstElementChild: null, getRootNode: () => doc, innerHTML: '' };
   R.start = () => { R.api = S.mount(R.host, null, { every: 3600000, kind: () => 'flights', context: () => ({ hass: R.hass, vars: R.vars, now: new Date(R.clock) }) }); R.api.update(); // the first sight of a flight is a baseline; it shows once it has moved
-    R.clock += 1000; R.hass.states[SRC] = { state: '1', attributes: { flights: [{ ...flight, latitude: 50.21, longitude: 10.12 }] } }; R.api.update(); return R; };
+    R.clock += 1000; R.hass.states[SRC] = { state: '1', attributes: { flights: [{ ...R.flight, latitude: R.flight.latitude + 0.01, longitude: R.flight.longitude + 0.02 }] } }; R.api.update(); return R; };
   return R;
 };
 export const globeFiles = () => Object.fromEntries(['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js', 'land-110m.json'].map((n) => [n, read(ASSETS + n)]));
