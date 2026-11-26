@@ -858,8 +858,10 @@
     + '.cs-sv .cs-ke i{flex:none;width:' + u(10) + ';height:' + u(10) + ';border-radius:50%;background:var(--cs-c);}'
     // Flights: the route picture between the head and the figures; the details as two columns of rows.
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
-    + '.cs-sv .cs-fl-map,.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
-    + '.cs-sv .cs-fl-live{border-radius:' + u(28) + ';pointer-events:none;}'
+    + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
+    // The live map is opaque, so unlike the (transparent) drawn picture it must not lie over any text: its box sits between the header
+    // (up to two lines of flight number) and the figures (which wrap on a phone), with a gap. The narrow rule is in the @container below.
+    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(300) + ';bottom:' + u(215) + ';border-radius:' + u(28) + ';pointer-events:none;}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
     + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
@@ -894,7 +896,7 @@
     + '.cs-sv.cs-calm .cs-left{right:' + u(M) + ';}.cs-sv.cs-calm .cs-left .cs-time{font-size:' + u(240) + ';}'
     + '.cs-sv .cs-col .cs-n{font-size:' + u(60) + ';}.cs-sv .cs-e b{font-size:' + u(20) + ';}.cs-sv .cs-sum b{font-size:' + u(72) + ';}}'
     // Narrow boxes (portrait tablet): one under the other.
-    + '@container (aspect-ratio < 1){.cs-sv .cs-top{flex-direction:column;}.cs-sv .cs-wx{text-align:left;padding-top:0;}.cs-sv .cs-wx .cs-t{justify-content:flex-start;}'
+    + '@container (aspect-ratio < 1){.cs-sv .cs-fl-live{top:' + u(470) + ';}.cs-sv .cs-top{flex-direction:column;}.cs-sv .cs-wx{text-align:left;padding-top:0;}.cs-sv .cs-wx .cs-t{justify-content:flex-start;}'
     + '.cs-sv .cs-top .cs-time{font-size:' + u(190) + ';}.cs-sv .cs-words{font-size:' + u(118) + ';}.cs-sv .sv-bar{flex-direction:column;align-items:flex-start;}.cs-sv .cs-name{text-align:left;}'
     + '.cs-sv .sv-bar .cs-time{font-size:' + u(160) + ';}'
     + '.cs-sv .sv-head{flex-direction:column-reverse;gap:' + u(34) + ';}.cs-sv .sv-head .cs-clock:last-child{text-align:left;}.cs-sv .cs-body{top:' + u(420) + ';}.cs-sv.cs-linie .cs-body{top:' + u(420) + ';bottom:' + u(60) + ';--cs-pw:' + LINE.tall.w + '%;--cs-ly:calc(' + u(168) + ' + (' + LINE.tall.rows + ' - var(--cs-nt, 1)) * ' + u(31) + ');}.cs-sv.cs-woche .cs-body{top:' + u(400) + ';}'

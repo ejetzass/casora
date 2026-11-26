@@ -201,4 +201,25 @@ const runtime = ({ withMap }) => {
   }
 }
 
+// ── The live map's box sits between the header text and the figures at every width ───────────────────────────────────
+// The header can be tall: on a narrow box the clock stands over the flight (column), and the flight number may take two lines.
+// Worst case in saver units: top 58, clock 92 + 12 + date 30, gap 34 (narrow only), flight number 2 x 84 + 12, route line 38.
+// The figures: bottom 120, two lines of 30 x 1.2 when the line wraps (it does on a phone).
+{
+  const R = runtime({ withMap: true });
+  const css = R.S.CSS; // sizes are in cqmin: u(n) = n / 8.2
+  const toU = (txt) => Number(/([\d.]+)cqmin/.exec(txt)[1]) * 8.2;
+  const rule = (txt, atNarrow) => {
+    const block = atNarrow ? css.slice(css.indexOf('@container (aspect-ratio < 1)')) : css.slice(0, css.indexOf('@container (aspect-ratio < 1.45)'));
+    const m = /\.cs-sv \.cs-fl-live\{([^}]*)\}/g; let last = null, x;
+    while ((x = m.exec(block))) if (new RegExp(txt).test(x[1])) last = x[1];
+    return last || (atNarrow ? rule(txt, false) : null); // a narrow box keeps the wide rule's value unless it sets its own
+  };
+  const top = (n) => toU(/top:([\d.]+cqmin)/.exec(rule('top:', n))[1]), bottom = (n) => toU(/bottom:([\d.]+cqmin)/.exec(rule('bottom:', n))[1]);
+  const headBottomWide = 58 + 2 * 84 + 12 + 38, headBottomNarrow = 58 + (92 + 12 + 30) + 34 + 2 * 84 + 12 + 38, figures = 120 + 2 * 36;
+  assert.ok(top(false) >= headBottomWide + 10, 'wide: the map starts below the header (' + top(false) + ' >= ' + (headBottomWide + 10) + ')');
+  assert.ok(top(true) >= headBottomNarrow + 10, 'narrow: the map starts below the header, which is taller (' + top(true) + ' >= ' + (headBottomNarrow + 10) + ')');
+  assert.ok(bottom(false) >= figures + 10 && bottom(true) >= figures + 10, 'the map ends above the figures, also when they wrap');
+}
+
 console.log('ok screensaver_flights_map');
