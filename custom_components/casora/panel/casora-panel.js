@@ -13929,7 +13929,11 @@ class CasoraPanel extends HTMLElement {
     this._iconSheet(d, names);
   }
 
-  _iconSheet(d, names) {
+  // o: { title, current, onPick(name) } for a picker that is not the dashboard icon's (Studio, Bin types).
+  _iconSheet(d, names, o) {
+    o = o || {};
+    const cur = o.current !== undefined ? o.current : (d && d.icon) || "";
+    const onPick = o.onPick || ((name) => this._setDashIcon(d, name));
     const pane = document.createElement("div");
     pane.className = "askpane iconpane";
     const scrim = document.createElement("div");
@@ -13946,7 +13950,7 @@ class CasoraPanel extends HTMLElement {
     pane.appendChild(scrim); pane.appendChild(stack);
 
     const h = document.createElement("h3");
-    h.textContent = "Dashboard icon";
+    h.textContent = o.title || "Dashboard icon";
     box.appendChild(h);
 
     const list = document.createElement("div");
@@ -13975,7 +13979,7 @@ class CasoraPanel extends HTMLElement {
     const cell = (name, label) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "iconcell" + ((d.icon || "") === name ? " on" : "");
+      b.className = "iconcell" + (cur === name ? " on" : "");
       b.title = label || name;
       if (name) {
         const ic = document.createElement("ha-icon");
@@ -13987,7 +13991,7 @@ class CasoraPanel extends HTMLElement {
         x.textContent = "None";
         b.appendChild(x);
       }
-      b.onclick = () => { close(); this._setDashIcon(d, name); };
+      b.onclick = () => { close(); onPick(name); };
       return b;
     };
 

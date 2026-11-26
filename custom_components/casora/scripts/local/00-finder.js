@@ -524,6 +524,10 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
         color: e.color || r.color || null, soft: !e.color || e.color === r.color ? r.soft : null, icon: e.icon || BIN_ICON };
     }).filter(function (t) { return t.words.length; });
   }
+  // Studio edits the list: the ready-made entries (a copy) for a draft with nothing stored yet.
+  window.casoraBinReady = function () {
+    return BIN_READY.map(function (t) { return { key: t.key, name: t.name, color: t.color || '', icon: BIN_ICON, words: t.words.slice() }; });
+  };
   function binTypeOf(list, text) {
     var t = String(text).toLowerCase(), hits = [];
     list.forEach(function (k) {

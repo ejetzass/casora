@@ -613,6 +613,11 @@
         this._csRepaint();
         return false;
       }
+      if (PERS().binTypesBad(cs.S)) {
+        cs.err = t("Each bin type needs at least one word.");
+        this._csRepaint();
+        return false;
+      }
       cs.busy = true;
       cs.err = null;
       this._csRepaint();
