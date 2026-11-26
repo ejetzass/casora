@@ -1267,6 +1267,8 @@
     + '.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}'
     // Leaflet zoom and scale hidden, as in 12-tanken.js.
     + '.leaflet-control-zoom,.leaflet-control-scale{display:none!important}';
+  // The saver's map takes no pointer input at all, its attribution link included: a tap must reach the saver and wake the dashboard.
+  var SAVER_CSS = '.maplibregl-ctrl-attrib,.maplibregl-ctrl-attrib a,.leaflet-control-attribution,.leaflet-control-attribution a{pointer-events:none!important}';
   // The arrow points north at heading 0; MapLibre turns it clockwise on the map. Drawn on a canvas: no file or URL loads.
   var arrowImage = function (ml) {
     try {
@@ -1322,8 +1324,11 @@
     class FlightMap extends HTMLElement {
       connectedCallback() {
         // Only the properties the element needs: the popup's own box (its 4:3 aspect ratio) stays, so the box has a height.
-        this.style.display = 'block'; this.style.position = 'relative'; this.style.width = '100%';
-        this.style.overflow = 'hidden'; this.style.borderRadius = 'inherit';
+        // The screensaver's map (data-saver, 46-screensaver.js) has its box from the saver's stylesheet and takes no pointer input.
+        this._saver = !!(this.hasAttribute && this.hasAttribute('data-saver'));
+        this.style.display = 'block'; this.style.overflow = 'hidden'; this.style.borderRadius = 'inherit';
+        if (this._saver) this.style.pointerEvents = 'none';
+        else { this.style.position = 'relative'; this.style.width = '100%'; }
         this._since = Date.now(); this._tiles = 0; this._ml = this._el = this._timer = null; this._layers = false; this._ok = false;
         this._sent = null; this._ident = null; this._track = this._base = null; this._raf = 0;
         var H = window._casoraHaMap, hass = hassNow();
@@ -1346,7 +1351,8 @@
       _build(hass) {
         var m = document.createElement('ha-map');
         m._connection = { connection: hass.connection, hassUrl: function (u) { return hass.hassUrl ? hass.hassUrl(u) : u; } };
-        m.entities = []; m.themeMode = 'auto'; m.zoom = 8; m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
+        m.entities = []; m.themeMode = this._saver ? 'dark' : 'auto'; m.zoom = 8; // themeMode: the saver is always a dark scene; the popup follows the theme
+        m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
         // The map fills the box. The fade is off for reduced motion. The map is not inert: inert would also take the attribution
         // link out of reach. Instead the map takes no pointer input (pointer-events none), and its attribution link is the one
         // part that does (MAP_CSS), so it can be clicked and reached by Tab. The host is role="group" (fmap), not "img",
@@ -1369,7 +1375,7 @@
       // alone does not match the Leaflet attribution, so both classes are listed.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
-          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) {
+          if (!this._saver && x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) { // the saver's map has no stop at all
             // Leaflet's "Leaflet" prefix link stays visible, but it is not a stop; the credit links are.
             if (x.matches('a[href]') && /leafletjs\.com/.test(x.getAttribute('href'))) x.setAttribute('tabindex', '-1');
             return;
@@ -1538,7 +1544,7 @@
       _css(root) {
         if (this._styled === root) return;
         this._styled = root;
-        var st = document.createElement('style'); st.textContent = MAP_CSS; root.appendChild(st);
+        var st = document.createElement('style'); st.textContent = MAP_CSS + (this._saver ? SAVER_CSS : ''); root.appendChild(st);
       }
       _putMl(geo) {
         var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
