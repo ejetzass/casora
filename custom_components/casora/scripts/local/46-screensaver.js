@@ -1464,6 +1464,35 @@
     var mapHtml = !detail && v ? S.liveMap(r) : '';
     return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
   };
+  // ── Globe view: the files load late ──────────────────────────────────────────────────────────────────────────────────
+  // Only with the setting Flights map = Globe and a flight on show are the files of assets/globe/ asked for (d3-array, then
+  // d3-geo, which needs it; topojson-client; the land). They come from the integration's own /casora_assets, never from the
+  // internet, and once per page. Until they are there, and when one fails, the saver draws the flat map: no text, no retry
+  // while this screensaver runs; the next start (S.mount) tries again.
+  var GLOBE_URL = '/casora_assets/globe/';
+  var GLOBE_SCRIPTS = ['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js'];
+  var globe = { data: null, pending: null, failed: false };
+  // A script file, run late. The d3 and topojson files are UMD builds: run as modules they set window.d3 and window.topojson.
+  S.loadScript = function (url) { return import(url); };
+  S.globeOn = function (vars) { return !!vars && vars.casora_flights_map === 'globe'; };
+  S.globeReady = function () { return !!globe.data; };
+  // Resolves true when the globe can be drawn, false when it cannot (now). Never rejects.
+  S.globeLoad = function () {
+    if (globe.data) return Promise.resolve(true);
+    if (globe.failed) return Promise.resolve(false);
+    if (globe.pending) return globe.pending;
+    globe.pending = GLOBE_SCRIPTS.reduce(function (p, f) { return p.then(function () { return S.loadScript(GLOBE_URL + f); }); }, Promise.resolve())
+      .then(function () { return window.fetch(GLOBE_URL + 'land-110m.json'); })
+      .then(function (r) { if (!r || !r.ok) throw new Error('land'); return r.json(); })
+      .then(function (topo) {
+        var d3 = window.d3, tj = window.topojson;
+        if (!d3 || !d3.geoOrthographic || !d3.geoPath || !tj || !tj.feature || !topo || !topo.objects || !topo.objects.land) throw new Error('globe files');
+        globe.data = { d3: d3, land: tj.feature(topo, topo.objects.land) };
+      })
+      .catch(function () { globe.failed = true; })
+      .then(function () { globe.pending = null; return !!globe.data; });
+    return globe.pending;
+  };
   // Named so for the escape check (tools/html-escape-check.mjs reads names ending in Html as markup): the map element at the end of a scene.
   var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
   var openTagOf = function (html) { return html.slice(0, html.indexOf('>') + 1); };
@@ -1599,6 +1628,7 @@
       s2.textContent = CSS;
       root.appendChild(s2);
     }
+    globe.failed = false; // a new screensaver start: a failed load of the globe files is tried again
     var api = { kind: '' }, shown = false, gone = false;
     var update = function () {
       // A box that was in the page and left it (the Studio draws its page again and never calls destroy): stop, or
@@ -1633,6 +1663,8 @@
         }
       }
       if (o.sample) ctx = S.sample(ctx);
+      // Globe on and a flight on show: the files are asked for now (once); the redraw after they arrive draws the globe.
+      if (k === 'flights' && ctx.flights && ctx.flights.length && S.globeOn(ctx.vars) && !S.globeReady()) S.globeLoad().then(function (ok) { if (ok) update(); });
       var html = S.html(k, ctx);
       api.kind = k;
       if (html !== last) { var kept = S.mountKeepingMap(host, last, html); last = html; if (!kept) host.innerHTML = html; }
@@ -1724,7 +1756,7 @@
   S.vars = function (cfg) {
     var out = {}, keys = ['casora_screensaver', 'casora_screensaver_kind', 'casora_screensaver_calendar', 'casora_screensaver_photos', 'casora_screensaver_mix',
       'casora_screensaver_cameras', 'casora_screensaver_calendars', 'casora_screensaver_tint', 'casora_screensaver_wander', 'casora_screensaver_calendar_range', 'weather_entity', 'use_12h',
-      'casora_screensaver_wake', 'casora_screensaver_wake_screen'].concat(FLIGHT_KEYS);
+      'casora_screensaver_wake', 'casora_screensaver_wake_screen', 'casora_flights_map'].concat(FLIGHT_KEYS);
     ((cfg && cfg.views) || []).forEach(function (v) {
       var vars = ((((v.cards || [])[0]) || {}).variables) || {};
       keys.forEach(function (k) { if ((out[k] == null || out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) && vars[k] != null && vars[k] !== '') out[k] = vars[k]; });
