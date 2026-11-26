@@ -215,6 +215,8 @@
     var failed = {};
     var q = '?start=' + encodeURIComponent(s.toISOString()) + '&end=' + encodeURIComponent(e.toISOString());
     Promise.all(cals.map(function (c) {
+      // Studio's verdict scan (00-finder.js casoraWasteScan) skips a calendar fetched within 5 minutes.
+      (window._casoraWasteTs = window._casoraWasteTs || {})[c.entity] = Date.now();
       return hass.callApi('GET', 'calendars/' + c.entity + q).then(function (r) {
         r = r || [];
         // The verdict "Waste calendar" (00-finder.js casoraWasteContent) is kept per calendar and refreshed with every
@@ -247,18 +249,6 @@
   };
   K.load = function (hass, variables, force) {
     loadCache(hass, variables, force, true);
-  };
-  // Greeting line without a calendar tile: fetch the calendars that count (5-minute cache per calendar) just for the
-  // Waste calendar verdict; the events are not kept.
-  K.scanTs = {};
-  K.scan = function (hass) {
-    if (!hass || !hass.callApi || !window.casoraCalendars) return;
-    var span = K.span();
-    window.casoraCalendars(hass, null).forEach(function (c) {
-      if (Date.now() - (K.scanTs[c.entity] || 0) < 300000) return;
-      K.scanTs[c.entity] = Date.now();
-      fetchCal(hass, c, span);
-    });
   };
   /* Termine eines Tages (mehrtägige ganztägige auf jedem Tag). */
   var onDay = function (d) {
