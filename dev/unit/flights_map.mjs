@@ -395,6 +395,12 @@ const settle = async () => { await Promise.resolve(); await Promise.resolve(); }
   assert.ok(ml.layers['casora-flight-unreported'], 'unreported layer added');
   assert.equal(ml.layers['casora-flight-unreported'].paint['line-opacity'], 0.45, 'unreported part at 45 % opacity');
   assert.ok(ml.order.indexOf('casora-flight-unreported') < ml.order.indexOf('casora-flight-trail-casing'), 'drawn under the trail');
+  const uc = ml.layers['casora-flight-unreported-casing'];
+  assert.ok(uc, 'the Unreported part has a casing layer');
+  assert.equal(uc.source, 'casora-flight-unreported', 'the casing draws the same source');
+  assert.equal(uc.paint['line-color'], '#000000', 'the casing is dark, so the arc reads on light tiles');
+  assert.ok(uc.paint['line-width'] > ml.layers['casora-flight-unreported'].paint['line-width'], 'the casing is wider than the arc');
+  assert.ok(ml.order.indexOf('casora-flight-unreported-casing') < ml.order.indexOf('casora-flight-unreported'), 'the casing lies under the arc');
   assert.equal(ml.sources['casora-flight-unreported'].data.features.length, 1, 'unreported part drawn');
   assert.ok(ml.images.includes('casora-flight-arrow') || ml.images.length === 0, 'arrow image when a canvas exists');
   assert.equal(ml.fits.length, 1, 'fitted once');
