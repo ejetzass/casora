@@ -1122,7 +1122,16 @@
   F.unreportedOf = function (v) {
     if (!v) return [];
     if (v.unreported) return v.unreported;
-    return v.origin && v.trail && v.trail.length ? F.greatCircle(v.origin, v.trail[0]) : [];
+    if (!(v.origin && v.trail && v.trail.length)) return [];
+    var a = v.origin, b = v.trail[0], direct = F.greatCircle(a, b);
+    if (direct.length) return direct;
+    // The view's longitudes may lie past 180 or -180 (continuous over the date line), which greatCircle takes for invalid:
+    // draw the arc between the same places with plain longitudes, then shift it so that it ends at the trail's start as given.
+    var wrap = function (lo) { return lo - 360 * Math.round(lo / 360); };
+    var arc = F.greatCircle([a[0], wrap(a[1])], [b[0], wrap(b[1])]);
+    if (!arc.length) return [];
+    var shift = b[1] - arc[arc.length - 1][1];
+    return shift === 0 ? arc : arc.map(function (p) { return [p[0], p[1] + shift]; });
   };
   F.mapView = function (hass, src, key, now) {
     var row = F.flight(hass, src, key, now);
@@ -1133,7 +1142,7 @@
     var d = pointOf(f.airport_destination_latitude, f.airport_destination_longitude);
     var c = continuous(cur, F.trailOf(f), o, d);
     return { key: row.key, label: row.label, cur: cur, heading: typeof f.heading === 'number' && f.heading >= 0 && f.heading <= 360 ? f.heading : null,
-      origin: c.origin, destination: c.destination, trail: c.trail, route: c.route,
+      origin: c.origin, destination: c.destination, trail: c.trail, route: c.route, originCode: airport(f, 'origin'), destinationCode: airport(f, 'destination'),
       unreported: F.unreportedOf({ origin: c.origin, trail: c.trail }), progress: F.progress(o, cur, d) };
   };
   // GeoJSON for the map layers ([lon, lat]): the trail as one line ending at the marker, the Remaining route as one line
@@ -1146,8 +1155,8 @@
     };
     if (!v) return { trail: fc([]), route: fc([]), unreported: fc([]), points: fc([]) };
     var pts = [];
-    if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0 }));
-    if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0 }));
+    if (v.origin) pts.push(pt(v.origin, { role: 'airport', arrow: 0, code: v.originCode || '' }));
+    if (v.destination) pts.push(pt(v.destination, { role: 'airport', arrow: 0, code: v.destinationCode || '' }));
     pts.push(pt(v.cur, { role: 'aircraft', arrow: v.heading == null ? 0 : 1, heading: v.heading == null ? 0 : v.heading }));
     var line = v.trail.slice();
     var last = line[line.length - 1];

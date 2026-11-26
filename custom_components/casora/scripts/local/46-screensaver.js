@@ -876,6 +876,12 @@
     + '.cs-sv .cs-gl-sea{fill:#24211E;}'
     + '.cs-sv .cs-gl-land{fill:#4A443C;stroke:rgba(25,22,19,.7);stroke-width:1.2;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
+    + '.cs-sv .cs-gl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
+    + '.cs-sv .cs-gl-route{stroke:rgba(246,239,230,.72);}'
+    + '.cs-sv .cs-gl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
+    + '.cs-sv .cs-gl-ap{fill:#F6EFE6;stroke:#191613;stroke-width:3;}'
+    + '.cs-sv .cs-gl-code{fill:#F7F1E8;font-size:30px;font-weight:600;stroke:#191613;stroke-width:6px;paint-order:stroke;stroke-linejoin:round;}'
+    + '.cs-sv .cs-gl-plane path{fill:#E08A5C;stroke:#191613;stroke-width:3;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
@@ -1503,16 +1509,48 @@
   };
   // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the map box, as large as the
   // box allows). Orthographic, the aircraft's position in the middle, north up (no roll). Null until the files are loaded.
-  var GLOBE_SIZE = 1000;
+  var GLOBE_SIZE = 1000, GLOBE_AP_R = 9;
   S.globeProjection = function (v) {
     if (!globe.data || !v || !v.cur) return null;
     return globe.data.d3.geoOrthographic().rotate([-v.cur[1], -v.cur[0]]).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
   };
   // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] like the flat map's points.
+  // The flight's layers, bottom to top: Unreported part, Remaining route, Flown trail. The lines are GeoJSON from the flights module
+  // (F.mapGeo, [lon, lat], longitudes continuous over the date line): d3 draws the great circle between points and cuts at the horizon.
+  var globeLine = function (path, fc, cls, attrs) {
+    var d = fc && fc.features[0] ? path(fc.features[0]) : null;
+    return d ? '<path class="' + cls + '"' + (attrs || '') + ' fill="none" vector-effect="non-scaling-stroke" d="' + esc(d) + '"/>' : '';
+  };
+  S.globeLayers = function (v, proj) {
+    var F = FL();
+    if (!F || !proj) return '';
+    var geo = F.mapGeo(v), path = globe.data.d3.geoPath(proj), rs = F.ROUTE_STYLE, dash = rs ? u(rs.dash) : '';
+    return globeLine(path, geo.unreported, 'cs-gl-unrep', ' stroke-linecap="round" stroke-linejoin="round"')
+      + (rs ? globeLine(path, geo.route, 'cs-gl-route', ' stroke-linejoin="round" style="stroke-width:' + esc(u(rs.width)) + ';stroke-dasharray:' + esc(dash) + ' ' + esc(dash) + '"') : '')
+      + globeLine(path, geo.trail, 'cs-gl-trail', ' stroke-linecap="round" stroke-linejoin="round"')
+      + globeAirports(geo.points, proj, v) + globePlane(proj, v);
+  };
+  // Airports on the visible side only: a dot and the code above it. One behind the horizon (more than 90 degrees from the aircraft,
+  // the disc's centre) has neither.
+  var globeAirports = function (points, proj, v) {
+    var d3 = globe.data.d3, here = [v.cur[1], v.cur[0]], out = '';
+    points.features.forEach(function (f) {
+      if (f.properties.role !== 'airport' || d3.geoDistance(here, f.geometry.coordinates) >= Math.PI / 2) return;
+      var xy = proj(f.geometry.coordinates), x = esc(xy[0].toFixed(2)), y = xy[1];
+      out += '<circle class="cs-gl-ap" cx="' + x + '" cy="' + esc(y.toFixed(2)) + '" r="' + esc(GLOBE_AP_R) + '"/>'
+        + (f.properties.code ? '<text class="cs-gl-code" x="' + x + '" y="' + esc((y - GLOBE_AP_R - 12).toFixed(2)) + '" text-anchor="middle" data-no-i18n>' + esc(f.properties.code) + '</text>' : '');
+    });
+    return out;
+  };
+  // The aircraft: the globe is centered on it, so it is always in the middle; north is up, so the heading turns it as it is.
+  var globePlane = function (proj, v) {
+    var xy = proj([v.cur[1], v.cur[0]]), hd = Number(v.heading) || 0;
+    return '<g class="cs-gl-plane" transform="translate(' + esc(+xy[0].toFixed(2)) + ' ' + esc(+xy[1].toFixed(2)) + ') rotate(' + esc(hd) + ')"><path d="M0 -26 L18 20 L0 8 L-18 20 Z"/></g>';
+  };
   S.globeSvg = function (v) {
     var proj = S.globeProjection(v);
     if (!proj) return '';
-    var mid = GLOBE_SIZE / 2, layersHtml = ''; // the flight's layers (Unreported part, Flown trail, Remaining route, airports, aircraft) go here
+    var mid = GLOBE_SIZE / 2, layersHtml = S.globeLayers(v, proj);
     return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
       + '<circle class="cs-gl-sea" cx="' + esc(mid) + '" cy="' + esc(mid) + '" r="' + esc(mid) + '"/>'
       + '<path class="cs-gl-land" d="' + esc(globe.data.d3.geoPath(proj)(globe.data.land) || '') + '"/>' + layersHtml + '</svg>';
