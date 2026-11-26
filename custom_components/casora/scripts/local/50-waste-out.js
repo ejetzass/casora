@@ -152,7 +152,7 @@
     var on = !!(rows[key] > 0);
     // ha-card.disabled: the popup's content card has no tap action, its rows still take taps.
     return '<style>ha-card.disabled{pointer-events:auto!important;}</style>'
-      + '<div data-casora-wasteout-box="" data-casora-wasteout-w="' + esc(JSON.stringify({ label: W.next.label, color: W.next.color || null, days: W.days })) + '">'
+      + '<div data-casora-wasteout-box="" data-casora-wasteout-w="' + esc(JSON.stringify({ label: W.next.label, color: W.next.color || null, icon: W.next.icon || null, days: W.days })) + '">'
       + innerRowHtml(W, key, on) + '</div>';
   };
   // A tap on the row or its switch flips it; the row redraws at once (the tile behind hides or comes back).
@@ -163,7 +163,7 @@
     O.set(hass, key, on);
     var W = null;
     try { W = JSON.parse(box.getAttribute('data-casora-wasteout-w') || 'null'); } catch (e) { W = null; }
-    if (W && W.label) box.innerHTML = innerRowHtml({ next: { label: W.label, color: W.color }, days: W.days }, key, on);
+    if (W && W.label) box.innerHTML = innerRowHtml({ next: { label: W.label, color: W.color, icon: W.icon }, days: W.days }, key, on);
   };
   var onTap = function (ev) {
     if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;

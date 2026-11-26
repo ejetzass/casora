@@ -505,7 +505,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
   var BIN_READY = [
     { key: 'bio', name: 'Biomüll', color: '#30D158', soft: '#6AAE78', words: ['bio', 'organ', 'kompost', 'green waste', 'gft', 'groente', 'tuinafval', 'groenafval'] },
     { key: 'paper', name: 'Papier', color: '#0A84FF', soft: '#5B8FC9', words: ['papier', 'paper', 'pappe', 'karton', 'cardboard'] },
-    { key: 'yellow', name: 'Gelber Sack', color: '#FFCC00', soft: '#E8B04A', words: ['wertstoff', 'gelb', 'plastik', 'plastic', 'verpack', 'verpakking', 'recycl', 'pmd', 'pbd', 'drankenkarton', 'drankkarton'] },
+    { key: 'yellow', name: 'Gelber Sack', color: '#FFCC00', soft: '#E8B04A', words: ['wertstoff', 'gelb', 'plastik', 'plastic', 'verpack', 'verpakking', 'recycl', 'pmd', 'pbd', 'drankenkarton', 'drankkarton', 'verpackungskarton'] },
     { key: 'glass', name: 'Glas', color: '#00C3D0', soft: '#4E9E95', words: ['glas', 'glass'] },
     { key: 'bulky', name: 'Sperrmüll', color: null, soft: '#DE8A4E', words: ['sperr', 'bulky', 'grofvuil', 'grof afval'] },
     { key: 'hazard', name: 'Schadstoffe', color: null, soft: '#D35A4E', words: ['problem', 'schadstoff', 'sonderm', 'gift', 'hazard', 'chemisch'] },
@@ -592,7 +592,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     var ids = named ? (Array.isArray(named) ? named : Object.keys(named))
       : Object.keys(S).filter(function (eid) { return isWasteSensor(hass, eid); }).sort();
     var weich = !!(window._casoraSoft && window._casoraSoft());
-    var BT = binTypes(), stored = Array.isArray(settings('bin_types').list);
+    var BT = binTypes();
     // A configured calendar that is gone (renamed, removed) falls back to the detected one; it only
     // stays when nothing else is found, so the tile can still say the source is unreachable.
     var calGiven = Object.prototype.hasOwnProperty.call(V, 'trash_calendar') ? V.trash_calendar : cfg.calendar || null;
@@ -608,7 +608,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
       TC.ev.forEach(function (e) {
         var lab = String((e && e.summary) || '').trim(), st0 = e && e.start && (e.start.date || e.start.dateTime);
         var d = st0 ? new Date(String(st0).slice(0, 10) + 'T00:00:00') : null;
-        if (!lab || !d || isNaN(d) || d < t0 || (stored && !binTypeOf(BT, lab))) return;   // stored list: an event with no Bin type is no bin
+        if (!lab || !d || isNaN(d) || d < t0) return;
         var n = Math.round((d - t0) / 86400000), id = calendar + '#' + lab.toLowerCase();
         if (!fromCal[id] || n < fromCal[id].days) fromCal[id] = { label: lab, days: n };
       });
@@ -659,7 +659,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
         id: id, label: label, color: color, tint: tint, icon: kind ? kind.icon : BIN_ICON,
         // Calendar bins match their own title exactly, so a green bin and green cuttings stay apart.
         re: fromCal[id] ? new RegExp('^' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i')
-          : kind && (kind.color || !kind.soft) ? { test: function (t) { return binTypeOf(BT, t) === kind; } }
+          : kind ? { test: function (t) { return binTypeOf(BT, t) === kind; } }
           : new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
         days: isNaN(days) ? null : days, cal: !!fromCal[id],
       };

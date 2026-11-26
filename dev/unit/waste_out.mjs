@@ -118,6 +118,23 @@ listeners.click[0]({ type: 'click', composedPath: () => [sw, box], preventDefaul
 await tick();
 assert.equal(hidden(), false, 'popup switch off: tile back');
 
+// ── a custom Bin type icon survives the redraw on a tap ──
+{
+  const keepUI = window._casoraUI;
+  window._casoraUI = { group: (rows) => rows.map((r) => r.icon).join(',') };
+  const Wi = { days: 0, duty: null, next: { label: 'Restmüll', color: '#888', icon: 'mdi:leaf' }, bins: [] };
+  const h = O.rowHtml(hass, Wi);
+  const data = /data-casora-wasteout-w="([^"]*)"/.exec(h)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  const bx = { nodeType: 1, innerHTML: '', classList: { contains: () => false }, hasAttribute: (a) => a === 'data-casora-wasteout-box', getAttribute: () => data };
+  listeners.click[0]({ type: 'click', composedPath: () => [sw, bx], preventDefault() {}, stopPropagation() {} });
+  await tick();
+  assert.equal(bx.innerHTML, 'mdi:check');
+  listeners.click[0]({ type: 'click', composedPath: () => [sw, bx], preventDefault() {}, stopPropagation() {} });
+  await tick();
+  assert.equal(bx.innerHTML, 'mdi:leaf', 'off again: the Bin type icon, not the default');
+  window._casoraUI = keepUI;
+}
+
 // ── template: the popup places the row before the bins, the module is loaded ──
 const content = TPL.tap_action.casora_popup.content;
 assert.match(content, /WO\.rowHtml\(hass, W\)/);
