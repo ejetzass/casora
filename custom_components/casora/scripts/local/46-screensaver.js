@@ -1462,7 +1462,8 @@
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
       var fr = v ? S.routeFrame(v) : null;
       // Globe on and its files loaded: the disc in the map box instead of the flat map (and no HA map over it).
-      var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(v) : '';
+      // While the aircraft's position glides (ctx.globeTrack, kept by the mount), the disc is drawn at the glided position.
+      var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(ctx.globeTrack && S.globeReady() ? S.globeStep(ctx.globeTrack, v, r.src + '|' + r.key) : v) : '';
       if (globeHtml) { ctx.globeDrawn = true; fr = null; }
       bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
         + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
@@ -1547,6 +1548,25 @@
   var globePlane = function (proj, v) {
     var xy = proj([v.cur[1], v.cur[0]]), hd = Number(v.heading) || 0;
     return '<g class="cs-gl-plane" transform="translate(' + esc(+xy[0].toFixed(2)) + ' ' + esc(+xy[1].toFixed(2)) + ') rotate(' + esc(hd) + ')"><path d="M0 -26 L18 20 L0 8 L-18 20 Z"/></g>';
+  };
+  var reducedMotion = function () {
+    try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  };
+  // The globe's glide: the popup arrow's rules (49-flights.js F.track: the time measured between the last two updates, one poll
+  // behind, never ahead, a jump on a long gap or an impossible step, with reduced motion and for another flight), but the
+  // centre moves along the great circle. gt = {state, now}: F.track's state and the time; gt.out gets {state, base, gliding}
+  // (base: what a frame needs to redraw). Returns the view to draw: the aircraft, and with it the centre, at its drawn position.
+  S.globeStep = function (gt, v, ident) {
+    var F = FL(), r = F && v ? F.track(gt.state, v, ident, gt.now, reducedMotion()) : null;
+    if (!r) return v;
+    var view = r.view, g = r.state && r.state.glide;
+    if (r.gliding && g && globe.data) {
+      var t = Math.max(0, Math.min(1, (gt.now - g.start) / g.dur)), to = g.to.cur;
+      var at = globe.data.d3.geoInterpolate([g.from.cur[1], g.from.cur[0]], [to[1], to[0]])(t);
+      view = F.mapViewAt(v, [at[1], to[1] + ((at[0] - to[1] + 540) % 360 + 360) % 360 - 180], r.view.heading); // longitude continuous with the new fix
+    }
+    gt.out = { state: r.state, base: { v: v, ident: ident }, gliding: r.gliding };
+    return view;
   };
   S.globeSvg = function (v) {
     var proj = S.globeProjection(v);
@@ -1695,6 +1715,25 @@
     }
     globe.failed = false; // a new screensaver start: a failed load of the globe files is tried again
     var api = { kind: '' }, shown = false, gone = false;
+    // The globe's glide: F.track's state, what a frame draws from, and the waiting animation frame (only while a glide runs).
+    var gl = { state: null, base: null, raf: 0 };
+    var stopFrames = function () {
+      if (gl.raf && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(gl.raf);
+      gl.raf = 0;
+    };
+    var nextFrame = function () {
+      if (gl.raf || typeof window.requestAnimationFrame !== 'function') return;
+      gl.raf = window.requestAnimationFrame(function () {
+        gl.raf = 0;
+        var box = !gone && host.isConnected !== false && gl.base && host.querySelector ? host.querySelector('.cs-fl-globe') : null;
+        if (!box) { gl.state = null; return; }
+        var gt = { state: gl.state, now: Date.now() }, view = S.globeStep(gt, gl.base.v, gl.base.ident);
+        gl.state = gt.out.state;
+        box.innerHTML = S.globeSvg(view); // only the globe's picture; the page around it stays
+        last = ''; // the picture is no longer the last html: the next redraw writes it whole
+        if (gt.out.gliding) nextFrame();
+      });
+    };
     var update = function () {
       // A box that was in the page and left it (the Studio draws its page again and never calls destroy): stop, or
       // every redraw would leave a timer and a repaint listener behind.
@@ -1730,7 +1769,9 @@
       if (o.sample) ctx = S.sample(ctx);
       // Globe on and a flight on show: the files are asked for now (once); the redraw after they arrive draws the globe.
       if (k === 'flights' && ctx.flights && ctx.flights.length && S.globeOn(ctx.vars) && !S.globeReady()) S.globeLoad().then(function (ok) { if (ok) update(); });
-      var html = S.html(k, ctx);
+      if (!o.sample) ctx.globeTrack = { state: gl.state, now: Date.now() };
+      var html = S.html(k, ctx), out = ctx.globeTrack && ctx.globeTrack.out;
+      if (out) { gl.state = out.state; gl.base = out.base; if (out.gliding) nextFrame(); else stopFrames(); } else { gl.state = gl.base = null; stopFrames(); }
       api.kind = k;
       if (html !== last) { var kept = S.mountKeepingMap(host, last, html); last = html; if (!kept) host.innerHTML = html; }
       // Wander a few pixels so nothing burns in (not in a preview). o.drift: true, or a function asked every time
@@ -1757,6 +1798,7 @@
       if (gone) return;
       gone = true;
       clearInterval(timer);
+      stopFrames();
       var i = listeners.indexOf(update);
       if (i > -1) listeners.splice(i, 1);
       host.innerHTML = '';
