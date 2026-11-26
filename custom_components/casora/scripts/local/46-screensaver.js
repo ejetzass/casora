@@ -858,8 +858,8 @@
     + '.cs-sv .cs-ke i{flex:none;width:' + u(10) + ';height:' + u(10) + ';border-radius:50%;background:var(--cs-c);}'
     // Flights: the route picture between the head and the figures; the details as two columns of rows.
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
-    + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
-    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';border-radius:' + u(28) + ';pointer-events:none;}'
+    + '.cs-sv .cs-fl-map,.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
+    + '.cs-sv .cs-fl-live{border-radius:' + u(28) + ';pointer-events:none;}'
     + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
     + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
     + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
@@ -1454,24 +1454,27 @@
     var mapHtml = !detail && v ? S.liveMap(r) : '';
     return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
   };
+  // Named so for the escape check (tools/html-escape-check.mjs reads names ending in Html as markup): the map element at the end of a scene.
+  var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
+  var openTagOf = function (html) { return html.slice(0, html.indexOf('>') + 1); };
   // The HA map over the drawn picture (the popup's casora-flight-map, 49-flights.js): it draws the route, the trail, the
   // airports and the aircraft as map layers from the same view. Until it is ready, and when it fails, the drawn picture
-  // shows through. Always the last child of the scene: mount keeps this element across redraws (S.mountKeep). No attribute
+  // shows through. Always the last child of the scene: mountKeepingMap keeps this element across redraws. No attribute
   // that loads anything; the map takes its tiles from Home Assistant's own map.
-  var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
   S.liveMap = function (r) {
     if (!window.customElements || !window.customElements.get('casora-flight-map')) return '';
     return '<casora-flight-map class="cs-fl-live" data-saver aria-hidden="true" data-src="' + esc(r.src) + '" data-key="' + esc(r.key) + '"></casora-flight-map>';
   };
-  // Redraw without touching the map element: only when the scene's own tag and the map element are the same as before.
-  // Everything before the map element is replaced; the map element (and so its ha-map, its tiles and its timer) stays.
-  S.mountKeep = function (host, last, html) {
-    var a = MAP_TAG.exec(last || ''), b = MAP_TAG.exec(html), scene = host.firstElementChild, el = host.querySelector && host.querySelector('casora-flight-map');
-    var open = html.slice(0, html.indexOf('>') + 1);
-    if (!a || !b || a[0] !== b[0] || open !== (last || '').slice(0, (last || '').indexOf('>') + 1) || !scene || !el || el.parentNode !== scene) return false;
-    while (el.previousSibling) scene.removeChild(el.previousSibling);
-    var innerHtml = html.slice(open.length, html.length - b[0].length);
-    el.insertAdjacentHTML('beforebegin', innerHtml);
+  // Redraws the scene without touching the map element. Only when the scene's opening tag (its classes) and the map element
+  // are the same as before; a change of the tag (say cs-dark to cs-light) or of the flight rebuilds the element, by design.
+  // Everything before the map element is replaced; the element (so its ha-map, tiles and timer) stays. False: not done.
+  S.mountKeepingMap = function (host, lastHtml, newHtml) {
+    var oldMap = MAP_TAG.exec(lastHtml || ''), newMap = MAP_TAG.exec(newHtml), scene = host.firstElementChild;
+    var mapEl = host.querySelector && host.querySelector('casora-flight-map');
+    if (!oldMap || !newMap || oldMap[0] !== newMap[0] || openTagOf(newHtml) !== openTagOf(lastHtml) || !scene || !mapEl || mapEl.parentNode !== scene) return false;
+    while (mapEl.previousSibling) scene.removeChild(mapEl.previousSibling);
+    var contentHtml = newHtml.slice(openTagOf(newHtml).length, newHtml.length - newMap[0].length);
+    mapEl.insertAdjacentHTML('beforebegin', contentHtml);
     return true;
   };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
@@ -1619,7 +1622,7 @@
       if (o.sample) ctx = S.sample(ctx);
       var html = S.html(k, ctx);
       api.kind = k;
-      if (html !== last) { var kept = S.mountKeep(host, last, html); last = html; if (!kept) host.innerHTML = html; }
+      if (html !== last) { var kept = S.mountKeepingMap(host, last, html); last = html; if (!kept) host.innerHTML = html; }
       // Wander a few pixels so nothing burns in (not in a preview). o.drift: true, or a function asked every time
       // (the Studio switch). A call that sees a new minute (the one that changes the digits) keeps the step it had,
       // also when a throttled timer skipped the step's own moment: the step then follows with the next call.
