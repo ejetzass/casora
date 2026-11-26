@@ -128,7 +128,7 @@ const need = (keys) => keys.forEach((k) => assert.ok(de[k], 'de.json: ' + k));
   assert.ok(/:host\(\.bmode\.phone\) \.bclose::before \{[^}]*width:44px; height:44px/.test(read('panel/casora-panel-b.js')), '18a: ✕ 44 px am Handy');
   const pers = read('panel/casora-panel-personal.js');
   assert.ok(/:host\(\.phone\) \.casora-tog::before\{[^}]*height:44px/.test(pers), '18a: Kalender-Schalter 44 px am Handy');
-  assert.ok(/\]\)\.classList\.add\("casora-calrow"\);|\], i \? undefined : "[^"]+"\)\.classList\.add\("casora-calrow"\);/.test(pers) && /\.casora-calrow \.casora-pctl>\.casora-x\{margin-left:auto\}/.test(pers),
+  assert.ok(/\]\)\.classList\.add\("casora-calrow"\);|\], i \? undefined : "[^"]+"\)\.classList\.add\("casora-calrow"\);|\], i \? undefined : "[^"]+"\);\s*calRow\.classList\.add\("casora-calrow"\);/.test(pers) && /\.casora-calrow \.casora-pctl>\.casora-x\{margin-left:auto\}/.test(pers),
     '18b: ✕ rechts in der Kalenderzeile');
   assert.ok(/\.cs-bar\.cs-clean\{[^}]*min-height:0;height:0;margin:0;/.test(read('panel/casora-panel-settings.js')), '18c: ohne Änderungen kein leerer Streifen');
   const time = main.slice(main.indexOf('label: "Time", icon: "clock"'), at);

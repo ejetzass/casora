@@ -1585,6 +1585,7 @@
     "Calendar": "Calendrier",
     "On tile": "Sur la tuile",
     "Add calendar": "Ajouter un calendrier",
+    "Waste calendar: the greeting line skips it.": "Calendrier des déchets : le message d’accueil l’ignore.",
     "Bin types": "Types de bacs",
     "Words in the pickup title, then name, color and icon.": "Mots du titre de la collecte, puis nom, couleur et icône.",
     "Words, comma-separated": "Mots, séparés par des virgules",
