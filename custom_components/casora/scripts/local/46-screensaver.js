@@ -1512,10 +1512,12 @@
   // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the map box, as large as the
   // box allows). Orthographic, the aircraft's position in the middle, north up (no roll). Null until the files are loaded.
   var GLOBE_SIZE = 1000, GLOBE_AP_R = 9;
+  // [lat, lon] (the view's order) to [lon, lat] (d3's).
+  var lonLat = function (cur) { return [cur[1], cur[0]]; };
   var GLOBE_FRAME_MS = 100; // the glide redraws at most this often
   S.globeProjection = function (v) {
     if (!globe.data || !v || !v.cur) return null;
-    return globe.data.d3.geoOrthographic().rotate([-v.cur[1], -v.cur[0]]).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
+    return globe.data.d3.geoOrthographic().rotate(lonLat(v.cur).map(function (x) { return -x; })).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
   };
   // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] like the flat map's points.
   // The flight's layers, bottom to top: Unreported part, Remaining route, Flown trail. The lines are GeoJSON from the flights module
@@ -1536,7 +1538,7 @@
   // Airports on the visible side only: a dot and the code above it. One behind the horizon (more than 90 degrees from the aircraft,
   // the disc's centre) has neither.
   var globeAirports = function (points, proj, v) {
-    var d3 = globe.data.d3, here = [v.cur[1], v.cur[0]], out = '';
+    var d3 = globe.data.d3, here = lonLat(v.cur), out = '';
     points.features.forEach(function (f) {
       if (f.properties.role !== 'airport' || d3.geoDistance(here, f.geometry.coordinates) >= Math.PI / 2) return;
       var xy = proj(f.geometry.coordinates), x = esc(xy[0].toFixed(2)), y = xy[1];
@@ -1547,7 +1549,7 @@
   };
   // The aircraft: the globe is centered on it, so it is always in the middle; north is up, so the heading turns it as it is.
   var globePlane = function (proj, v) {
-    var xy = proj([v.cur[1], v.cur[0]]), hd = Number(v.heading) || 0;
+    var xy = proj(lonLat(v.cur)), hd = Number(v.heading) || 0;
     return '<g class="cs-gl-plane" transform="translate(' + esc(+xy[0].toFixed(2)) + ' ' + esc(+xy[1].toFixed(2)) + ') rotate(' + esc(hd) + ')"><path d="M0 -26 L18 20 L0 8 L-18 20 Z"/></g>';
   };
   var reducedMotion = function () {
@@ -1562,9 +1564,8 @@
     if (!r) return v;
     var view = r.view, g = r.state && r.state.glide;
     if (r.gliding && g && globe.data) {
-      var t = Math.max(0, Math.min(1, (gt.now - g.start) / g.dur)), to = g.to.cur;
-      var at = globe.data.d3.geoInterpolate([g.from.cur[1], g.from.cur[0]], [to[1], to[0]])(t);
-      view = F.mapViewAt(v, [at[1], to[1] + ((at[0] - to[1] + 540) % 360 + 360) % 360 - 180], r.view.heading); // longitude continuous with the new fix
+      var to = g.to.cur, at = globe.data.d3.geoInterpolate(lonLat(g.from.cur), lonLat(to))(F.glideT(g, gt.now));
+      view = F.mapViewAt(v, [at[1], F.lonNear(to[1], at[0])], r.view.heading); // longitude continuous with the new fix
     }
     gt.out = { state: r.state, base: { v: v, ident: ident }, gliding: r.gliding };
     return view;
@@ -1717,23 +1718,23 @@
     globe.failed = false; // a new screensaver start: a failed load of the globe files is tried again
     var api = { kind: '' }, shown = false, gone = false;
     // The globe's glide: F.track's state, what a frame draws from, and the waiting animation frame (only while a glide runs).
-    var gl = { state: null, base: null, raf: 0 };
+    var glide = { state: null, base: null, raf: 0 };
     var stopFrames = function () {
-      if (gl.raf && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(gl.raf);
-      gl.raf = 0;
+      if (glide.raf && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(glide.raf);
+      glide.raf = 0;
     };
     // At most 10 pictures a second: the globe moves well under a pixel per frame (500 units = 6371 km), and every picture
     // projects the land again. A frame closer than FRAME_MS to the last drawn one only asks for the next frame.
     var drawnAt = 0;
     var nextFrame = function () {
-      if (gl.raf || typeof window.requestAnimationFrame !== 'function') return;
-      gl.raf = window.requestAnimationFrame(function () {
-        gl.raf = 0;
+      if (glide.raf || typeof window.requestAnimationFrame !== 'function') return;
+      glide.raf = window.requestAnimationFrame(function () {
+        glide.raf = 0;
         if (Date.now() - drawnAt < GLOBE_FRAME_MS) { nextFrame(); return; }
-        var box = !gone && host.isConnected !== false && gl.base && host.querySelector ? host.querySelector('.cs-fl-globe') : null;
-        if (!box) { gl.state = null; return; }
-        var gt = { state: gl.state, now: Date.now() }, view = S.globeStep(gt, gl.base.v, gl.base.ident);
-        gl.state = gt.out.state;
+        var box = !gone && host.isConnected !== false && glide.base && host.querySelector ? host.querySelector('.cs-fl-globe') : null;
+        if (!box) { glide.state = null; return; }
+        var gt = { state: glide.state, now: Date.now() }, view = S.globeStep(gt, glide.base.v, glide.base.ident);
+        glide.state = gt.out.state;
         box.innerHTML = S.globeSvg(view); // only the globe's picture; the page around it stays
         drawnAt = gt.now;
         last = ''; // the picture is no longer the last html: the next redraw writes it whole (only a drawn frame changes the page)
@@ -1775,9 +1776,9 @@
       if (o.sample) ctx = S.sample(ctx);
       // Globe on and a flight on show: the files are asked for now (once); the redraw after they arrive draws the globe.
       if (k === 'flights' && ctx.flights && ctx.flights.length && S.globeOn(ctx.vars) && !S.globeReady()) S.globeLoad().then(function (ok) { if (ok) update(); });
-      if (!o.sample) ctx.globeTrack = { state: gl.state, now: Date.now() };
+      if (!o.sample) ctx.globeTrack = { state: glide.state, now: Date.now() };
       var html = S.html(k, ctx), out = ctx.globeTrack && ctx.globeTrack.out;
-      if (out) { gl.state = out.state; gl.base = out.base; if (out.gliding) nextFrame(); else stopFrames(); } else { gl.state = gl.base = null; stopFrames(); }
+      if (out) { glide.state = out.state; glide.base = out.base; if (out.gliding) nextFrame(); else stopFrames(); } else { glide.state = glide.base = null; stopFrames(); }
       api.kind = k;
       if (html !== last) { var kept = S.mountKeepingMap(host, last, html); last = html; if (!kept) host.innerHTML = html; }
       // Wander a few pixels so nothing burns in (not in a preview). o.drift: true, or a function asked every time
