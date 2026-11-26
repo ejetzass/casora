@@ -11,15 +11,20 @@ const read = (p) => fs.readFileSync(new URL('../../' + p, import.meta.url), 'utf
 const timers = new Map();
 let nextId = 1;
 const doc = { getElementById: () => ({}), querySelector: () => null, head: { appendChild() {} }, createElement: () => ({ style: {} }) };
-const win = { matchMedia: () => ({ matches: false }) };
+const win = { matchMedia: () => ({ matches: false }), customElements: { get: (n) => (n === 'casora-flight-map' ? class {} : undefined) } };
 const box = {
-  window: win, document: doc, console, Intl, Date, Math, parseFloat, isFinite, isNaN, parseInt, String, Number, JSON, Object, Array,
+  window: win, document: doc, customElements: win.customElements, console, Intl, Date, Math, parseFloat, isFinite, isNaN, parseInt, String, Number, JSON, Object, Array,
   setInterval: (fn) => { const id = nextId++; timers.set(id, fn); return id; },
   clearInterval: (id) => { timers.delete(id); },
   location: { search: '?casora_saver=0', pathname: '/' },
 };
 vm.createContext(box);
 vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js'), box);
+// A stand-in for the Flights rule (49-flights.js): one flight with a view, so the saver draws its map layout with the map element.
+win._casoraFlights = {
+  mapView: () => ({ key: 'k1', label: 'XY1', cur: [50.2, 10.1], heading: 90, origin: [50, 4], destination: [52, 20], trail: [[50, 4], [50.1, 5]], progress: 40 }),
+  details: () => ({}), times: () => ({ arr: [] }), timeRows: () => [],
+};
 const S = win._casoraSaver;
 const host = () => ({ isConnected: true, innerHTML: '', firstElementChild: null, getRootNode() { return doc; } });
 // Repaint listeners are seen through the data path: a forecast that arrives calls every listener once.
@@ -63,4 +68,19 @@ d.isConnected = false;
 for (const fn of [...timers.values()]) fn();
 assert.equal(timers.size, 0, 'shown, then removed: stops');
 dl.destroy();
+
+// The Flights map layout holds a map element (a timer and an ha-map of its own): it goes with the saver. Redraws leave
+// nothing behind, and destroy empties the box (which takes the element out of the page) and stops the saver's own timer.
+const fh = host();
+const flightCtx = () => ({ now: new Date('2026-11-14T10:00:00'), vars: {}, hass: {}, flights: [{ src: 'sensor.x', key: 'k1', entry: {}, label: 'XY1', route: '' }] });
+const fl = S.mount(fh, 'flights', { context: flightCtx });
+assert.match(fh.innerHTML, /<casora-flight-map\b/, 'the flights map layout has the map element');
+const tm = timers.size;
+assert.equal(tm, 1, 'the saver has one timer; the map element brings its own (not this saver\'s)');
+fl.update(); fl.update();
+assert.equal(timers.size, 1, 'redraws add no timer');
+fl.destroy();
+assert.equal(fh.innerHTML, '', 'destroy empties the box: the map element is out of the page');
+assert.equal(timers.size, 0, 'and the timer is gone');
+assert.equal(listeners(), before, 'and the listener');
 console.log('screensaver_mount_leak: ok');
