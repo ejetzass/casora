@@ -33,7 +33,7 @@ const CORPUS = ['Biotonne', 'Biomüll', 'GFT', 'Groente-, fruit- en tuinafval', 
   'Oud papier en karton', 'Karton', 'Kartonagen', 'Altkarton', 'Cardboard', 'Paper', 'Pappe', 'Drankkarton', 'Plastic, metaal en drankenkartons', 'PMD', 'PBD',
   'Gelber Sack', 'Gelbe Tonne', 'Wertstoff', 'Wertstofftonne', 'Verpackung', 'Verpakkingen', 'Plastik', 'Recyclinghof', 'Glas', 'Altglas', 'Glass', 'Glasverpackung',
   'Sperrmüll', 'Sperrmuell', 'Grofvuil', 'Grof afval', 'Bulky waste', 'Schadstoffmobil', 'Problemstoffe', 'Sondermüll', 'Giftmüll', 'Chemisch afval', 'Hazard',
-  'Restmüll', 'Restafval', 'Huisvuil', 'General waste', 'Hausmüll', 'Black bin', 'Residual waste', 'Restmüll 240 l'];
+  'Restmüll', 'Restafval', 'Huisvuil', 'General waste', 'Hausmüll', 'Black bin', 'Residual waste', 'Restmüll 240 l', 'Bio- und Restmüll', 'Papier und Restmüll'];
 const SOFT = (k) => 'var(--casora-waste-' + k + ',';
 window._casoraSoft = () => true;
 setBins();
@@ -51,7 +51,7 @@ let b = bins('Restmüll', 'Biotonne').find((x) => x.label === 'Restmüll');
 assert.equal(b.label, 'Restmüll'); assert.equal(b.color, '#8E8E93'); assert.equal(b.icon, 'mdi:trash-can-outline');
 assert.equal(window.casoraDevice.waste(hass, { trash_calendar: CAL }).next.icon, 'mdi:trash-can-outline');
 assert.equal(bins('Papier/Karton')[0].color, '#0A84FF');
-assert.equal(bins('Plastic, metaal en drankenkartons')[0].color, '#FFCC00', 'drankenkartons is no paper (longest word wins)');
+assert.equal(bins('Plastic, metaal en drankenkartons')[0].color, '#FFCC00', 'drankenkartons is no paper (a word inside a longer word of another entry is ignored)');
 assert.equal(bins('Sperrmüll')[0].color, '#FF9F0A', 'bulky keeps the orange');
 
 // 3. Ready-made list: an event with no Bin type stays a bin as before (orange, colour word) for old setups;

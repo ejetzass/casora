@@ -495,8 +495,8 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
   // Bin types (stored list, personal settings key bin_types = { list: [{ key?, words, name?, color?, icon? }] }).
   // Absent: the ready-made list below. A stored list replaces it (an empty one too) and is read as it is; an entry
   // with a ready-made key fills in the words, colour and icon it leaves out. Words are plain text, matched
-  // case-insensitive inside the title; the LONGEST matched word wins, a tie goes to the list order. So "drankkarton"
-  // (yellow) beats "karton" (paper): the drink cartons of PMD are packaging, not paper (#218).
+  // case-insensitive inside the title; the first entry in list order wins, except that a word inside a longer word
+  // of another entry is ignored. So "drankkarton" (yellow) beats "karton" (paper): the drink cartons of PMD are packaging, not paper (#218).
   // In the Soft look a ready-made colour comes from --casora-waste-<key> (theme_weich.yaml, 05.10.2026), as in the
   // popup; residual waste is opaque instead of half transparent. Hazardous waste has its own colour (red) only in
   // the Soft look; otherwise nothing changes (no colour = orange, sensor bins match their events by name).
@@ -525,9 +525,15 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     }).filter(function (t) { return t.words.length; });
   }
   function binTypeOf(list, text) {
-    var t = String(text).toLowerCase(), best = null, len = 0;
-    list.forEach(function (k) { k.words.forEach(function (w) { if (w.length > len && t.indexOf(w) > -1) { best = k; len = w.length; } }); });
-    return best;
+    var t = String(text).toLowerCase(), hits = [];
+    list.forEach(function (k) {
+      k.words.forEach(function (w) { for (var i = t.indexOf(w); i > -1; i = t.indexOf(w, i + 1)) hits.push({ k: k, a: i, z: i + w.length }); });
+    });
+    // List order wins; a hit lying inside a longer hit of another entry does not count.
+    var alive = hits.filter(function (h) {
+      return !hits.some(function (o) { return o.k !== h.k && o.a <= h.a && o.z >= h.z && o.z - o.a > h.z - h.a; });
+    });
+    return list.filter(function (k) { return alive.some(function (h) { return h.k === k; }); })[0] || null;
   }
   var WASTE_WORDS = [
     [/gr(ü|ue)n|green/i, '#30D158'], [/blau|blue/i, '#0A84FF'], [/braun|brown/i, '#8F7E6D'],
