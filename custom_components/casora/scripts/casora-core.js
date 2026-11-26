@@ -9706,6 +9706,7 @@ window.casoraMenuGlass = {
       // Focus back to where it was before the popup opened (its tile), if it is still in the popup or nowhere.
       var back = this._focusBack, now = deepFocus();
       this._focusBack = null;
+      this._focusRound = (this._focusRound || 0) + 1; // late focus-in retries of this opening stop here
       if ((!now || now === document.body || now === document.documentElement || this._owns(now)) && back && back.length) focusBack(back);
 
       this.removeAttribute('shown');
