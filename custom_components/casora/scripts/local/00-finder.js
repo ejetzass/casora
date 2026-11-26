@@ -539,6 +539,11 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     });
     return list.filter(function (k) { return alive.some(function (h) { return h.k === k; }); })[0] || null;
   }
+  // Content check for a Waste calendar: 3+ event titles and more than half match a Bin type's words (effective list).
+  window.casoraWasteContent = function (titles) {
+    var BT = binTypes(), n = titles ? titles.length : 0;
+    return n >= 3 && titles.filter(function (t) { return binTypeOf(BT, t || ''); }).length * 2 > n;
+  };
   var WASTE_WORDS = [
     [/gr(ü|ue)n|green/i, '#30D158'], [/blau|blue/i, '#0A84FF'], [/braun|brown/i, '#8F7E6D'],
     [/schwarz|grau|black|gr[ae]y/i, '#8E8E93'], [/rot\b|rote|red/i, '#FF453A'],
@@ -1671,6 +1676,11 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     return id === wasteCal || !!(e && e.platform === 'waste_collection_schedule')
       || /^waste collection schedule/i.test(((st && st.attributes) || {}).friendly_name || '');
   }
+  // A Waste calendar for the greeting line: Settings/WCS rule (isWasteCalendar) or detected by content (06-kalender.js
+  // keeps the verdict per calendar in window._casoraWasteCals). Detection alone never touches waste() or the tile list.
+  window.casoraWasteCalendar = function (hass, id, wasteCal) {
+    return isWasteCalendar(hass, id, wasteCal) || !!(window._casoraWasteCals && window._casoraWasteCals[id]);
+  };
   function calNorm(list) {
     var hit = calNormMemo && calNormMemo.get(list);
     if (hit) return hit;
@@ -1737,6 +1747,8 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     // The calendars that count, as on the calendar tile and the screensaver (V26, casoraCalendars); one shown only in
     // the popup (tile: false) is no appointment.
     var cals = window.casoraCalendars ? window.casoraCalendars(hass, null) : [];
+    // No calendar tile has to fetch for this line: the verdict scan (5-minute cache per calendar) judges the Waste calendars.
+    if (window.casoraWasteScan && cals.length) window.casoraWasteScan(hass, cals.map(function (c) { return c.entity; }));
     var calRule = window._casoraCalendar;
     if (calRule && calRule.next && cals.length) {
       // The shared cache pick of the calendar tile (06-kalender.js), so the greeting names the same appointment.
@@ -1748,6 +1760,7 @@ window.casoraIsPlant = window.casoraIsPlant || function (hass, id) {
     } else cals.forEach(function (c) {
       var id = c.entity;
       if (c.tile === false || !S[id]) return;
+      if (window._casoraWasteCals && window._casoraWasteCals[id]) return;
       if (bins.length && isWasteCalendar(hass, id, W && W.calendar)) return;
       var a = S[id].attributes || {};
       if (!a.message || !a.start_time) return;
