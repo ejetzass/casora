@@ -29,6 +29,17 @@ for (const lang of Object.keys(LABEL)) {
   assert.ok(!/aria-hidden/.test(svg[0]), lang + ': the globe is not hidden from a screen reader');
 }
 
+// The flat map is decoration: hidden from a screen reader, and it does not carry the globe's label.
+{
+  const R = page(globeFiles());
+  R.vars = { casora_flights_map: 'flat' };
+  R.start(); await settle(); R.api.update();
+  const flat = R.host.innerHTML.match(/<svg class="cs-fl-svg"[^>]*>/);
+  assert.ok(flat, 'the flat map is drawn');
+  assert.match(flat[0], /aria-hidden="true"/, 'the flat map is hidden from a screen reader');
+  assert.ok(!/aria-label|role="img"/.test(flat[0]), 'the flat map has no globe label, got ' + flat[0]);
+}
+
 // No touch, no drag: the disc and its box let pointer input through, and the markup has no handler.
 {
   const R = await show('en');
