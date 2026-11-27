@@ -3,7 +3,7 @@
 // either sign), HA daylight saving, the optional timezone suffix, and that the browser's timezone never changes the text.
 // Controlled clock; synthetic flights; no real timezone mapping is needed beyond what Intl gives for a zone name.
 //   node dev/unit/flights_times.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#times,moment,tz,flightSec,timePlates,pairs,listRows,rowHtml,sec,flightPopup,setting,pinned
+// @deckt: custom_components/casora/scripts/local/49-flights.js#times,moment,estimateOf,tz,flightSec,timePlates,pairs,listRows,rowHtml,sec,flightPopup,setting,pinned
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -86,8 +86,8 @@ runtime();
   // Missing airport city: the IATA code stands in; with neither, the airport zone name stands there.
   e = est(h, fl('c3', { airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
   assert.equal(e.text, '13:35\u00a0BBB\u00a0\u00b7 17:35\u00a0Amsterdam', 'no airport city: the IATA code is the city');
-  e = est(h, fl('c4', { airport_destination_code_iata: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
   const nocity = { airport_destination_code_iata: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) };
+  e = est(h, fl('c4', nocity));
   assert.equal(e.text, '13:35\u00a0EST\u00a0\u00b7 17:35\u00a0Amsterdam', 'no city and no code: the airport zone abbreviation follows the airport time');
   assert.equal(e.air, '13:35\u00a0EST', 'no city and no code: entry.air carries the abbreviation (the popup value)');
   e = est(h, fl('c4b', { ...nocity, airport_destination_timezone_abbr: undefined }));

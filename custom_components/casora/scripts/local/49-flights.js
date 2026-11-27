@@ -46,7 +46,8 @@
 //   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
 //   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
 //   window._casoraFlights.times(hass, entry, tzOn) → {dep, arr}: [{kind: scheduled|real|estimated, text, air, home}]: the airport time
-//     leads (air), the home time (home, '' when its UTC offset equals the airport's); text = air + ' · ' + home, or air alone
+//     leads (air), the home time (home, '' when its UTC offset equals the airport's); text = air + ' · ' + home, or air alone;
+//     with two times, an airport with no city and no IATA code shows its zone name (abbr, else UTC±h) after its time
 //   window._casoraFlights.tz() → the saved "Show timezones" switch (off unless set; in the Studio the draft)
 (function () {
   if (window._casoraFlights) return;
@@ -928,14 +929,14 @@
     // With the airport time, the two dates are compared. A local-only time is compared with the other end's local day (ref).
     var dates = air && home ? air.day !== home.day : !!(home && ref && home.day !== ref);
     if (arrival && ref) dates = dates || !!((air && air.day !== ref) || (home && home.day !== ref));
-    // named: the zone name already stands where the city would (an airport with no city and no IATA code).
-    var line = function (p, city, named) {
-      return nb(p.clock + (dates ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && !named ? ' ' + p.name : ''));
+    // The zone name is not repeated when it already stands as the city (an airport with no city and no IATA code).
+    var line = function (p, city) {
+      return nb(p.clock + (dates ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && p.name !== city ? ' ' + p.name : ''));
     };
     if (air && home && zoneOffset(ms, zone) === off) return { air: line(home), home: '' };
     if (air && home) {
       var city = airCity(f, side);
-      return { air: city ? line(air, city) : line(air, air.name, true), home: line(home, homeCity(zone)) };
+      return { air: line(air, city || air.name), home: line(home, homeCity(zone)) };
     }
     if (air) return { air: line(air), home: '' };
     if (home) return { air: line(home), home: '' };
