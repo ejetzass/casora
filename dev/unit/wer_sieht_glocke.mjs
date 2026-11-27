@@ -50,6 +50,10 @@ const openTarget = core.match(/function openTarget\(what, fallbackEntity\) \{[\s
 assert.ok(openTarget, 'openTarget fehlt');
 assert.match(openTarget[0], /userGuard\(chosenCam,/, 'Doorbell-Pfad über userGuard');
 assert.match(openTarget[0], /userGuard\(fallbackEntity,/, 'Rückfall-Pfad über userGuard');
+// The detection row's info-dialog fallback (no popup for the trigger) asks the guard too (#527).
+const detectionBranch = openTarget[0].match(/if \(what === DETECTION_OPENS\) \{[\s\S]*?\n    \}\n/);
+assert.ok(detectionBranch, 'DETECTION_OPENS branch missing');
+assert.match(detectionBranch[0], /userGuard\(fallbackEntity, function \(\) \{[^}]*moreInfo\(fallbackEntity\)/, 'Detection fallback via userGuard');
 const basis = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/01-basis.js', import.meta.url), 'utf8');
 assert.ok(basis.includes('if (!checked && window.casoraUserGuard)') && basis.includes('function () { done(true); }'), 'openViaCard über casoraUserGuard');
 const en = JSON.parse(fs.readFileSync(new URL('../../custom_components/casora/translations/dashboard/phrases/en.json', import.meta.url), 'utf8'));
