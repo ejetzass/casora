@@ -45,9 +45,10 @@
 //   window._casoraFlights.MAP → map timing: READY_MS, TICK_MS
 //   window._casoraFlights.units() → saved units {altitude, speed, vspeed} ('' = source unit; in the Studio the draft)
 //   window._casoraFlights.fmt.altitude(v, unit) / .speed(v, unit) / .vspeed(v, unit) / .heading(v) → shared formatting ('' when not finite)
-//   window._casoraFlights.times(hass, entry, tzOn) → {dep, arr}: [{kind: scheduled|real|estimated, text, air, home}]: the airport time
+//   window._casoraFlights.times(hass, entry, tzOn, now) → {dep, arr, depDate, arrDate}: [{kind: scheduled|real|estimated, text, air, home}]: the airport time
 //     leads (air), the home time (home, '' when its UTC offset equals the airport's); text = air + ' · ' + home, or air alone;
-//     with two times, an airport with no city and no IATA code shows its zone name (abbr, else UTC±h) after its time
+//     with two times, an airport with no city and no IATA code shows its zone name (abbr, else UTC±h) after its time;
+//     depDate/arrDate = the side's short local date ('' when it is today at home; now defaults to Date.now())
 //   window._casoraFlights.tz() → the saved "Show timezones" switch (off unless set; in the Studio the draft)
 (function () {
   if (window._casoraFlights) return;
@@ -694,7 +695,7 @@
   F.listRows = function (hass, c) {
     var UI = window._casoraUI;
     if (!UI || !hass) return '';
-    var rows = F.airborne(hass, c && c.pin, (c && c.now) || Date.now());
+    var now = (c && c.now) || Date.now(), rows = F.airborne(hass, c && c.pin, now);
     // Nothing left in the air: the list does not stay open as an empty shell. One flight keeps its row.
     if (!rows.length) { closeListPopup(); return UI.empty({ icon: 'mdi:airplane-off', text: T_EMPTY }); }
     // Long text (a route) wraps inside the card: the row may not be wider than the card, and nothing is nowrap.
@@ -703,7 +704,7 @@
     return '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
       + '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
       + rows.map(function (r, i) {
-        return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '') + rowHtml(hass, r, rowStyle);
+        return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '') + rowHtml(hass, r, rowStyle, now);
       }).join('') + '</div>';
   };
   F.listPopup = function (states, hass, vars) {
@@ -865,8 +866,9 @@
   // hass.config.time_zone through Intl; without a usable HA zone no home time is shown, and the browser's zone is never used.
   // The home time shows only when its UTC offset at that instant differs from the airport's. One time carries no city and no
   // zone word; two times carry their city (the airport's city, else its IATA code, else nothing; the home city from HA's zone
-  // ID, or the ID itself when it has no city part). Dates appear when the two zone dates of one time differ, and on an
-  // arrival also when its day differs from the departure's home day. The zone name (optional) follows the city.
+  // ID, or the ID itself when it has no city part). Date style "head": a side's short date stands once, on the popup plate's
+  // place line (and before the list row's arrival time), and drops when that day is today at home. A time carries its own date
+  // only when its day in its own zone differs from its side's day. The zone name (optional) follows the city.
   var TZ_KEY = 'casora_flights_timezones';
   var KIND_WORD = { scheduled: 'Geplant', real: 'Tatsächlich', estimated: 'Voraussichtlich' };
   var MAX_OFF = 50400;
@@ -893,7 +895,7 @@
     var zone = z.zone ? { timeZone: z.zone } : { timeZone: 'UTC' }, d = new Date(z.zone ? ms : ms + z.off * 1000);
     var clock = d.toLocaleTimeString(loc, Object.assign({ hour: '2-digit', minute: '2-digit' }, zone));
     var day = new Intl.DateTimeFormat('en-CA', Object.assign({ year: 'numeric', month: '2-digit', day: '2-digit' }, zone)).format(d);
-    var date = d.toLocaleDateString(loc, Object.assign({ day: '2-digit', month: '2-digit' }, zone));
+    var date = d.toLocaleDateString(loc, Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, zone));
     var name = z.zone ? zoneName(ms, z.zone, loc) : (z.abbr || utcSuffix(z.off));
     return { clock: clock, day: day, date: date, name: name };
   };
@@ -920,18 +922,15 @@
   };
   // One moment as {air, home}: the airport time leads (its own city only when two times show), and the home time follows
   // only when its UTC offset at that instant differs from the airport's (zone names are never compared). With one time
-  // there is no city. An arrival (arrival = true) also shows its date when one of its presented days differs from the
-  // departure's local day (ref).
-  var moment = function (hass, ms, f, side, tzOn, loc, ref, arrival) {
+  // there is no city. A time carries its own short date only when its day (in its own zone) differs from the side's day
+  // (sideDay, the plate's day; the date itself stands on the plate's place line).
+  var moment = function (hass, ms, f, side, tzOn, loc, sideDay) {
     var abbr = str(f['airport_' + side + '_timezone_abbr']), off = f['airport_' + side + '_timezone_offset'];
     var air = offsetOk(off) ? part(ms, { off: off, abbr: abbr }, loc) : null;
     var zone = haZone(hass), home = zone ? part(ms, { zone: zone }, loc) : null;
-    // With the airport time, the two dates are compared. A local-only time is compared with the other end's local day (ref).
-    var dates = air && home ? air.day !== home.day : !!(home && ref && home.day !== ref);
-    if (arrival && ref) dates = dates || !!((air && air.day !== ref) || (home && home.day !== ref));
     // The zone name is not repeated when it already stands as the city (an airport with no city and no IATA code).
     var line = function (p, city) {
-      return nb(p.clock + (dates ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && p.name !== city ? ' ' + p.name : ''));
+      return nb(p.clock + (sideDay && p.day !== sideDay ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && p.name !== city ? ' ' + p.name : ''));
     };
     if (air && home && zoneOffset(ms, zone) === off) return { air: line(home), home: '' };
     if (air && home) {
@@ -942,25 +941,29 @@
     if (home) return { air: line(home), home: '' };
     return null;
   };
-  // Every timestamp the flight has: {dep: [{kind, text, air, home}], arr: [...]} (air leads, home is '' when it is not shown), scheduled before real before estimated.
-  // A missing timestamp is left out; the flight stays. The tile and the popup use this.
-  F.times = function (hass, f, tzOn) {
-    var out = { dep: [], arr: [] }, loc = locale();
+  // Every timestamp the flight has: {dep: [{kind, text, air, home}], arr: [...], depDate, arrDate} (air leads, home is '' when it is not shown),
+  // scheduled before real before estimated. A missing timestamp is left out; the flight stays. depDate and arrDate are the side's
+  // short local date (the airport's day of its best stamp: real, else estimated, else scheduled), '' when that day is today at home
+  // (HA's zone; now defaults to Date.now()) or the side has no time. The tile and the popup use this.
+  F.times = function (hass, f, tzOn, now) {
+    var out = { dep: [], arr: [], depDate: '', arrDate: '' }, loc = locale();
     if (!f || typeof f !== 'object') return out;
-    var zone = haZone(hass), KINDS = ['scheduled', 'real', 'estimated'];
-    // The first timestamp of a side (the earliest kind the source has): its local day is the other side's reference.
-    var first = function (side) {
-      for (var i = 0; i < KINDS.length; i++) { var ms = epochMs(f['time_' + KINDS[i] + '_' + side]); if (ms != null) return ms; }
-      return null;
-    };
-    var depMs = first('departure'), arrMs = first('arrival');
-    var localDay = function (ms) { return zone && ms != null ? part(ms, { zone: zone }, loc).day : null; };
-    [{ out: 'dep', side: 'origin', stamp: 'departure', refMs: arrMs, arrival: false },
-     { out: 'arr', side: 'destination', stamp: 'arrival', refMs: depMs, arrival: true }].forEach(function (s) {
+    var zone = haZone(hass), KINDS = ['scheduled', 'real', 'estimated'], BEST = ['real', 'estimated', 'scheduled'];
+    var today = zone ? part(now == null ? Date.now() : now, { zone: zone }, loc).day : null;
+    [{ out: 'dep', dateKey: 'depDate', side: 'origin', stamp: 'departure' }, { out: 'arr', dateKey: 'arrDate', side: 'destination', stamp: 'arrival' }].forEach(function (s) {
+      var off = f['airport_' + s.side + '_timezone_offset'], z = offsetOk(off) ? { off: off, abbr: '' } : zone ? { zone: zone } : null;
+      var best = null;
+      BEST.some(function (kind) { best = epochMs(f['time_' + kind + '_' + s.stamp]); return best != null; });
+      var sideDay = null;
+      if (best != null && z) {
+        var bp = part(best, z, loc);
+        sideDay = bp.day;
+        out[s.dateKey] = bp.day === today ? '' : nb(bp.date);
+      }
       KINDS.forEach(function (kind) {
         var ms = epochMs(f['time_' + kind + '_' + s.stamp]);
         if (ms == null) return;
-        var p = moment(hass, ms, f, s.side, !!tzOn, loc, localDay(s.refMs), s.arrival);
+        var p = moment(hass, ms, f, s.side, !!tzOn, loc, sideDay);
         if (p) out[s.out].push({ kind: kind, text: p.home ? p.air + NB + '\u00b7 ' + p.home : p.air, air: p.air, home: p.home });
       });
     });
@@ -974,9 +977,10 @@
     tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
     return rows;
   };
-  var estimateOf = function (hass, f) {
-    var hit = F.times(hass, f, F.tz()).arr.filter(function (x) { return x.kind === 'estimated'; })[0];
-    return hit ? { air: hit.air, home: hit.home } : { air: '', home: '' };
+  // The list row's estimated arrival: the arrival side's date (not today at home), the airport time and the home time.
+  var estimateOf = function (hass, f, now) {
+    var tm = F.times(hass, f, F.tz(), now), hit = tm.arr.filter(function (x) { return x.kind === 'estimated'; })[0];
+    return hit ? { date: tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
   };
 
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
@@ -988,10 +992,10 @@
   };
   // One flight as a button, the list popup's full row (a progress text line and a decorative bar). A browser drops a role
   // on anything inside a button, so no progressbar here.
-  var rowHtml = function (hass, r, style) {
+  var rowHtml = function (hass, r, style, now) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
     // The row's estimate has the airport time and, when it shows, the home time on its own line.
-    var est = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
+    var est = estimateOf(hass, r.entry, now), pct = F.progressOf(r.entry);
     var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
     var barHtml = '';
     if (pct != null) {
@@ -1001,7 +1005,7 @@
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
       + (extra ? subHtml(esc(extra)) : '')
-      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + esc(est.air)) : '')
+      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + (est.date ? esc(est.date) + ' ' : '') + esc(est.air)) : '')
       + (est.air && est.home ? subHtml(esc(est.home)) : '')
       + barHtml + '</button>';
   };
@@ -1670,16 +1674,17 @@
   };
   // The departure and arrival plates (popup rules §6): a heading outside above each plate; inside, the airport line as the first
   // row, then one row per timestamp kind: the kind word, the airport time on the right, and the home time as a small line under
-  // the word when it differs. A side with neither an airport nor a time has no section.
-  var timePlates = function (h, f, tzOn) {
-    var tm = F.times(h, f, tzOn);
+  // the word when it differs. The airport line ends with the side's local date (not today at home). A side with neither an
+  // airport nor a time has no section.
+  var timePlates = function (h, f, tzOn, now) {
+    var tm = F.times(h, f, tzOn, now);
     // Row padding and divider as the handbook's §6 (top and bottom 12; no icon, so the text starts at 16 like the heading; 1 px --casora-pill-divider).
     var ROW = 'min-height:52px;box-sizing:border-box;padding:12px 16px;';
     var DIV = '<div style="height:1px;margin:0 16px;background:var(--casora-pill-divider, rgba(127,127,127,0.25))"></div>';
     // Each side is data first (the airport line, then one entry per timestamp); the markup is built by the maps below.
-    var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr }].map(function (x) {
+    var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep, date: tm.depDate }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr, date: tm.arrDate }].map(function (x) {
       var rows = x.stamps.map(function (t) { return { word: tr(KIND_WORD[t.kind]), air: t.air, home: t.home }; });
-      var at = place(f, x.side);
+      var at = [place(f, x.side), x.date].filter(Boolean).join(' · ');
       if (at) rows.unshift({ line: at });
       return { heading: x.heading, rows: rows };
     }).filter(function (x) { return x.rows.length; });
@@ -1726,7 +1731,7 @@
       ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs', r.heading]]);
     if (part === 'fair') { var d = F.details(f); return pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
       ['Registrierung', d.registration], ['Rufzeichen', d.callsign]]); }
-    if (part === 'ftimes') return timePlates(h, f, F.tz());
+    if (part === 'ftimes') return timePlates(h, f, F.tz(), c.now);
     return '';
   };
   // A list row opens its flight's popup through the card opener: the popup template gets the source and the FR24 ID.
