@@ -10,3 +10,5 @@ custom_components/casora/scripts/local/49-flights.js | routePath | markup built 
 custom_components/casora/scripts/local/49-flights.js | unrepPath | markup built by the module itself: SVG path data of the Unreported part, M/L and rounded pixel numbers | 2
 custom_components/casora/scripts/local/49-flights.js | dash | markup built by the module itself: the dash attributes of the Remaining route, from ROUTE_STYLE numbers | 2
 custom_components/casora/scripts/local/49-flights.js | nw(home) | markup built by the local nw() of F.timeHtml: the time goes through esc() | 1
+custom_components/casora/scripts/local/49-flights.js | bar | markup built by progressHtml itself: the label and value go through esc(), the track from fixed numbers (F.progressBar) | 1
+custom_components/casora/scripts/local/49-flights.js | sub | fixed opening tag of the home-time line, built by F.timeHtml (no data in it) | 1
