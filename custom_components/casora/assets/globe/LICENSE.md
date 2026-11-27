@@ -1,13 +1,16 @@
 # Globus
 
-Die Kugelkarte des Flights-Bildschirmschoners (Einstellung „Flights map: Globe“) zeichnet sich selbst. Diese Dateien
-laden nur, wenn sie an ist, und nur von hier, nie aus dem Internet.
+Die Kugelkarte des Flights-Bildschirmschoners zeichnet sich selbst. Diese Dateien
+laden nur, wenn der Flights-Bildschirmschoner einen Flug zeigt, und nur von hier, nie aus dem Internet.
 
 - `d3-geo.min.js` – d3-geo 3.1.1 (https://github.com/d3/d3-geo), ISC
 - `d3-array.min.js` – d3-array 3.2.4 (https://github.com/d3/d3-array), ISC; d3-geo braucht es
 - `topojson-client.min.js` – topojson-client 3.1.0 (https://github.com/topojson/topojson-client), ISC
 - `land-110m.json` – Land 1:110m aus world-atlas 2.0.2 (https://github.com/topojson/world-atlas), ISC. Die Daten sind
   Natural Earth (https://www.naturalearthdata.com), public domain.
+- `countries-110m.json` – Länder 1:110m aus world-atlas 2.0.2 (https://github.com/topojson/world-atlas), ISC. Die Daten
+  sind Natural Earth (https://www.naturalearthdata.com), public domain. Die Karte zeichnet daraus nur die Grenzen zwischen
+  Ländern.
 
 Die minimierten Dateien sind unverändert aus den npm-Paketen (Prüfsumme gegen `npm pack` verglichen). Ihre
 Kopfzeile mit dem Copyright bleibt.
