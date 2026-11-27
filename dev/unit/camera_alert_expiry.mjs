@@ -100,27 +100,23 @@ assert.match(render(), /Ruhig/, 'the minute tick redraws the expired alert');
 assert.equal(pending.size, 0, 'the minute tick needs no expiry timer');
 delete hass.states['sensor.time'];
 // A sensor.time without a usable value never changes, so the minute tick never comes: the timer has to end the alert.
-for (const helper of ['casora_badge_base', 'casora_popup_camera']) {
-  for (const clockState of ['unavailable', 'unknown', '']) {
-    for (const [name, field] of [
-      ['casora_badge_camera_group', 'name'],
-      ['casora_cameras', 'state_display'],
-    ]) {
-      delete window.casoraCameraAlert;
-      pending.clear();
-      now = Date.parse('2026-01-01T12:00:00Z');
-      hass.states[ding].state = '2026-01-01T12:00:00Z';
-      hass.states[motion].state = 'unknown';
-      hass.states['sensor.time'] = { state: clockState };
-      const fresh = freshCard(name, field);
-      loadCameraAlert();
-      const what = `${helper} in ${name} with sensor.time "${clockState}"`;
-      assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, `${what}: the alert shows`);
-      assert.equal(pending.size, 1, `${what}: an expiry timer is scheduled`);
-      advance(301000);
-      assert.match(fresh.output, /Ruhig/i, `${what}: the alert expires`);
-      assert.equal(pending.size, 0, `${what}: no timer remains after expiry`);
-    }
+for (const clockState of ['unavailable', 'unknown', '']) {
+  for (const [name, field] of [
+    ['casora_badge_camera_group', 'name'],
+    ['casora_cameras', 'state_display'],
+  ]) {
+    pending.clear();
+    now = Date.parse('2026-01-01T12:00:00Z');
+    hass.states[ding].state = '2026-01-01T12:00:00Z';
+    hass.states[motion].state = 'unknown';
+    hass.states['sensor.time'] = { state: clockState };
+    const fresh = freshCard(name, field);
+    const what = `${name} with sensor.time "${clockState}"`;
+    assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, `${what}: the alert shows`);
+    assert.equal(pending.size, 1, `${what}: an expiry timer is scheduled`);
+    advance(301000);
+    assert.match(fresh.output, /Ruhig/i, `${what}: the alert expires`);
+    assert.equal(pending.size, 0, `${what}: no timer remains after expiry`);
   }
 }
 // Without the module, preserve the original missing-sensor-only timer.
