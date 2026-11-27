@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,flightColumn,arrivalHtml custom_components/casora/scripts/local/49-flights.js#estimateOf,timeRows,timeHtml,pairs,moment
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,flightColumnHtml,arrivalHtml custom_components/casora/scripts/local/49-flights.js#estimateOf,timeRows,timeHtml,pairs,moment
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
 // Flights kind (one flight per native turn, in a fixed order; the map and the details alternate per round, and the next
