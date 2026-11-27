@@ -23,7 +23,8 @@
 //   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
 //   window._casoraFlights.airborne(hass, pin, now, units) → the qualifying flights now (the shared rule for every flight surface; units optional, a draft's)
 //   window._casoraFlights.details(entry)             → {airline, model, registration, callsign, origin, destination} ('' when missing)
-//   window._casoraFlights.timeRows(hass, entry, tzOn) → [[side, 'Kind: text']] departure and arrival timestamps (the screensaver's rows)
+//   window._casoraFlights.timeRows(hass, entry, tzOn) → [[label, text]] departure and arrival timestamps (the screensaver's rows; the label names side and kind)
+//   window._casoraFlights.arrivalBlock(hass, entry, tzOn, nowMs) → {date, air, home}: the estimated arrival for the screensaver's map layout, or null
 //   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (one line, "N in the air") and its hidden state; `now` is optional
 //   window._casoraFlights.phone() → the phone breakpoint (the tile CSS's media query); .tapTile(hass, name) / .openList(hass, src, name)
 //   window._casoraFlights.listStage(hass, c) / .listRows(hass, c) / .listPopup(states, hass, v) → the list popup (phone and desktop; c = {pin, now}, now optional)
@@ -978,12 +979,15 @@
     });
     return out;
   };
-  // The timestamps as rows [side, text] for the screensaver (departure, then arrival); the side is the German word to translate.
-  // One row per timestamp the source has: the word for the kind, then its time text.
+  // The timestamps as rows [label, text] for the screensaver (departure, then arrival). The label (German, to translate) names
+  // side and kind; the text is the time(s) only. A kind without a label here (an estimated departure, a real arrival) has no row.
+  var ROW_LABEL = { dep: { scheduled: 'Geplanter Abflug', real: 'Tatsächlicher Abflug' },
+    arr: { scheduled: 'Geplante Ankunft', estimated: 'Voraussichtliche Ankunft' } };
   F.timeRows = function (hass, f, tzOn) {
     var tm = F.times(hass, f, tzOn), rows = [];
-    tm.dep.forEach(function (x) { rows.push(['Abflug', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
-    tm.arr.forEach(function (x) { rows.push(['Ankunft', tr(KIND_WORD[x.kind]) + ': ' + x.text]); });
+    ['dep', 'arr'].forEach(function (side) {
+      tm[side].forEach(function (x) { if (ROW_LABEL[side][x.kind]) rows.push([ROW_LABEL[side][x.kind], x.text]); });
+    });
     return rows;
   };
   // The list row's estimated arrival: the arrival side's date (not today at home), the airport time and the home time.

@@ -890,7 +890,11 @@
     + '.cs-sv .cs-fl-mk{position:absolute;transform-origin:50% 50%;}.cs-sv .cs-fl-mk svg{width:100%;height:100%;display:block;overflow:visible;}'
     + '.cs-sv .cs-fl-mk path{fill:#FFCC00;stroke:#070D1A;stroke-width:.14;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
-    + '.cs-sv .cs-fl-eta{bottom:' + u(72) + ';font-size:' + u(24) + ';font-weight:500;color:rgba(246,239,230,.8);}'
+    + '.cs-sv .cs-fl-stat.cs-fl-above{bottom:' + u(190) + ';}'
+    + '.cs-sv .cs-fl-arr{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(72) + ';}'
+    + '.cs-sv .cs-fl-arrcap{font-size:' + u(21) + ';font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);}'
+    + '.cs-sv .cs-fl-arrval{font-size:' + u(30) + ';font-weight:600;}'
+    + '.cs-sv .cs-fl-arrsub{font-size:' + u(22) + ';font-weight:500;color:var(--ink2);}'
     + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
     + '.cs-sv .cs-fl-row{display:flex;justify-content:space-between;align-items:baseline;gap:' + u(16) + ';font-size:' + u(22) + ';padding-top:' + u(10) + ';border-top:1px solid rgba(246,239,230,.18);}'
     + '.cs-sv .cs-fl-row span{opacity:.7;flex:none;}.cs-sv .cs-fl-row b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;}'
@@ -1451,13 +1455,19 @@
     var R = fr.W / fr.H, wb = 'calc(100cqw - ' + u(144) + ')', hb = 'calc(100cqh - ' + u(420) + ')';
     return 'width:min(' + wb + ', calc(' + hb + ' * ' + R.toFixed(4) + '));height:min(' + hb + ', calc(' + wb + ' / ' + R.toFixed(4) + '))';
   };
+  // The arrival of the map layout: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
+  // with two times). The date joins the caption only when the arrival is not today.
+  S.arrivalHtml = function (a) {
+    return '<div class="cs-fl-arr"><div class="cs-fl-arrcap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
+      + '<div class="cs-fl-arrval">' + esc(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + esc(a.home) + '</div>' : '') + '</div>';
+  };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
     var r = rows[((t % n) + n) % n], detail = ctx.flightDetail != null ? !!ctx.flightDetail : Math.floor(t / n) % 2 === 1;
     var f = r.entry, v = F ? F.mapView(ctx.hass, r.src, r.key, +ctx.now) : null;
     var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
     if (!detail) {
-      var eta = F ? F.times(ctx.hass, f, tzOn).arr.filter(function (x) { return x.kind === 'estimated'; })[0] : null;
+      var eta = F ? F.arrivalBlock(ctx.hass, f, tzOn, +ctx.now) : null;
       var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
       var fr = v ? S.routeFrame(v) : null;
@@ -1466,12 +1476,12 @@
       var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(ctx.globeTrack && S.globeReady() ? S.globeStep(ctx.globeTrack, v, r.src + '|' + r.key) : v) : '';
       if (globeHtml) { ctx.globeDrawn = true; fr = null; }
       bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
-        + (stat ? '<div class="cs-fl-stat">' + esc(stat) + '</div>' : '')
-        + (eta ? '<div class="cs-fl-stat cs-fl-eta">' + esc(T('Voraussichtliche Ankunft')) + ': ' + esc(eta.text) + '</div>' : '');
+        + (stat ? '<div class="cs-fl-stat' + (eta ? ' cs-fl-above' : '') + '">' + esc(stat) + '</div>' : '')
+        + (eta ? S.arrivalHtml(eta) : '');
     } else {
       var items = [[T('Fluggesellschaft'), d.airline], [T('Flugzeugmodell'), d.model], [T('Registrierung'), d.registration], [T('Rufzeichen'), d.callsign],
         [T('Kurs'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
-      // The timestamps as the popup has them (F.timeRows): the side (Abflug or Ankunft), then the kind and the time.
+      // The timestamps (F.timeRows): the label names side and kind, the value is the time(s).
       items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), x[1]]; }) : []);
       bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {
         return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
