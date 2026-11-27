@@ -36,7 +36,7 @@
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
 //   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
 //   window._casoraFlights.remaining(entry, now) / .duration(entry) → whole minutes to arrival / of the flight (null when unknown); .hm(min) → 'h:mm Std.' (a no-break space before the unit)
-//   window._casoraFlights.progressText(pct) / .progressBar(pct, h, m) → the progress line's text and bar markup
+//   window._casoraFlights.progressText(pct) / .progressBar(pct, h, m) → the progress line's text and bar markup (h and m in px, or a CSS length text); .hmLabel(label, min) → 'Restzeit 4:12 Std.', '' when unknown
 //   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin; in the Studio the draft)
 //   window._casoraFlights.addView(hass, id) / .submit(hass, id, text) / .paint() / .draft → the Add field's attempt
 //   window._casoraFlights.watch(hass) → the source IDs (and the pin) a card follows; .active(hass) → tile highlight
@@ -1042,11 +1042,17 @@
     var m = min % 60;
     return Math.floor(min / 60) + ':' + (m < 10 ? '0' : '') + m + NB + tr('Std.');
   };
+  // A label and a time, 'Restzeit 4:12 Std.': one unbreakable value after the translated label; '' when the time is unknown.
+  F.hmLabel = function (label, min) {
+    var t = F.hm(min);
+    return t ? tr(label) + NB + t : '';
+  };
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
   // sits in a button as well. The bar is a picture: its callers hide it from screen readers.
   F.progressBar = function (pct, h, m) {
-    return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
-      + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
+    var len = function (x) { return typeof x === 'number' ? x + 'px' : x; };
+    return '<span style="display:block;position:relative;height:' + esc(len(h)) + ';margin-top:' + esc(len(m)) + ';border-radius:' + (typeof h === 'number' ? h / 2 + 'px' : '99px')
+      + ';overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
       + esc(pct) + '%;background:currentColor"></span></span>';
   };
   // One flight as a button, the list popup's full row (a progress text line and a decorative bar). A browser drops a role
@@ -1343,8 +1349,6 @@
     + '.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner{display:block!important}'
     // Leaflet zoom and scale hidden, as in 12-tanken.js.
     + '.leaflet-control-zoom,.leaflet-control-scale{display:none!important}';
-  // The saver's map takes no pointer input at all, its attribution link included: a tap must reach the saver and wake the dashboard.
-  var SAVER_CSS = '.maplibregl-ctrl-attrib,.maplibregl-ctrl-attrib a,.leaflet-control-attribution,.leaflet-control-attribution a{pointer-events:none!important}';
   // The arrow points north at heading 0; MapLibre turns it clockwise on the map. Drawn on a canvas: no file or URL loads.
   var arrowImage = function (ml) {
     try {
@@ -1400,11 +1404,8 @@
     class FlightMap extends HTMLElement {
       connectedCallback() {
         // Only the properties the element needs: the popup's own box (its 4:3 aspect ratio) stays, so the box has a height.
-        // The screensaver's map (data-saver, 46-screensaver.js) has its box from the saver's stylesheet and takes no pointer input.
-        this._saver = !!(this.hasAttribute && this.hasAttribute('data-saver'));
         this.style.display = 'block'; this.style.overflow = 'hidden';
-        if (this._saver) this.style.pointerEvents = 'none'; // the corners come from the saver's stylesheet (.cs-fl-live)
-        else { this.style.borderRadius = 'inherit'; this.style.position = 'relative'; this.style.width = '100%'; }
+        this.style.borderRadius = 'inherit'; this.style.position = 'relative'; this.style.width = '100%';
         this._since = Date.now(); this._tiles = 0; this._ml = this._el = this._timer = null; this._layers = false; this._ok = false;
         this._sent = null; this._ident = null; this._track = this._base = null; this._raf = 0;
         var H = window._casoraHaMap, hass = hassNow();
@@ -1427,7 +1428,7 @@
       _build(hass) {
         var m = document.createElement('ha-map');
         m._connection = { connection: hass.connection, hassUrl: function (u) { return hass.hassUrl ? hass.hassUrl(u) : u; } };
-        m.entities = []; m.themeMode = this._saver ? 'dark' : 'auto'; m.zoom = 8; // themeMode: the saver is always a dark scene; the popup follows the theme
+        m.entities = []; m.themeMode = 'auto'; m.zoom = 8; // the popup follows the theme
         m.interactiveZones = false; m.autoFit = false; m.clusterMarkers = false;
         // The map fills the box. The fade is off for reduced motion. The map is not inert: inert would also take the attribution
         // link out of reach. Instead the map takes no pointer input (pointer-events none), and its attribution link is the one
@@ -1451,7 +1452,7 @@
       // alone does not match the Leaflet attribution, so both classes are listed.
       _unstop(root) {
         root.querySelectorAll('*').forEach((x) => {
-          if (!this._saver && x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) { // the saver's map has no stop at all
+          if (x.closest && x.closest('.maplibregl-ctrl-attrib, .leaflet-control-attribution')) {
             // Leaflet's "Leaflet" prefix link stays visible, but it is not a stop; the credit links are.
             if (x.matches('a[href]') && /leafletjs\.com/.test(x.getAttribute('href'))) x.setAttribute('tabindex', '-1');
             return;
@@ -1620,7 +1621,7 @@
       _css(root) {
         if (this._styled === root) return;
         this._styled = root;
-        var st = document.createElement('style'); st.textContent = MAP_CSS + (this._saver ? SAVER_CSS : ''); root.appendChild(st);
+        var st = document.createElement('style'); st.textContent = MAP_CSS; root.appendChild(st);
       }
       _putMl(geo) {
         var ml = this._ml, pts = ml.getSource('casora-flight-points'), trail = ml.getSource('casora-flight-trail');
@@ -1802,7 +1803,7 @@
     if (part === 'fprog') {
       var now = c.now != null ? c.now : Date.now(), pv = F.mapView(h, c.src, c.flight, now), rem = F.remaining(f, now), dur = F.duration(f);
       // Restzeit, Gesamt and the arrival each on their own line; the label joins its value by a no-break space.
-      var lines = [rem != null ? esc(tr('Restzeit') + NB + F.hm(rem)) : '', dur != null ? esc(tr('Gesamt') + NB + F.hm(dur)) : ''];
+      var lines = [esc(F.hmLabel('Restzeit', rem)), esc(F.hmLabel('Gesamt', dur))];
       var arr = F.arrivalLine(h, f, now);
       if (arr) lines.push(esc(arr.label) + ' ' + F.timeHtml(arr.when, arr.home, true));
       return progressHtml(pv && pv.progress != null ? pv.progress : null, lines.filter(Boolean).map(progressLine).join(''));

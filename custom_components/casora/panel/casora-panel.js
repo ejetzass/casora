@@ -2709,11 +2709,11 @@ const SECTIONS = [
         },
         when: (v) => v.casora_screensaver != null && v.casora_screensaver !== "",
         hint: "Sky follows the sun and the weather. Landscapes are drawn, nothing is loaded. Photos shows this dashboard's room photos." },
-      // How the Flights screensaver draws its map (scripts/local/46-screensaver.js): empty = the flat map, globe = a plain globe
-      // centered on the aircraft. Not only for the kind Flights: "One after the other" can show Flights too.
+      // The Flights screensaver always draws the globe (scripts/local/46-screensaver.js), whatever is saved here; the setting stays
+      // for a flat d3 map as the other choice, and is hidden until then (its texts stay).
       { key: "casora_flights_map", sub: "chrome", label: "Flights map", type: "select", auto: true, scope: "dashboard",
         options: ["", "globe"], optionLabels: { "": "Flat", globe: "Globe" },
-        when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return v.casora_screensaver != null && v.casora_screensaver !== "" && !!(F && F.present(hass)); } },
+        when: () => false },
       // What the Calendar screensaver shows (#231): "" = the month (as before), "2w" = this week and the next from the
       // locale's first weekday (46-screensaver.js S.calGrid). Offered where the calendar can come up.
       { key: "casora_screensaver_calendar_range", sub: "chrome", label: "Calendar shows", type: "select", seg: true, auto: true, scope: "dashboard",

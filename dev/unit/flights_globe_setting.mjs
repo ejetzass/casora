@@ -1,5 +1,5 @@
-// The Studio setting „Flights map: Flat / Globe“: a Dashboard-scope select in the Screensaver block right under the kind,
-// default Flat (stored empty), shown when the screensaver is on and FlightRadar24 is there, worded in all nine languages.
+// The Studio setting „Flights map: Flat / Globe“ stays in the code, hidden until the flat map option comes back: a
+// Dashboard-scope select in the Screensaver block right under the kind, stored empty by default, worded in all nine languages.
 //   node dev/unit/flights_globe_setting.mjs
 // @deckt: custom_components/casora/panel/casora-panel.js#SECTIONS,casora_flights_map
 import fs from 'node:fs';
@@ -25,16 +25,11 @@ const saver = win.casoraSettingsMap.tiles.flatMap((t) => t.blocks).find((b) => b
 const at = saver.keys.indexOf('casora_screensaver_kind');
 assert.equal(saver.keys[at + 1], 'casora_flights_map', 'the setting follows the kind in the Screensaver block');
 
-// When: the screensaver is on and FlightRadar24 is present (not only when the kind is Flights: „one after the other“ shows it too).
+// Hidden: the screensaver always draws the globe, so the setting never shows (its texts stay for the flat map option).
 const fr = { entities: { 'sensor.a': { entity_id: 'sensor.a', platform: 'flightradar24', device_id: 'd1', translation_key: 'additional_tracked' } },
   states: { 'sensor.a': { entity_id: 'sensor.a', state: '0', attributes: { flights: [] } } }, devices: {} };
-const none = { entities: {}, states: {}, devices: {} };
-new Function(read('custom_components/casora/scripts/local/49-flights.js'))();
-assert.equal(field.when({ casora_screensaver: '5' }, fr), true, 'screensaver on, FlightRadar24 there');
-assert.equal(field.when({ casora_screensaver: '5', casora_screensaver_kind: '' }, fr), true, 'also with „one after the other“');
-assert.equal(field.when({ casora_screensaver: '' }, fr), false, 'screensaver off');
-assert.equal(field.when({}, fr), false, 'screensaver not set');
-assert.equal(field.when({ casora_screensaver: '5' }, none), false, 'no FlightRadar24');
+assert.equal(field.when({ casora_screensaver: '5' }, fr), false, 'screensaver on, FlightRadar24 there: still hidden');
+assert.equal(field.when({ casora_screensaver: '5', casora_screensaver_kind: 'flights' }, fr), false, 'also for the kind Flights');
 
 // The ticket's texts, word for word.
 const T = {

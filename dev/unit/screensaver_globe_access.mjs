@@ -12,7 +12,6 @@ const phrases = (lang) => JSON.parse(fs.readFileSync(new URL('../../custom_compo
 
 const show = async (lang) => {
   const R = page(globeFiles());
-  R.vars = { casora_flights_map: 'globe' };
   // The page's translator: German source text in, the active language out (what casora-i18n.js does with the phrase files).
   const table = lang === 'de' ? {} : phrases(lang);
   R.box.casoraTr = (t) => (table[t] != null ? table[t] : t);
@@ -27,17 +26,6 @@ for (const lang of Object.keys(LABEL)) {
   assert.match(svg[0], /role="img"/, lang + ': the globe is one image for a screen reader');
   assert.ok(svg[0].includes('aria-label="' + LABEL[lang] + '"'), lang + ': the label is "' + LABEL[lang] + '", got ' + svg[0]);
   assert.ok(!/aria-hidden/.test(svg[0]), lang + ': the globe is not hidden from a screen reader');
-}
-
-// The flat map is decoration: hidden from a screen reader, and it does not carry the globe's label.
-{
-  const R = page(globeFiles());
-  R.vars = { casora_flights_map: 'flat' };
-  R.start(); await settle(); R.api.update();
-  const flat = R.host.innerHTML.match(/<svg class="cs-fl-svg"[^>]*>/);
-  assert.ok(flat, 'the flat map is drawn');
-  assert.match(flat[0], /aria-hidden="true"/, 'the flat map is hidden from a screen reader');
-  assert.ok(!/aria-label|role="img"/.test(flat[0]), 'the flat map has no globe label, got ' + flat[0]);
 }
 
 // No touch, no drag: the disc and its box let pointer input through, and the markup has no handler.

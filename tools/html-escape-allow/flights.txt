@@ -1,7 +1,6 @@
 # 49-flights.js (tracked flights tile and popup): every text from Home Assistant or FlightRadar24 goes through esc().
 # What is listed here are numbers and the module's own markup.
-custom_components/casora/scripts/local/49-flights.js | re:^(?:h|m)$ | number: bar height and top margin in px, fixed by the callers (4/6 list row, 6/12 popup) | 2
-custom_components/casora/scripts/local/49-flights.js | re:^progressBar\(pct, \d+, \d+\)$ | markup built by the module itself: fixed numbers, the percentage goes through esc() | 2
+custom_components/casora/scripts/local/49-flights.js | re:^F\.progressBar\(pct, \d+, \d+\)$ | markup built by the module itself: fixed numbers, the percentage goes through esc() | 2
 custom_components/casora/scripts/local/49-flights.js | d | markup built by the module itself: SVG path data of the Leaflet trail, M/L and rounded pixel numbers | 2
 custom_components/casora/scripts/local/49-flights.js | p[0] | number: rounded pixel x of a Leaflet map point | 3
 custom_components/casora/scripts/local/49-flights.js | p[1] | number: rounded pixel y of a Leaflet map point | 3

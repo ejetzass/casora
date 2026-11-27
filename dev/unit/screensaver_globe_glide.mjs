@@ -10,7 +10,6 @@ const POLL = 60000;
 // A page with a fake clock (Date.now and new Date()), a frame queue, and a host whose globe box can be written in place.
 const start = async ({ reduce = false } = {}) => {
   const R = page(globeFiles());
-  R.vars = { casora_flights_map: 'globe' };
   R.clock = SLOT0 + 1000;
   const RealDate = Date;
   R.box.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [R.clock])); } static now() { return R.clock; } };

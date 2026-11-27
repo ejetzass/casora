@@ -52,5 +52,5 @@ export const page = (files) => {
     R.clock += 1000; R.hass.states[SRC] = { state: '1', attributes: { flights: [{ ...R.flight, latitude: R.flight.latitude + 0.01, longitude: R.flight.longitude + 0.02 }] } }; R.api.update(); return R; };
   return R;
 };
-export const globeFiles = () => Object.fromEntries(['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js', 'land-110m.json'].map((n) => [n, read(ASSETS + n)]));
+export const globeFiles = () => Object.fromEntries(['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js', 'land-110m.json', 'countries-110m.json'].map((n) => [n, read(ASSETS + n)]));
 export const settle = () => new Promise((r) => setImmediate(r));

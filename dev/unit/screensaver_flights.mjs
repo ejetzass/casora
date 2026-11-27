@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg,arrivalHtml custom_components/casora/scripts/local/49-flights.js#estimateOf,timeRows,timeHtml,pairs,moment
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,flightColumn,arrivalHtml custom_components/casora/scripts/local/49-flights.js#estimateOf,timeRows,timeHtml,pairs,moment
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
 // Flights kind (one flight per native turn, in a fixed order; the map and the details alternate per round, and the next
@@ -73,7 +73,7 @@ const at = (R, ms) => { R.clock.t = ms; R.api.update(); return R.host.innerHTML;
 const warm = (R, kind = 'flights') => { R.vars = { kind }; at(R, SLOT0); };
 const kindOf = (html) => (html.match(/data-kind="([a-z]+)"/) || [])[1];
 const flightOf = (html) => (html.match(/XY(\d+)/) || [])[1];
-const layoutOf = (html) => (/cs-fl-map/.test(html) ? 'map' : /cs-fl-rows/.test(html) ? 'detail' : '?');
+const layoutOf = (html) => (/cs-meta/.test(html) ? 'map' : /cs-fl-rows/.test(html) ? 'detail' : '?');
 // „mix“ with Flights and wort: Flights takes every other turn, and its map and details alternate between those turns.
 // Returns the first Flights screen in the details layout (flightsOf(step) gives the flights of each step, each a movement).
 const mixDetail = (flightsOf, loc) => {
@@ -241,7 +241,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   };
   const second = restart(SLOT0 + 2000);
   assert.equal(flightOf(second), '456', 'a fresh start shows the next flight');
-  assert.match(second, /cs-fl-map/, 'and keeps the layout of the round: the map, mid-round');
+  assert.match(second, /cs-meta/, 'and keeps the layout of the round: the map, mid-round');
 }
 
 // A fresh start that wraps (it starts on the last flight's place, so it moves on to the first) flips the layout too.
@@ -343,7 +343,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   sample.api = R.S.mount(sample.host, null, { sample: true, every: 3600000, kind: () => 'flights',
     context: () => ({ hass: R.hass, vars: R.vars, now: new Date(SLOT0 + 3 * TURN + 1000) }) });
   assert.equal(flightOf(sample.host.innerHTML), '456', 'the preview shows the flight the next turn would');
-  assert.match(sample.host.innerHTML, /cs-fl-map/, 'the preview stays on the map');
+  assert.match(sample.host.innerHTML, /cs-meta/, 'the preview stays on the map');
   sample.api.destroy();
   assert.match(at(R, SLOT0 + 3 * TURN + 2000), /cs-fl-rows/, 'the saver is in detail on its next turn: the preview kept nothing');
   assert.equal(flightOf(at(R, SLOT0 + 3 * TURN + 2000)), '456', 'and it is flight 456');
@@ -400,15 +400,15 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   move(R, 0);
   at(R, SLOT0);
   move(R, 1);
-  assert.match(at(R, SLOT0 + 1000), /cs-fl-map/, 'turn 0: flight 1 on the map');
+  assert.match(at(R, SLOT0 + 1000), /cs-meta/, 'turn 0: flight 1 on the map');
   move(R, 2, [entry('1', 2), f456(2), entry('789', 2)]);
   const h1 = at(R, SLOT0 + TURN + 1000);
   assert.equal(flightOf(h1), '456', 'turn 1: flight 456');
-  assert.match(h1, /cs-fl-map/, 'still the map: 789 joined the round');
+  assert.match(h1, /cs-meta/, 'still the map: 789 joined the round');
   move(R, 3, [entry('1', 3), f456(3), entry('789', 3)]);
   const h2 = at(R, SLOT0 + 2 * TURN + 1000);
   assert.equal(flightOf(h2), '789', 'turn 2: flight 789');
-  assert.match(h2, /cs-fl-map/, 'still the map');
+  assert.match(h2, /cs-meta/, 'still the map');
   move(R, 4, [entry('1', 4), f456(4), entry('789', 4)]);
   const h3 = at(R, SLOT0 + 3 * TURN + 1000);
   assert.equal(flightOf(h3), '1', 'turn 3: the round wraps to flight 1');
@@ -446,7 +446,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   move(R, 3, [entry('1', 3), entry('789', 3)]); // 456 lands, mid-turn
   const landed = at(R, SLOT0 + TURN + 2000);
   assert.equal(flightOf(landed), '789', 'the next flight takes the rest of the turn');
-  assert.match(landed, /cs-fl-map/, 'and it is drawn, not a blank');
+  assert.match(landed, /cs-meta/, 'and it is drawn, not a blank');
   move(R, 4, [entry('1', 4), entry('789', 4)]);
   assert.equal(flightOf(at(R, SLOT0 + 2 * TURN + 1000)), '1', 'the next turn wraps round from 789');
 }
@@ -508,10 +508,10 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   move(R, 2);
   const again = at(R, SLOT0 + 90000);
   assert.equal(flightOf(again), flightOf(first), 'a routine position update keeps the flight on show');
-  assert.match(again, /cs-fl-map/, 'and its layout');
+  assert.match(again, /cs-meta/, 'and its layout');
   const later = at(R, SLOT0 + TURN + 1000);
   assert.equal(flightOf(later), '456', 'the next turn: the next flight');
-  assert.match(later, /cs-fl-map/, 'and on the map');
+  assert.match(later, /cs-meta/, 'and on the map');
 }
 
 // Removal is immediate; the other flight takes the turn, and with none left the native sky.
@@ -558,7 +558,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   at(R, SLOT0 + 1000);
   const map = at(R, SLOT0 + 2000);
   assert.match(map, /XY1\b/); assert.match(map, /35,000\u00a0ft/); assert.match(map, /450\u00a0kn/);
-  assert.match(map, /Ungefährer Fortschritt/); assert.match(map, /<div class="cs-cap">Voraussichtliche Ankunft<\/div>/);
+  assert.match(map, /<span>\d+(?:\u202f| )?%<\/span>/); assert.match(map, /<div class="cs-cap">Voraussichtliche Ankunft<\/div>/);
   const { html: detail } = mixDetail((s) => [entry('1', s)]); // the details come in the mix, on Flights' own turns
   assert.match(detail, /cs-fl-rows/);
   assert.match(detail, /Example Air/); assert.match(detail, /AB-CDE/); assert.match(detail, /XYZ1/); assert.match(detail, /90°/);
@@ -599,152 +599,6 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const { html: h } = mixDetail(bare);
   assert.match(h, /cs-fl-rows/);
   assert.ok(!/Registrierung|Rufzeichen|Kurs|Vertikalgeschwindigkeit|Fluggesellschaft|Terminal T/.test(h), 'missing details are left out, not shown as blank or zero');
-}
-
-// The drawn route picture is local: no link, no image, no map tiles (the map element that the map layout may add on top has its
-// own test, screensaver_flights_map.mjs: the saver's HTML around it stays free of images, links and URLs). A route over the dateline
-// stays a small picture.
-{
-  const R = runtime();
-  warm(R);
-  const dl = (step) => [entry('1', step, { longitude: 179.9 + 0.05 * step, airport_origin_longitude: 179, airport_destination_longitude: -179,
-    coordinates: [[50, 178.5], [50, 179.5]] })];
-  move(R, 1, dl(1));
-  at(R, SLOT0 + 1000);
-  move(R, 2, dl(2));
-  const h = at(R, SLOT0 + 2000);
-  assert.ok(!/https?:|url\(|<img|<image|ha-map|maplibre|<link/i.test(h), 'no external content');
-  const vb = (h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || []).slice(1).map(Number);
-  assert.equal(vb.length, 2, 'a picture with a box');
-  assert.ok(vb[0] > 0 && vb[0] < 20, 'the dateline route is drawn across the line, not across the globe: ' + vb);
-  assert.match(h, /<polyline class="cs-fl-route"[^>]*vector-effect="non-scaling-stroke"/, 'the route outline does not grow with map scale');
-  assert.match(h, /<circle class="cs-fl-ap"[^>]*vector-effect="non-scaling-stroke"/, 'airport outlines do not cover the picture');
-}
-
-// The Remaining route: exactly one dashed line on the map, from the aircraft to the destination. The old straight line from
-// the origin airport to the destination is gone; the origin dot stays.
-{
-  const mapOf = (o) => {
-    const R = runtime();
-    warm(R);
-    const f = (step) => [entry('1', step, o)];
-    move(R, 1, f(1));
-    at(R, SLOT0 + 1000);
-    move(R, 2, f(2));
-    return at(R, SLOT0 + 2000);
-  };
-  const nums = (s) => s.trim().split(/\s+/).map((p) => p.split(',').map(Number));
-  const picture = (h) => {
-    const [W, H] = h.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
-    const mk = h.match(/<div class="cs-fl-mk"[^>]*style="[^"]*left:([\d.]+)%;top:([\d.]+)%/);
-    const dots = [...h.matchAll(/<circle class="cs-fl-ap"[^>]*cx="([\d.-]+)" cy="([\d.-]+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
-    const routes = [...h.matchAll(/<[a-z]+ class="cs-fl-route"[^>]*>/g)].map((m) => m[0]);
-    const trails = [...h.matchAll(/<polyline class="cs-fl-trail"[^>]*points="([^"]+)"/g)].map((m) => nums(m[1]));
-    return { aircraft: [Number(mk[1]) / 100 * W, Number(mk[2]) / 100 * H], dots, routes, trails, lines: (h.match(/<line\b/g) || []).length };
-  };
-  const near = (a, b, label) => assert.ok(Math.abs(a[0] - b[0]) < 0.02 && Math.abs(a[1] - b[1]) < 0.02, label + ': ' + a + ' vs ' + b);
-  const long = { latitude: 55, longitude: -30, airport_origin_latitude: 52.3, airport_origin_longitude: 4.8,
-    airport_destination_latitude: 40.6, airport_destination_longitude: -73.8, coordinates: [[53.5, -12], [54.5, -22]] };
-  for (const [label, o] of [['short flight', {}], ['long flight, trail far from the origin', long]]) {
-    const h = mapOf(o), p = picture(h);
-    assert.equal(p.routes.length, 1, label + ': exactly one dashed line');
-    assert.match(p.routes[0], /^<polyline /, label + ': the Remaining route is a path, not the straight origin-to-destination line');
-    assert.equal(p.lines, 0, label + ': no straight line element is left');
-    assert.match(p.routes[0], /stroke-dasharray:[\d.]+cqmin [\d.]+cqmin/, label + ': the Remaining route is dashed');
-    assert.match(p.routes[0], /stroke-width:[\d.]+cqmin/, label + ': and has a width from the shared style');
-    const pts = nums(p.routes[0].match(/points="([^"]+)"/)[1]);
-    near(pts[0], p.aircraft, label + ': the dashed line starts at the aircraft');
-    near(pts[pts.length - 1], p.dots[1], label + ': and ends at the destination dot');
-    assert.equal(p.dots.length, 2, label + ': origin and destination dots show');
-    // The dashed line never touches the origin dot (the old line started there).
-    pts.forEach((q) => assert.ok(Math.hypot(q[0] - p.dots[0][0], q[1] - p.dots[0][1]) > 0.02, label + ': the dashed line does not reach the origin dot'));
-  }
-  {
-    const p = picture(mapOf({ airport_destination_latitude: null, airport_destination_longitude: null }));
-    assert.equal(p.routes.length, 0, 'no destination: no dashed line');
-    assert.equal(p.lines, 0, 'no destination: no line from the origin either');
-    assert.equal(p.dots.length, 1, 'the origin dot still shows');
-  }
-  {
-    const p = picture(mapOf({ airport_origin_latitude: null, airport_origin_longitude: null }));
-    assert.equal(p.routes.length, 1, 'no origin: the Remaining route still shows');
-  }
-}
-
-// The Unreported part: a fainter line from the departure airport to the oldest trail point, under the Flown trail. It comes
-// from the same function as the popup map (F.unreportedOf); nothing without an origin or without a trail point.
-{
-  const unrep = (h) => (h.match(/<polyline class="cs-fl-unrep"[^>]*points="([^"]*)"/) || [])[1];
-  const run = (o) => {
-    const R = runtime();
-    warm(R);
-    const fl = (step) => [entry('1', step, { coordinates: [[48, 6], [49, 7]], ...o })];
-    move(R, 1, fl(1));
-    at(R, SLOT0 + 1000);
-    move(R, 2, fl(2));
-    return { R, h: at(R, SLOT0 + 2000) };
-  };
-  const { R, h } = run({});
-  const pts = unrep(h);
-  assert.ok(pts, 'the unreported part is drawn');
-  assert.ok(pts.split(' ').length >= 8, 'a curve of at least 8 points (the shared great circle)');
-  assert.ok(h.indexOf('class="cs-fl-unrep"') < h.indexOf('class="cs-fl-trail"'), 'drawn under the Flown trail');
-  assert.equal((h.match(/class="cs-fl-trail"[^>]*points="([^"]*)"/) || [])[1].split(' ').length, 2, 'the Flown trail is unchanged');
-  assert.ok(SAVER_SRC.includes('.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);'), 'fainter: off-white at 45 %');
-  const real = R.F.unreportedOf;
-  let calls = 0;
-  R.F.unreportedOf = (x) => { calls += 1; return real(x); };
-  at(R, SLOT0 + 3000);
-  assert.ok(calls > 0, 'the saver uses the shared function');
-  R.F.unreportedOf = real;
-  // The picture box holds the arc too, where it bows north of every other point (origin 60N 0E, oldest point 60N 40E).
-  const bow = { origin: [60, 0], trail: [[60, 40]], cur: [60, 20], destination: [50, 60] };
-  const fr = runtime().S.routeFrame(bow);
-  const inside = real(bow).every((p) => fr.X(p) >= 0 && fr.X(p) <= fr.W && fr.Y(p) >= 0 && fr.Y(p) <= fr.H);
-  assert.ok(inside, 'the arc is inside the picture box');
-  // A long flight whose trail starts far from the origin, next to the Remaining route: the arc runs from the origin dot to the
-  // first trail point, and the dashed Remaining route still starts at the aircraft (the three lines do not replace each other).
-  {
-    const long = { latitude: 55, longitude: -30, airport_origin_latitude: 52.3, airport_origin_longitude: 4.8,
-      airport_destination_latitude: 40.6, airport_destination_longitude: -73.8, coordinates: [[53.5, -12], [54.5, -22]] };
-    const { h: hl } = run(long);
-    const nums = (t) => t.trim().split(/\s+/).map((q) => q.split(',').map(Number));
-    const arcPts = nums(unrep(hl)), trailPts = nums(hl.match(/<polyline class="cs-fl-trail"[^>]*points="([^"]+)"/)[1]);
-    const dot = [...hl.matchAll(/<circle class="cs-fl-ap"[^>]*cx="([\d.-]+)" cy="([\d.-]+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
-    const close = (a, b, label) => assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.02, label + ': ' + a + ' vs ' + b);
-    close(arcPts[0], dot[0], 'the arc starts at the origin dot');
-    close(arcPts[arcPts.length - 1], trailPts[0], 'and ends at the first (oldest) trail point');
-    assert.equal((hl.match(/class="cs-fl-route"/g) || []).length, 1, 'the one dashed Remaining route is still drawn');
-    assert.ok(hl.indexOf('class="cs-fl-unrep"') < hl.indexOf('class="cs-fl-trail"'), 'the arc lies under the Flown trail');
-  }
-  assert.equal(unrep(run({ airport_origin_latitude: null, airport_origin_longitude: null }).h), undefined, 'no origin: nothing drawn');
-  assert.equal(unrep(run({ coordinates: [] }).h), undefined, 'no trail: nothing drawn');
-}
-
-// The aircraft marker has one fixed size on every map: a lone flight (a small picture) and a long route (a big one).
-// It is an element in the screen's units, not a part of the picture, so the route's span cannot shrink it.
-{
-  const sizeOf = (h) => (h.match(/<div class="cs-fl-mk"[^>]*style="[^"]*width:([\d.]+)cqmin/) || [])[1];
-  const R1 = runtime();
-  warm(R1);
-  const solo = (step) => [entry('1', step, { airport_origin_latitude: null, airport_origin_longitude: null,
-    airport_destination_latitude: null, airport_destination_longitude: null, coordinates: [] })];
-  move(R1, 1, solo(1));
-  at(R1, SLOT0 + 1000);
-  move(R1, 2, solo(2));
-  const h1 = at(R1, SLOT0 + 2000);
-  const R2 = runtime();
-  warm(R2);
-  const wide = (step) => [entry('1', step, { latitude: 50 + 0.5 * step, longitude: 4 + 9 * step, coordinates: [[40, -20], [45, -10]] })];
-  move(R2, 1, wide(1));
-  at(R2, SLOT0 + 1000);
-  move(R2, 2, wide(2));
-  const h2 = at(R2, SLOT0 + 2000);
-  const lone = sizeOf(h1), route = sizeOf(h2);
-  assert.ok(lone && route, 'both maps draw an aircraft marker with a size in the screen units');
-  assert.equal(lone, route, 'the marker has the same size on a lone flight and on a long route');
-  assert.equal(lone, (40 / 8.2).toFixed(3), 'the marker is u(40) of the saver');
-  assert.ok(!/<path class="cs-fl-ac"/.test(h2), 'the marker is no longer a shape in the picture, which scales with the route');
 }
 
 // Preview: with FlightRadar24 there but nothing qualifying, the preview shows the sky, as at runtime, and no invented flight.
@@ -899,7 +753,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     + '\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, two times: airport time with its city, the home time with its city under it');
   assert.equal(block(mapOf({ ...diff, time_estimated_arrival: U(19, 17, 3) })),
-    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft' + NBSP + '· Thu,' + NBSP + 'Nov' + NBSP + '19</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo'
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft' + NBSP + '·' + NBSP + 'Thu,' + NBSP + 'Nov' + NBSP + '19</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo'
     + '\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, arrival not today (now is Nov 18): the date joins the caption, the lines carry no date');
   // Line breaks (the list row's rule): a time, its city and its date never break inside. The saver wraps each time in an
@@ -920,7 +774,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   }
   // Dutch: the caption date is short weekday, day, short month (head date style). It pins behaviour; it was not red first.
   const nl = mapOf({ ...same, time_estimated_arrival: U(28, 17, 3) }, 'nl-NL');
-  assert.match(block(nl), /Voraussichtliche Ankunft\u00a0· za\u00a028\u00a0nov<\/div>/, 'Dutch: the date reads za 28 nov');
+  assert.match(block(nl), /Voraussichtliche Ankunft\u00a0·\u00a0za\u00a028\u00a0nov<\/div>/, 'Dutch: the date reads za 28 nov');
 }
 
 // ── Time labels, review fixes: the head date style in the rows, one source for the arrival, one row helper ─────────────
@@ -950,7 +804,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(plain(mm.html), new RegExp('<div class="cs-fl-arrsub">03:30' + NBSP + 'AM' + NBSP + 'Thu,' + NBSP + 'Nov' + NBSP + '19' + NBSP + 'Amsterdam</div>'), 'the home line keeps its own date');
   // The caption separator is the protected-space form: no line starts with the dot.
   const far = mapOf({ ...diff, time_estimated_arrival: U(19, 17, 3) });
-  assert.match(far.html, new RegExp('Voraussichtliche Ankunft' + NBSP + '· Thu,' + NBSP + 'Nov' + NBSP + '19</div>'), 'caption: NBSP + dot + space');
+  assert.match(far.html, new RegExp('Voraussichtliche Ankunft' + NBSP + '·' + NBSP + 'Thu,' + NBSP + 'Nov' + NBSP + '19</div>'), 'caption: the dot has a protected space on both sides, so no line starts or ends with it');
   // The label is dimmed, the value is not: no descendant selector reaches the spans inside a value.
   assert.doesNotMatch(SAVER_SRC, /\.cs-fl-row span\{/, 'no descendant selector on the row');
   // The row helper is shared with the popup.

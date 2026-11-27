@@ -5,11 +5,10 @@
 import assert from 'node:assert/strict';
 import { page, globeFiles, settle } from './lib/globe_page.mjs';
 
-const SIZE = 1000, C = SIZE / 2;
+const SIZE = 1000, C = SIZE / 2, HORIZON = C * 1.25; // zoom 1.25: the sphere is drawn 1.25 times as wide as the disc; the CSS cuts it to the disc
 // A flight on the globe: `fl` overrides the fixture flight. The aircraft is at fl.latitude + .01, fl.longitude + .02 (the fixture's move).
 const show = async (fl) => {
   const R = page(globeFiles());
-  R.vars = { casora_flights_map: 'globe' };
   Object.assign(R.flight, fl);
   R.start(); await settle(); R.api.update();
   return R;
@@ -42,15 +41,15 @@ const bbox = (d) => { const p = points(d); const xs = p.map((q) => q[0]), ys = p
 }
 
 // The horizon: the Unreported part runs from the departure airport (Sydney, far side) to the trail's start (near the aircraft over
-// Europe). It is cut where the sphere turns away: nothing of it lies outside the disc, and it reaches the rim. An Unreported part wholly on the far side is not drawn.
+// Europe). It is cut where the sphere turns away: nothing of it lies outside the sphere's horizon, and it reaches it. An Unreported part wholly on the far side is not drawn.
 {
   const R = await show({ latitude: 50, longitude: 10, airport_origin_latitude: -33.9, airport_origin_longitude: 151.2, coordinates: [[51, 9], [50.5, 9.5]],
     airport_destination_latitude: 52, airport_destination_longitude: 20 });
   const un = layer(R.host.innerHTML, 'cs-gl-unrep');
   assert.ok(un, 'the near part of the Unreported part is drawn');
   const r = points(un).map((q) => dist(q, [C, C]));
-  assert.ok(Math.max(...r) <= C + 0.5, 'nothing outside the disc (' + Math.max(...r).toFixed(2) + ')');
-  assert.ok(Math.max(...r) > C - 1.5, 'the line is cut at the rim, not before it');
+  assert.ok(Math.max(...r) <= HORIZON + 0.5, 'nothing beyond the horizon (' + Math.max(...r).toFixed(2) + ')');
+  assert.ok(Math.max(...r) > HORIZON - 1.5, 'the line is cut at the horizon, not before it');
   const far = await show({ latitude: 50, longitude: 10, airport_origin_latitude: -33.9, airport_origin_longitude: 151.2, coordinates: [[-40, 170], [-41, 171], [50, 10]] });
   assert.equal(layer(far.host.innerHTML, 'cs-gl-unrep'), null, 'an arc wholly behind the horizon is not drawn');
   assert.ok(layer(far.host.innerHTML, 'cs-gl-trail'), 'the trail that ends at the aircraft is drawn up to the horizon');
@@ -60,7 +59,7 @@ const bbox = (d) => { const p = points(d); const xs = p.map((q) => q[0]), ys = p
 {
   const R = await show({ latitude: 52, longitude: 178, airport_origin_latitude: 35.5, airport_origin_longitude: 139.8,
     airport_destination_latitude: 61.2, airport_destination_longitude: -150, coordinates: [[40, 150], [46, 165], [50, 175], [51, 179.5], [51.5, -179.5]] });
-  const html = R.host.innerHTML, P = R.S.globeProjection({ cur: [52.01, -179.96] });
+  const html = R.host.innerHTML, P = R.S.globeProjection({ cur: [52.01, 178.02] }); // where the aircraft is
   for (const cls of ['cs-gl-unrep', 'cs-gl-trail', 'cs-gl-route']) {
     const d = layer(html, cls);
     assert.ok(d, cls + ' is drawn');

@@ -4,8 +4,8 @@
 // casora_screensaver_kind (which one, „mix“ = one after the other) and the ones listed below. Like
 // casora_idle_home they ride in the hero card of each view.
 // Thirteen screensavers: sky, drawn landscapes, room photos, word clock, weather, day line, week, music, energy flow,
-// the house at rest, cameras, a month calendar and the tracked flights (a map and the details, one flight per turn in
-// „mix“; alone, one flight per turn on the map; only with FlightRadar24, the shared rule of 49-flights.js). Every one is
+// the house at rest, cameras, a month calendar and the tracked flights (a globe and the details, one flight per turn in
+// „mix“; alone, one flight per turn on the globe; only with FlightRadar24, the shared rule of 49-flights.js). Every one is
 // drawn from what the house knows (time, sun, weather and its forecast, calendars, waste dates, the playing media player, the energy settings, the bell, the dashboard's room photos); nothing is
 // loaded from another server. One that has nothing to show (no music playing, energy not set up) shows the sky; in the
 // alternation („mix“, the kinds picked in casora_screensaver_mix) it is skipped instead. The same drawing serves the Studio's preview (mount into any box): all sizes are
@@ -863,38 +863,28 @@
     + '.cs-sv .cs-kl{display:flex;flex-direction:column;gap:' + u(3) + ';min-width:0;}'
     + '.cs-sv .cs-ke{display:flex;align-items:center;gap:' + u(8) + ';min-width:0;font-size:' + u(19.5) + ';font-weight:600;line-height:1.2;}'
     + '.cs-sv .cs-ke i{flex:none;width:' + u(10) + ';height:' + u(10) + ';border-radius:50%;background:var(--cs-c);}'
-    // Flights: the route picture between the head and the figures; the details as two columns of rows.
+    // Flights: the globe on the left and the text column on the right, as the music saver has its cover and meta; the details as two columns of rows.
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
-    + '.cs-sv .cs-fl-map{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';bottom:' + u(190) + ';}'
-    // The live map is opaque, so unlike the (transparent) drawn picture it must not lie over any text: its box sits between the header
-    // (up to two lines of flight number) and the figures (which wrap on a phone), with a gap. The narrow rule is in the @container below.
-    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(300) + ';bottom:' + u(215) + ';border-radius:' + u(28) + ';pointer-events:none;}'
-    + '.cs-sv .cs-fl-svg{width:100%;height:100%;display:block;overflow:visible;}'
-    // The globe (Flights map = Globe): matte, no glow, no lighting. Its box is the live map's (cs-fl-live), the disc fills it.
+    // The globe: matte, no glow, no lighting. Its box is the music cover's, the disc fills it.
+    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(M + 8) + ';top:50%;width:' + u(480) + ';height:' + u(480) + ';margin-top:-' + u(240) + ';pointer-events:none;}'
     + '.cs-sv.cs-flights.cs-globe{background:radial-gradient(90% 90% at 88% 6%, #1D1A17 0%, #191613 62%);}'
     + '.cs-sv .cs-fl-globe{pointer-events:none;}'
-    + '.cs-sv .cs-gl-svg{width:100%;height:100%;display:block;pointer-events:none;touch-action:none;}'
+    // The sphere is drawn larger than the disc (zoom 1.25): what lies outside is cut off.
+    + '.cs-sv .cs-gl-svg{width:100%;height:100%;display:block;border-radius:50%;overflow:hidden;pointer-events:none;touch-action:none;}'
     + '.cs-sv .cs-gl-sea{fill:#24211E;}'
     + '.cs-sv .cs-gl-land{fill:#4A443C;stroke:rgba(25,22,19,.7);stroke-width:1.2;stroke-linejoin:round;}'
-    + '.cs-sv .cs-fl-route{stroke:rgba(246,239,230,.75);}'
+    + '.cs-sv .cs-gl-border{stroke:rgba(25,22,19,.7);stroke-opacity:.25;stroke-width:.75;stroke-linejoin:round;}'
     + '.cs-sv .cs-gl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-gl-route{stroke:rgba(246,239,230,.72);}'
     + '.cs-sv .cs-gl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
     + '.cs-sv .cs-gl-ap{fill:#F6EFE6;stroke:#191613;stroke-width:3;}'
     + '.cs-sv .cs-gl-code{fill:#F7F1E8;font-size:30px;font-weight:600;stroke:#191613;stroke-width:6px;paint-order:stroke;stroke-linejoin:round;}'
     + '.cs-sv .cs-gl-plane path{fill:#E08A5C;stroke:#191613;stroke-width:3;stroke-linejoin:round;}'
-    + '.cs-sv .cs-fl-unrep{stroke:rgba(246,239,230,.45);stroke-width:' + u(4) + ';}'
-    + '.cs-sv .cs-fl-trail{stroke:#F6EFE6;stroke-width:' + u(4) + ';}'
-    + '.cs-sv .cs-fl-ap{fill:#F6EFE6;stroke:#070D1A;stroke-width:' + u(2) + ';}'
-    + '.cs-sv .cs-fl-pic{position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);}'
-    + '.cs-sv .cs-fl-mk{position:absolute;transform-origin:50% 50%;}.cs-sv .cs-fl-mk svg{width:100%;height:100%;display:block;overflow:visible;}'
-    + '.cs-sv .cs-fl-mk path{fill:#FFCC00;stroke:#070D1A;stroke-width:.14;stroke-linejoin:round;}'
-    + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
-    + '.cs-sv .cs-fl-stat.cs-fl-above{bottom:' + u(190) + ';}'
-    // With the arrival block the stats line sits at 190 units; the map ends above it with a gap (stats line 36 + gap 24 more).
-    + '.cs-sv .cs-fl-map.cs-fl-eta{bottom:' + u(250) + ';}.cs-sv .cs-fl-live.cs-fl-eta{bottom:' + u(255) + ';}'
     + '.cs-sv .cs-fl-nw{white-space:nowrap;}'
-    + '.cs-sv .cs-fl-arr{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(72) + ';}'
+    // The text column's lines: the percent left and the total time right over the bar; time left; the arrival block.
+    + '.cs-sv .cs-fl-pct{display:flex;justify-content:space-between;gap:' + u(24) + ';font-size:' + u(23) + ';font-weight:600;color:rgba(255,255,255,.72);margin-top:' + u(12) + ';font-variant-numeric:tabular-nums;white-space:nowrap;}.cs-sv .cs-fl-tot{margin-left:auto;}'
+    + '.cs-sv .cs-fl-left{font-size:' + u(30) + ';font-weight:600;margin-top:' + u(28) + ';white-space:nowrap;}'
+    + '.cs-sv .cs-fl-arr{margin-top:' + u(36) + ';}'
     + '.cs-sv .cs-fl-arrval{font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-arrsub{font-size:' + u(22) + ';font-weight:500;color:var(--ink2);}'
     + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
@@ -915,13 +905,13 @@
     + '.cs-sv.cs-light .cs-tint{opacity:.2;}'
     + '@media (prefers-reduced-motion: reduce){.cs-sv .cs-photo, .cs-sv .cs-fl::before{animation:none;}}'
     // Less wide than 16:10 (a 4:3 tablet): the widest pieces give way.
-    + '@container (aspect-ratio < 1.45){.cs-sv .cs-cover{width:' + u(400) + ';height:' + u(400) + ';margin-top:-' + u(200) + ';}.cs-sv .cs-meta{left:' + u(M + 8 + 400 + 50) + ';}.cs-sv .cs-meta h2{font-size:' + u(62) + ';}'
+    + '@container (aspect-ratio < 1.45){.cs-sv .cs-cover, .cs-sv .cs-fl-live{width:' + u(400) + ';height:' + u(400) + ';margin-top:-' + u(200) + ';}.cs-sv .cs-meta{left:' + u(M + 8 + 400 + 50) + ';}.cs-sv .cs-meta h2{font-size:' + u(62) + ';}'
     + '.cs-sv .cs-wk{width:' + u(380) + ';}.cs-sv .cs-wnow b{font-size:' + u(200) + ';}.cs-sv .cs-wnow img{width:' + u(124) + ';height:' + u(124) + ';}'
     + '.cs-sv .cs-km, .cs-sv .cs-ky{font-size:' + u(76) + ';}.cs-sv .cs-right{width:' + u(400) + ';}.cs-sv .cs-left{right:' + u(M + 8 + 400 + 40) + ';}.cs-sv .cs-left .cs-time{font-size:' + u(184) + ';}'
     + '.cs-sv.cs-calm .cs-left{right:' + u(M) + ';}.cs-sv.cs-calm .cs-left .cs-time{font-size:' + u(240) + ';}'
     + '.cs-sv .cs-col .cs-n{font-size:' + u(60) + ';}.cs-sv .cs-e b{font-size:' + u(20) + ';}.cs-sv .cs-sum b{font-size:' + u(72) + ';}}'
     // Narrow boxes (portrait tablet): one under the other.
-    + '@container (aspect-ratio < 1){.cs-sv .cs-fl-live{top:' + u(470) + ';}.cs-sv .cs-top{flex-direction:column;}.cs-sv .cs-wx{text-align:left;padding-top:0;}.cs-sv .cs-wx .cs-t{justify-content:flex-start;}'
+    + '@container (aspect-ratio < 1){.cs-sv .cs-top{flex-direction:column;}.cs-sv .cs-wx{text-align:left;padding-top:0;}.cs-sv .cs-wx .cs-t{justify-content:flex-start;}'
     + '.cs-sv .cs-top .cs-time{font-size:' + u(190) + ';}.cs-sv .cs-words{font-size:' + u(118) + ';}.cs-sv .sv-bar{flex-direction:column;align-items:flex-start;}.cs-sv .cs-name{text-align:left;}'
     + '.cs-sv .sv-bar .cs-time{font-size:' + u(160) + ';}'
     + '.cs-sv .sv-head{flex-direction:column-reverse;gap:' + u(34) + ';}.cs-sv .sv-head .cs-clock:last-child{text-align:left;}.cs-sv .cs-body{top:' + u(420) + ';}.cs-sv.cs-linie .cs-body{top:' + u(420) + ';bottom:' + u(60) + ';--cs-pw:' + LINE.tall.w + '%;--cs-ly:calc(' + u(168) + ' + (' + LINE.tall.rows + ' - var(--cs-nt, 1)) * ' + u(31) + ');}.cs-sv.cs-woche .cs-body{top:' + u(400) + ';}'
@@ -934,7 +924,7 @@
     + '.cs-sv .cs-li{flex-direction:row;flex:1;min-width:0;margin:0;}.cs-sv .cs-e{flex:0 1 ' + u(230) + ';min-width:0;}.cs-sv .cs-none{margin:0;}'
     // Day line: narrower cards. Music and the house at rest: one under the other.
     + '.cs-sv .cs-lay.cs-wide{display:none;}.cs-sv .cs-lay.cs-tall{display:block;}.cs-sv .cs-r{padding:' + u(6) + ' ' + u(10) + ' ' + u(7) + ';}.cs-sv .cs-r b{font-size:' + u(21) + ';}.cs-sv .cs-r span{font-size:' + u(19) + ';}'
-    + '.cs-sv .cs-cover{left:50%;top:' + u(230) + ';width:' + u(480) + ';height:' + u(480) + ';margin:0 0 0 -' + u(240) + ';}.cs-sv .cs-meta{left:' + u(M + 8) + ';top:' + u(790) + ';transform:none;}.cs-sv .cs-meta h2{font-size:' + u(64) + ';}'
+    + '.cs-sv .cs-cover, .cs-sv .cs-fl-live{left:50%;top:' + u(230) + ';width:' + u(480) + ';height:' + u(480) + ';margin:0 0 0 -' + u(240) + ';}.cs-sv .cs-meta{left:' + u(M + 8) + ';top:' + u(790) + ';transform:none;}.cs-sv .cs-meta h2{font-size:' + u(64) + ';}'
     + '.cs-sv .cs-left, .cs-sv.cs-calm .cs-left{position:static;display:block;padding:' + u(190) + ' ' + u(M + 8) + ' 0;text-align:left;}.cs-sv.cs-calm .cs-left{padding-top:' + u(380) + ';}'
     + '.cs-sv .cs-left .cs-time, .cs-sv.cs-calm .cs-left .cs-time{font-size:' + u(200) + ';margin-left:-' + u(10) + ';}.cs-sv.cs-calm .cs-say, .cs-sv.cs-calm .cs-ppl{justify-content:flex-start;}'
     + '.cs-sv .cs-right{position:static;width:auto;padding:' + u(56) + ' ' + u(M + 8) + ' 0;}'
@@ -1242,6 +1232,10 @@
   // What is playing, big with its cover; the background is the cover out of focus.
   var mmss = function (sec) { var s2 = Math.max(0, Math.round(sec)); return Math.floor(s2 / 60) + ':' + String(s2 % 60).padStart(2, '0'); };
   var NOTE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6.2a1 1 0 0 1 .8-1l8-1.7a1 1 0 0 1 1.2 1v10.9a2.9 2.9 0 1 1-2-2.7V8.1l-6 1.3v8.5a2.9 2.9 0 1 1-2-2.8z" fill="currentColor"/></svg>';
+  // Clock and date at the top right (music and the flights globe).
+  var cornerHtml = function (ctx) {
+    return '<div class="cs-corner"><div class="cs-time">' + esc(timeText(ctx.now)) + '</div><div class="cs-date">' + esc(dateText(ctx.now)) + '</div></div>';
+  };
   DRAW.musik = function (ctx) {
     var m = ctx.media;
     if (!m) return DRAW.himmel(ctx);
@@ -1249,7 +1243,7 @@
     var pic = m.cover ? 'background-image:url(&quot;' + esc(cssUrl(m.cover)) + '&quot;)' : '';
     // Without a cover: a note on the cover's own colours.
     return (m.cover ? '<div class="cs-blur" style="' + pic + '"></div>' : '') + '<div class="cs-in"><div class="cs-cover"' + (pic ? ' style="' + pic + '"' : '') + '>' + (m.cover ? '' : NOTE) + '</div>'
-      + '<div class="cs-corner"><div class="cs-time">' + esc(timeText(ctx.now)) + '</div><div class="cs-date">' + esc(dateText(ctx.now)) + '</div></div>'
+      + cornerHtml(ctx)
       + '<div class="cs-meta"><div class="cs-cap" data-no-i18n>' + esc(m.where) + '</div><h2 data-no-i18n>' + esc(m.title) + '</h2>' + (m.artist ? '<h3 data-no-i18n>' + esc(m.artist) + '</h3>' : '')
       + (pct != null ? '<div class="cs-prog"><u style="width:' + pct.toFixed(1) + '%"></u></div><div class="cs-tt"><span>' + mmss(m.pos) + '</span><span>' + mmss(m.dur) + '</span></div>' : '')
       + '</div></div>';
@@ -1390,119 +1384,66 @@
     }
     return html + '</div></div>';
   };
-  // ── Flights: a map and the details, one flight per turn ─────────────────────────────────────────────────────────────
+  // ── Flights: the globe and the details, one flight per turn ─────────────────────────────────────────────────────────────
   // In „mix“, turn t (see S.turnOf) shows flight t mod n; the layout changes once every n turns, so each flight gets the
-  // map and the details in turn. A single Flights kind gets its one flight and its layout from S.flightPick (ctx.flights
+  // globe and the details in turn. A single Flights kind gets its one flight and its layout from S.flightPick (ctx.flights
   // holds only that one, ctx.flightDetail the layout), so turn 0 here. No timer or count of its own: the native turns and
   // the native update do the rest.
-  // The route is plain shapes from the view's points (F.mapView): no tile, image or link is loaded.
-  // The picture's frame: its size in degrees (W × H, longitude shrunk to the latitude) and where one point sits in it.
-  // X and Y give numbers in the picture's units. Null without a position.
-  S.routeFrame = function (v) {
-    if (!v || !v.cur) return null;
-    // Relies on F.mapView: every longitude is continuous with the aircraft's, so points are projected as given.
-    // The Unreported part's arc is in the box too: it can bow past every other point.
-    var pts = [v.cur].concat(v.trail || [], v.route || [], v.origin ? [v.origin] : [], v.destination ? [v.destination] : [], FL() ? FL().unreportedOf(v) : []);
-    var la = pts.map(function (p) { return p[0]; }), lo = pts.map(function (p) { return p[1]; });
-    var lo0 = Math.min.apply(null, lo), lo1 = Math.max.apply(null, lo), la0 = Math.min.apply(null, la), la1 = Math.max.apply(null, la);
-    var padA = Math.max(0.3, (la1 - la0) * 0.15), padO = Math.max(0.3, (lo1 - lo0) * 0.15);
-    var s0 = la0 - padA, s1 = la1 + padA, w0 = lo0 - padO, w1 = lo1 + padO;
-    var k = Math.cos((s0 + s1) / 2 * Math.PI / 180); // longitude degrees shrink towards the poles
-    var W = (w1 - w0) * k, H = s1 - s0;
-    return { W: W, H: H, r: Math.max(W, H) / 60,
-      X: function (p) { return ((p[1] - w0) * k); }, Y: function (p) { return (s1 - p[0]); } };
-  };
-  // The route lines and the airports, in the picture's units. The aircraft is not here: see S.routeMarker.
-  S.routeSvg = function (v, fr) {
-    fr = fr || S.routeFrame(v);
-    if (!fr) return '';
-    var X = fr.X, Y = fr.Y, r = fr.r;
-    var svgHtml = '<svg class="cs-fl-svg" viewBox="0 0 ' + esc(fr.W.toFixed(2)) + ' ' + esc(fr.H.toFixed(2)) + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
-    var line = function (list) { return (list.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')); };
-    // The Remaining route (shared with the popup): the one dashed line, from the aircraft to the destination. No destination, no line.
-    // Width and dash keep the popup's proportions (49-flights.js ROUTE_STYLE), in saver units. Without the flights module: no line.
-    var rs = FL() && FL().ROUTE_STYLE;
-    if (rs && v.route && v.route.length > 1) {
-      var dash = u(rs.dash);
-      svgHtml += '<polyline class="cs-fl-route" vector-effect="non-scaling-stroke" fill="none" stroke-linejoin="round" style="stroke-width:' + esc(u(rs.width))
-        + ';stroke-dasharray:' + esc(dash) + ' ' + esc(dash) + '" points="' + esc(line(v.route)) + '"/>';
-    }
-    // The Unreported part: under the Flown trail (the shared function, as for the popup map). Its arc ends at the trail's start.
-    var arc = FL() ? FL().unreportedOf(v) : [];
-    if (arc.length > 1) {
-      svgHtml += '<polyline class="cs-fl-unrep" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
-        + esc(arc.map(function (p) { return X(p).toFixed(2) + ',' + Y(p).toFixed(2); }).join(' ')) + '"/>';
-    }
-    if (v.trail && v.trail.length > 1) {
-      svgHtml += '<polyline class="cs-fl-trail" vector-effect="non-scaling-stroke" fill="none" stroke-linecap="round" stroke-linejoin="round" points="'
-        + esc(line(v.trail)) + '"/>';
-    }
-    [v.origin, v.destination].forEach(function (p) {
-      if (!p) return;
-      svgHtml += '<circle class="cs-fl-ap" vector-effect="non-scaling-stroke" cx="' + esc(X(p).toFixed(2)) + '" cy="' + esc(Y(p).toFixed(2)) + '" r="' + esc((r * 0.45).toFixed(2)) + '"/>';
-    });
-    return svgHtml + '</svg>';
-  };
-  // The aircraft: a marker of 40 saver units, whatever the route's span, placed by its share of the picture. Its size is
-  // not the picture's, so a short route (a small picture) does not make it tiny.
-  S.routeMarker = function (v, fr) {
-    fr = fr || S.routeFrame(v);
-    if (!fr) return '';
-    var left = (fr.X(v.cur) / fr.W * 100).toFixed(2), top = (fr.Y(v.cur) / fr.H * 100).toFixed(2), hd = Number(v.heading) || 0;
-    return '<div class="cs-fl-mk" style="left:' + left + '%;top:' + top + '%;width:' + u(40) + ';height:' + u(40) + ';transform:translate(-50%, -50%) rotate(' + hd + 'deg)">'
-      + '<svg viewBox="-1 -1.4 2 2.5" aria-hidden="true"><path d="M0 -1.3 L0.9 1 L0 0.4 L-0.9 1 Z"/></svg></div>';
-  };
-  // The picture box, as large as fits the map's area (72 units left and right, 230 above, 190 below; 250 with the arrival block) at its own proportions.
-  S.routePicStyle = function (fr, eta) {
-    var R = fr.W / fr.H, wb = 'calc(100cqw - ' + u(144) + ')', hb = 'calc(100cqh - ' + u(eta ? 480 : 420) + ')';
-    return 'width:min(' + wb + ', calc(' + hb + ' * ' + R.toFixed(4) + '));height:min(' + hb + ', calc(' + wb + ' / ' + R.toFixed(4) + '))';
-  };
-  // The arrival of the map layout: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
-  // with two times). The date joins the caption only when the arrival is not today.
+  // The globe layout is the music saver's: the globe on the left, the text column on the right (route, flight number, altitude
+  // and speed, progress, time left, arrival), clock and date top right. The route is plain shapes from the view's points
+  // (F.mapView): no tile, image or link is loaded.
+  // The arrival block of the text column: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
+  // with two times). The date joins the caption only when the arrival is not today; its dot is held by protected spaces, so it
+  // never lands at a line's edge.
   S.arrivalHtml = function (a) {
-    return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? '\u00a0· ' + a.date : '')) + '</div>'
+    return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? '\u00a0·\u00a0' + a.date : '')) + '</div>'
       + '<div class="cs-fl-arrval">' + FL().timeHtml(a.air, a.home) + '</div></div>';
+  };
+  // The text column of the globe layout. Without a known progress there is no bar and no percent; a time that is not known has no line.
+  S.flightColumnHtml = function (r, v, eta, now) {
+    var F = FL(), f = r.entry, pct = v && v.progress != null ? v.progress : null, rem = F ? F.remaining(f, now) : null, dur = F ? F.duration(f) : null;
+    // One unbreakable line: a dot between two parts never starts or ends a line.
+    var stat = [r.altitude, r.speed].filter(Boolean).join('\u00a0·\u00a0');
+    var total = F ? F.hmLabel('Gesamt', dur) : '', barHtml = pct != null ? F.progressBar(pct, u(10), u(40)) : '';
+    return '<div class="cs-meta"><div class="cs-cap" data-no-i18n>' + esc(r.route || '') + '</div><h2 data-no-i18n>' + esc(r.label) + '</h2>'
+      + (stat ? '<h3 data-no-i18n>' + esc(stat) + '</h3>' : '')
+      + (pct != null ? '<span aria-hidden="true">' + barHtml + '</span>' : '')
+      + (pct != null || total ? '<div class="cs-fl-pct">' + (pct != null ? '<span>' + esc(F.progressText(pct)) + '</span>' : '') + (total ? '<span class="cs-fl-tot">' + esc(total) + '</span>' : '') + '</div>' : '')
+      + (rem != null ? '<div class="cs-fl-left">' + esc(F.hmLabel('Restzeit', rem)) + '</div>' : '')
+      + (eta ? S.arrivalHtml(eta) : '') + '</div>';
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
     var r = rows[((t % n) + n) % n], detail = ctx.flightDetail != null ? !!ctx.flightDetail : Math.floor(t / n) % 2 === 1;
     var f = r.entry, v = F ? F.mapView(ctx.hass, r.src, r.key, +ctx.now) : null;
-    var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
+    var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {};
     if (!detail) {
       var eta = F ? F.estimateOf(ctx.hass, f, +ctx.now, tzOn) : null;
       if (eta && !eta.air) eta = null;
-      var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
-      var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
-      var fr = v ? S.routeFrame(v) : null;
-      // Globe on and its files loaded: the disc in the map box instead of the flat map (and no HA map over it).
       // While the aircraft's position glides (ctx.globeTrack, kept by the mount), the disc is drawn at the glided position.
-      var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(ctx.globeTrack && S.globeReady() ? S.globeStep(ctx.globeTrack, v, r.src + '|' + r.key) : v) : '';
-      if (globeHtml) { ctx.globeDrawn = true; fr = null; }
-      bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe' + (eta ? ' cs-fl-eta' : '') + '">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map' + (eta ? ' cs-fl-eta' : '') + '"><div class="cs-fl-pic" style="' + S.routePicStyle(fr, eta) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
-        + (stat ? '<div class="cs-fl-stat' + (eta ? ' cs-fl-above' : '') + '">' + esc(stat) + '</div>' : '')
-        + (eta ? S.arrivalHtml(eta) : '');
-    } else {
-      // The shared row helper (49-flights.js F.pairs, saver style) translates the labels and leaves out a row without a value;
-      // the timestamps (F.timeRows) are rows too: the label names side and kind, the value is the time lines.
-      var items = [['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model], ['Registrierung', d.registration], ['Rufzeichen', d.callsign],
-        ['Kurs über Grund', r.heading], ['Vertikalgeschwindigkeit', r.vspeed], ['Abflug', d.origin], ['Ankunft', d.destination]];
-      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn, +ctx.now) : []);
-      bodyHtml = '<div class="cs-fl-rows">' + (F ? F.pairs(items, true) : '') + '</div>';
+      // Until the globe's files are there (S.globeLoad) the text column stands alone.
+      var globeHtml = v && S.globeReady() ? S.globeSvg(ctx.globeTrack ? S.globeStep(ctx.globeTrack, v, r.src + '|' + r.key) : v) : '';
+      if (globeHtml) ctx.globeDrawn = true;
+      return '<div class="cs-in">' + (globeHtml ? '<div class="cs-fl-live cs-fl-globe">' + globeHtml + '</div>' : '') + cornerHtml(ctx) + S.flightColumnHtml(r, v, eta, +ctx.now) + '</div>';
     }
-    var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r, !!eta) : '';
-    return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
+    // The shared row helper (49-flights.js F.pairs, saver style) translates the labels and leaves out a row without a value;
+    // the timestamps (F.timeRows) are rows too: the label names side and kind, the value is the time lines.
+    var items = [['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model], ['Registrierung', d.registration], ['Rufzeichen', d.callsign],
+      ['Kurs über Grund', r.heading], ['Vertikalgeschwindigkeit', r.vspeed], ['Abflug', d.origin], ['Ankunft', d.destination]];
+    items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn, +ctx.now) : []);
+    var rowsHtml = F ? F.pairs(items, true) : '';
+    return '<div class="cs-in">' + head(ctx, r.label, r.route) + '<div class="cs-fl-rows">' + rowsHtml + '</div></div>';
   };
   // ── Globe view: the files load late ──────────────────────────────────────────────────────────────────────────────────
-  // Only with the setting Flights map = Globe and a flight on show are the files of assets/globe/ asked for (d3-array, then
-  // d3-geo, which needs it; topojson-client; the land). They come from the integration's own /casora_assets, never from the
-  // internet, and once per page. Until they are there, and when one fails, the saver draws the flat map: no text, no retry
-  // while this screensaver runs; the next start (S.mount) tries again.
+  // Only with a flight on show are the files of assets/globe/ asked for (d3-array, then d3-geo, which needs it;
+  // topojson-client; the land; the countries). They come from the integration's own /casora_assets, never from the
+  // internet, and once per page. Until they are there, and when one fails, the text column stands alone: no globe, no
+  // error text, no retry while this screensaver runs; the next start (S.mount) tries again.
   var GLOBE_URL = '/casora_assets/globe/';
   var GLOBE_SCRIPTS = ['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js'];
   var globe = { data: null, pending: null, failed: false };
   // A script file, run late. The d3 and topojson files are UMD builds: run as modules they set window.d3 and window.topojson.
   S.loadScript = function (url) { return import(url); };
-  S.globeOn = function (vars) { return !!vars && vars.casora_flights_map === 'globe'; };
   S.globeReady = function () { return !!globe.data; };
   // Resolves true when the globe can be drawn, false when it cannot (now). Never rejects.
   S.globeLoad = function () {
@@ -1510,26 +1451,30 @@
     if (globe.failed) return Promise.resolve(false);
     if (globe.pending) return globe.pending;
     globe.pending = GLOBE_SCRIPTS.reduce(function (p, f) { return p.then(function () { return S.loadScript(GLOBE_URL + f); }); }, Promise.resolve())
-      .then(function () { return window.fetch(GLOBE_URL + 'land-110m.json'); })
-      .then(function (r) { if (!r || !r.ok) throw new Error('land'); return r.json(); })
-      .then(function (topo) {
-        var d3 = window.d3, tj = window.topojson;
-        if (!d3 || !d3.geoOrthographic || !d3.geoPath || !tj || !tj.feature || !topo || !topo.objects || !topo.objects.land) throw new Error('globe files');
-        globe.data = { d3: d3, land: tj.feature(topo, topo.objects.land) };
+      .then(function () { return Promise.all(['land-110m.json', 'countries-110m.json'].map(function (f) {
+        return window.fetch(GLOBE_URL + f).then(function (r) { if (!r || !r.ok) throw new Error(f); return r.json(); });
+      })); })
+      .then(function (topos) {
+        var d3 = window.d3, tj = window.topojson, land = topos[0], countries = topos[1];
+        if (!d3 || !d3.geoOrthographic || !d3.geoPath || !tj || !tj.feature || !tj.mesh || !land || !land.objects || !land.objects.land
+          || !countries || !countries.objects || !countries.objects.countries) throw new Error('globe files');
+        // The borders between countries only: a line shared by two countries (the coast belongs to one, so it is left out).
+        globe.data = { d3: d3, land: tj.feature(land, land.objects.land), borders: tj.mesh(countries, countries.objects.countries, function (a, b) { return a !== b; }) };
       })
       .catch(function () { globe.failed = true; })
       .then(function () { globe.pending = null; return !!globe.data; });
     return globe.pending;
   };
-  // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the map box, as large as the
-  // box allows). Orthographic, the aircraft's position in the middle, north up (no roll). Null until the files are loaded.
-  var GLOBE_SIZE = 1000, GLOBE_AP_R = 9;
+  // The globe's picture: a square of GLOBE_SIZE units, the disc as large as the square (it fills the globe's box). Orthographic, zoom
+  // 1.25 (the sphere is drawn 1.25 times as wide as the disc, so the CSS cuts it to the disc), the aircraft's position in the middle,
+  // north up (no roll). Null until the files are loaded.
+  var GLOBE_SIZE = 1000, GLOBE_ZOOM = 1.25, GLOBE_AP_R = 9;
   // [lat, lon] (the view's order) to [lon, lat] (d3's).
   var lonLat = function (cur) { return [cur[1], cur[0]]; };
   var GLOBE_FRAME_MS = 100; // the glide redraws at most this often
   S.globeProjection = function (v) {
     if (!globe.data || !v || !v.cur) return null;
-    return globe.data.d3.geoOrthographic().rotate(lonLat(v.cur).map(function (x) { return -x; })).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2).clipAngle(90).precision(0.5);
+    return globe.data.d3.geoOrthographic().rotate(lonLat(v.cur).map(function (x) { return -x; })).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2 * GLOBE_ZOOM).clipAngle(90).precision(0.5);
   };
   // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] like the flat map's points.
   // The flight's layers, bottom to top: Unreported part, Remaining route, Flown trail. The lines are GeoJSON from the flights module
@@ -1585,33 +1530,11 @@
   S.globeSvg = function (v) {
     var proj = S.globeProjection(v);
     if (!proj) return '';
-    var mid = GLOBE_SIZE / 2, layersHtml = S.globeLayers(v, proj);
+    var mid = GLOBE_SIZE / 2, path = globe.data.d3.geoPath(proj), layersHtml = S.globeLayers(v, proj);
     return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(T('Globus mit dem Flug')) + '">'
       + '<circle class="cs-gl-sea" cx="' + esc(mid) + '" cy="' + esc(mid) + '" r="' + esc(mid) + '"/>'
-      + '<path class="cs-gl-land" d="' + esc(globe.data.d3.geoPath(proj)(globe.data.land) || '') + '"/>' + layersHtml + '</svg>';
-  };
-  // Named so for the escape check (tools/html-escape-check.mjs reads names ending in Html as markup): the map element at the end of a scene.
-  var MAP_TAG = /<casora-flight-map\b[^>]*><\/casora-flight-map><\/div>$/;
-  var openTagOf = function (html) { return html.slice(0, html.indexOf('>') + 1); };
-  // The HA map over the drawn picture (the popup's casora-flight-map, 49-flights.js): it draws the route, the trail, the
-  // airports and the aircraft as map layers from the same view. Until it is ready, and when it fails, the drawn picture
-  // shows through. Always the last child of the scene: mountKeepingMap keeps this element across redraws. No attribute
-  // that loads anything; the map takes its tiles from Home Assistant's own map.
-  S.liveMap = function (r, eta) {
-    if (!window.customElements || !window.customElements.get('casora-flight-map')) return '';
-    return '<casora-flight-map class="cs-fl-live' + (eta ? ' cs-fl-eta' : '') + '" data-saver aria-hidden="true" data-src="' + esc(r.src) + '" data-key="' + esc(r.key) + '"></casora-flight-map>';
-  };
-  // Redraws the scene without touching the map element. Only when the scene's opening tag (its classes) and the map element
-  // are the same as before; a change of the tag (say cs-dark to cs-light) or of the flight rebuilds the element, by design.
-  // Everything before the map element is replaced; the element (so its ha-map, tiles and timer) stays. False: not done.
-  S.mountKeepingMap = function (host, lastHtml, newHtml) {
-    var oldMap = MAP_TAG.exec(lastHtml || ''), newMap = MAP_TAG.exec(newHtml), scene = host.firstElementChild;
-    var mapEl = host.querySelector && host.querySelector('casora-flight-map');
-    if (!oldMap || !newMap || oldMap[0] !== newMap[0] || openTagOf(newHtml) !== openTagOf(lastHtml) || !scene || !mapEl || mapEl.parentNode !== scene) return false;
-    while (mapEl.previousSibling) scene.removeChild(mapEl.previousSibling);
-    var contentHtml = newHtml.slice(openTagOf(newHtml).length, newHtml.length - newMap[0].length);
-    mapEl.insertAdjacentHTML('beforebegin', contentHtml);
-    return true;
+      + '<path class="cs-gl-land" d="' + esc(path(globe.data.land) || '') + '"/>'
+      + '<path class="cs-gl-border" fill="none" d="' + esc(path(globe.data.borders) || '') + '"/>' + layersHtml + '</svg>';
   };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
   var TINT_KINDS = ['wort', 'wetter', 'linie', 'woche', 'energie', 'ruhe', 'kalender'];
@@ -1693,7 +1616,7 @@
     if ((k === 'wetter' && !ctx.wx) || (k === 'musik' && !ctx.media) || (k === 'energie' && !ctx.energy) || (k === 'kameras' && !(ctx.cams && ctx.cams.length))
       || (k === 'flights' && !(ctx.flights && ctx.flights.length))) k = 'himmel';
     // The screensavers with a ground of their own are light by day and deep by night (and with a dark theme).
-    var innerHtml = DRAW[k](ctx); // first: drawing may set flags the scene's classes need (ctx.globeDrawn)
+    var innerHtml = DRAW[k](ctx); // first: drawing may set a flag the scene's classes need (ctx.globeDrawn)
     var dark = ctx.dark || (NIGHT_KINDS.indexOf(k) > -1 && isNight(ctx));
     var cls = (dark ? ' cs-dark' : '') + (!dark && LIGHT_KINDS.indexOf(k) > -1 ? ' cs-light' : '');
     // Weather under clouds: a greyer sky. The house at rest: in the middle while nothing asks for anyone.
@@ -1786,13 +1709,13 @@
         }
       }
       if (o.sample) ctx = S.sample(ctx);
-      // Globe on and a flight on show: the files are asked for now (once); the redraw after they arrive draws the globe.
-      if (k === 'flights' && ctx.flights && ctx.flights.length && S.globeOn(ctx.vars) && !S.globeReady()) S.globeLoad().then(function (ok) { if (ok) update(); });
+      // A flight on show: the globe's files are asked for now (once); the redraw after they arrive draws the globe.
+      if (k === 'flights' && ctx.flights && ctx.flights.length && !S.globeReady()) S.globeLoad().then(function (ok) { if (ok) update(); });
       if (!o.sample) ctx.globeTrack = { state: glide.state, now: Date.now() };
       var html = S.html(k, ctx), out = ctx.globeTrack && ctx.globeTrack.out;
       if (out) { glide.state = out.state; glide.base = out.base; if (out.gliding) nextFrame(); else stopFrames(); } else { glide.state = glide.base = null; stopFrames(); }
       api.kind = k;
-      if (html !== last) { var kept = S.mountKeepingMap(host, last, html); last = html; if (!kept) host.innerHTML = html; }
+      if (html !== last) { last = html; host.innerHTML = html; }
       // Wander a few pixels so nothing burns in (not in a preview). o.drift: true, or a function asked every time
       // (the Studio switch). A call that sees a new minute (the one that changes the digits) keeps the step it had,
       // also when a throttled timer skipped the step's own moment: the step then follows with the next call.
@@ -1882,7 +1805,7 @@
   S.vars = function (cfg) {
     var out = {}, keys = ['casora_screensaver', 'casora_screensaver_kind', 'casora_screensaver_calendar', 'casora_screensaver_photos', 'casora_screensaver_mix',
       'casora_screensaver_cameras', 'casora_screensaver_calendars', 'casora_screensaver_tint', 'casora_screensaver_wander', 'casora_screensaver_calendar_range', 'weather_entity', 'use_12h',
-      'casora_screensaver_wake', 'casora_screensaver_wake_screen', 'casora_flights_map'].concat(FLIGHT_KEYS);
+      'casora_screensaver_wake', 'casora_screensaver_wake_screen'].concat(FLIGHT_KEYS);
     ((cfg && cfg.views) || []).forEach(function (v) {
       var vars = ((((v.cards || [])[0]) || {}).variables) || {};
       keys.forEach(function (k) { if ((out[k] == null || out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) && vars[k] != null && vars[k] !== '') out[k] = vars[k]; });
