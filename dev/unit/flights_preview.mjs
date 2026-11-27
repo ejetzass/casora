@@ -3,7 +3,7 @@
 // no preview action writes to Home Assistant (no service call, no text.set_value to FlightRadar24).
 // Controlled clock; synthetic flights; the Studio is simulated by its panel object (_state = draft, _raw = saved).
 //   node dev/unit/flights_preview.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,draftOf,listRows,tile,units,tz,airborne,times
+// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,draftOf,listRows,tile,units,tz,airborne,times,moment
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';

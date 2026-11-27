@@ -2,7 +2,7 @@
 // what happens when its flight stops qualifying, the saved units (feet, meters, kilometers; knots, km/h, mph; ft/min,
 // m/s) with rounding and zeros, and that reading, rendering and previews never write. Controlled clock; synthetic flights.
 //   node dev/unit/flights_details.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#flight,airborne,liveHtml,fmt,units,setting,pinned,open,flightPopup,sec,flightSec,pairs,place,submit,stop
+// @deckt: custom_components/casora/scripts/local/49-flights.js#timePlates,flight,airborne,liveHtml,fmt,units,setting,pinned,open,flightPopup,sec,flightSec,pairs,place,submit,stop
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';

@@ -921,7 +921,7 @@
   // only when its UTC offset at that instant differs from the airport's (zone names are never compared). With one time
   // there is no city. An arrival (arrival = true) also shows its date when one of its presented days differs from the
   // departure's local day (ref).
-  var pair = function (hass, ms, f, side, tzOn, loc, ref, arrival) {
+  var moment = function (hass, ms, f, side, tzOn, loc, ref, arrival) {
     var abbr = str(f['airport_' + side + '_timezone_abbr']), off = f['airport_' + side + '_timezone_offset'];
     var air = offsetOk(off) ? part(ms, { off: off, abbr: abbr }, loc) : null;
     var zone = haZone(hass), home = zone ? part(ms, { zone: zone }, loc) : null;
@@ -937,7 +937,7 @@
     if (home) return { air: line(home), home: '' };
     return null;
   };
-  // Every timestamp the flight has: {dep: [{kind, text}], arr: [{kind, text}]}, scheduled before real before estimated.
+  // Every timestamp the flight has: {dep: [{kind, text, air, home}], arr: [...]} (air leads, home is '' when it is not shown), scheduled before real before estimated.
   // A missing timestamp is left out; the flight stays. The tile and the popup use this.
   F.times = function (hass, f, tzOn) {
     var out = { dep: [], arr: [] }, loc = locale();
@@ -950,12 +950,13 @@
     };
     var depMs = first('departure'), arrMs = first('arrival');
     var localDay = function (ms) { return zone && ms != null ? part(ms, { zone: zone }, loc).day : null; };
-    [['dep', 'origin', 'departure', arrMs, false], ['arr', 'destination', 'arrival', depMs, true]].forEach(function (s) {
+    [{ out: 'dep', side: 'origin', stamp: 'departure', refMs: arrMs, arrival: false },
+     { out: 'arr', side: 'destination', stamp: 'arrival', refMs: depMs, arrival: true }].forEach(function (s) {
       KINDS.forEach(function (kind) {
-        var ms = epochMs(f['time_' + kind + '_' + s[2]]);
+        var ms = epochMs(f['time_' + kind + '_' + s.stamp]);
         if (ms == null) return;
-        var p = pair(hass, ms, f, s[1], !!tzOn, loc, localDay(s[3]), s[4]);
-        if (p) out[s[0]].push({ kind: kind, text: p.home ? p.air + NB + '\u00b7 ' + p.home : p.air, air: p.air, home: p.home });
+        var p = moment(hass, ms, f, s.side, !!tzOn, loc, localDay(s.refMs), s.arrival);
+        if (p) out[s.out].push({ kind: kind, text: p.home ? p.air + NB + '\u00b7 ' + p.home : p.air, air: p.air, home: p.home });
       });
     });
     return out;
@@ -1664,11 +1665,14 @@
   // row, then one row per timestamp kind: the kind word, the airport time on the right, and the home time as a small line under
   // the word when it differs. A side with neither an airport nor a time has no section.
   var timePlates = function (h, f, tzOn) {
-    var tm = F.times(h, f, tzOn), ROW = 'min-height:52px;box-sizing:border-box;padding:8px 16px;';
-    var secs = [['Abflug', 'origin', tm.dep], ['Ankunft', 'destination', tm.arr]].map(function (x) {
-      var rows = [], at = place(f, x[1]);
+    var tm = F.times(h, f, tzOn);
+    // Row padding and divider as the handbook's §6 (top 12, right 16, bottom 12, left 12; 1 px --casora-pill-divider).
+    var ROW = 'min-height:52px;box-sizing:border-box;padding:12px 16px 12px 12px;';
+    var DIV = '<div style="height:1px;margin:0 16px 0 12px;background:var(--casora-pill-divider, rgba(127,127,127,0.25))"></div>';
+    var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr }].map(function (x) {
+      var rows = [], at = place(f, x.side);
       if (at) rows.push('<div style="' + ROW + 'display:flex;align-items:center"><div style="font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere">' + esc(at) + '</div></div>');
-      x[2].forEach(function (t) {
+      x.stamps.forEach(function (t) {
         rows.push('<div style="' + ROW + 'display:flex;align-items:center;justify-content:space-between;gap:12px">'
           + '<div style="min-width:0"><div style="font-size:15px;font-weight:700">' + esc(tr(KIND_WORD[t.kind])) + '</div>'
           + (t.home ? '<div style="font-size:13px;font-weight:500;color:var(--secondary-text-color,currentColor)">' + esc(t.home) + '</div>' : '') + '</div>'
@@ -1676,9 +1680,9 @@
       });
       if (!rows.length) return '';
       return '<div><div style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--secondary-text-color,currentColor);padding:0 16px;margin-bottom:8px">'
-        + esc(tr(x[0])) + '</div>'
+        + esc(tr(x.heading)) + '</div>'
         + '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
-        + rows.join('<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>') + '</div></div>';
+        + rows.join(DIV) + '</div></div>';
     }).filter(Boolean);
     return secs.length ? '<div style="display:flex;flex-direction:column;gap:24px">' + secs.join('') + '</div>' : '';
   };

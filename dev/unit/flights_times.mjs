@@ -1,9 +1,9 @@
-// Tracked flights: the timestamps (49-flights.js F.times): destination/origin time and HA-local time, the estimated
-// arrival on the tile, scheduled/actual/estimated rows in the popup, dates at a date boundary, airport offsets (seconds,
+// Tracked flights: the timestamps (49-flights.js F.times): the airport time leads, the home time follows when its UTC
+// offset differs (cities only with two times), the estimated arrival on the tile and list, the popup's departure and arrival plates, dates at a date boundary, airport offsets (seconds,
 // either sign), HA daylight saving, the optional timezone suffix, and that the browser's timezone never changes the text.
 // Controlled clock; synthetic flights; no real timezone mapping is needed beyond what Intl gives for a zone name.
 //   node dev/unit/flights_times.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#times,tz,flightSec,sec,flightPopup,setting,pinned
+// @deckt: custom_components/casora/scripts/local/49-flights.js#times,moment,tz,flightSec,timePlates,pairs,listRows,rowHtml,sec,flightPopup,setting,pinned
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -118,7 +118,7 @@ runtime();
   assert.equal(e.text, '22:30\u00a018.11.\u00a0Paramaribo\u00a0\u00b7 02:30\u00a019.11.\u00a0Amsterdam', 'day change: dates after the clocks, before the cities');
 }
 
-// ── The times: destination or origin, and HA-local ─────────────────────────────────────────────────────────────────
+// ── The times: airport time first, home time when its offset differs ─────────────────────────────────────────────────────────────────
 LOC = 'de-DE';
 runtime();
 let hass = house();

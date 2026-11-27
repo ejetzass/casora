@@ -1,7 +1,7 @@
 // The flight popup's label rows (49-flights.js pairs): each label goes through the translation once. A label that is
 // already translated by its caller is translated again by pairs(), which shows the words twice in a language that has them.
 //   node dev/unit/flights_popup_labels.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#pairs,flightSec
+// @deckt: custom_components/casora/scripts/local/49-flights.js#pairs,flightSec,timePlates
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
