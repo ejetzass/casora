@@ -913,7 +913,7 @@
     if (zone.indexOf('/') < 0 || zone.indexOf('Etc/') === 0) return zone;
     return zone.split('/').pop().replace(/_/g, ' ');
   };
-  // The airport's city for a side; the IATA code when the entry has no city; '' when neither.
+  // The airport's city for a side; the IATA code when the entry has no city; '' when neither (moment then shows the zone name).
   var airCity = function (f, side) { return str(f['airport_' + side + '_city']) || str(f['airport_' + side + '_code_iata'])
     || str(f['airport_' + side] && f['airport_' + side].code_iata);
   };
@@ -928,11 +928,15 @@
     // With the airport time, the two dates are compared. A local-only time is compared with the other end's local day (ref).
     var dates = air && home ? air.day !== home.day : !!(home && ref && home.day !== ref);
     if (arrival && ref) dates = dates || !!((air && air.day !== ref) || (home && home.day !== ref));
-    var line = function (p, city) {
-      return nb(p.clock + (dates ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name ? ' ' + p.name : ''));
+    // named: the zone name already stands where the city would (an airport with no city and no IATA code).
+    var line = function (p, city, named) {
+      return nb(p.clock + (dates ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && !named ? ' ' + p.name : ''));
     };
     if (air && home && zoneOffset(ms, zone) === off) return { air: line(home), home: '' };
-    if (air && home) return { air: line(air, airCity(f, side)), home: line(home, homeCity(zone)) };
+    if (air && home) {
+      var city = airCity(f, side);
+      return { air: city ? line(air, city) : line(air, air.name, true), home: line(home, homeCity(zone)) };
+    }
     if (air) return { air: line(air), home: '' };
     if (home) return { air: line(home), home: '' };
     return null;
@@ -971,7 +975,7 @@
   };
   var estimateOf = function (hass, f) {
     var hit = F.times(hass, f, F.tz()).arr.filter(function (x) { return x.kind === 'estimated'; })[0];
-    return hit ? hit.text : '';
+    return hit ? { air: hit.air, home: hit.home } : { air: '', home: '' };
   };
 
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
@@ -985,7 +989,8 @@
   // on anything inside a button, so no progressbar here.
   var rowHtml = function (hass, r, style) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
-    var eta = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
+    // The row's estimate has the airport time and, when it shows, the home time on its own line.
+    var est = estimateOf(hass, r.entry), pct = F.progressOf(r.entry);
     var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
     var barHtml = '';
     if (pct != null) {
@@ -995,7 +1000,8 @@
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
       + (extra ? subHtml(esc(extra)) : '')
-      + (eta ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + esc(eta)) : '')
+      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + esc(est.air)) : '')
+      + (est.air && est.home ? subHtml(esc(est.home)) : '')
       + barHtml + '</button>';
   };
   // The summary line: "N in the air". The whole tile is one button then (F.tapTile opens the list popup).

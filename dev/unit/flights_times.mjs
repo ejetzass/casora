@@ -83,11 +83,21 @@ runtime();
   e = est(h, cityFl('c2', { airport_destination_timezone_offset: 3600, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
   assert.equal(e.text, '17:35', 'same offset: one bare time');
   assert.equal(e.home, '', 'same offset: no home part');
-  // Missing airport city: the IATA code stands in; with neither, two times carry only the home city.
+  // Missing airport city: the IATA code stands in; with neither, the airport zone name stands there.
   e = est(h, fl('c3', { airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
   assert.equal(e.text, '13:35\u00a0BBB\u00a0\u00b7 17:35\u00a0Amsterdam', 'no airport city: the IATA code is the city');
   e = est(h, fl('c4', { airport_destination_code_iata: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
-  assert.equal(e.text, '13:35\u00a0\u00b7 17:35\u00a0Amsterdam', 'no city and no code: the airport time has no city');
+  const nocity = { airport_destination_code_iata: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) };
+  assert.equal(e.text, '13:35\u00a0EST\u00a0\u00b7 17:35\u00a0Amsterdam', 'no city and no code: the airport zone abbreviation follows the airport time');
+  assert.equal(e.air, '13:35\u00a0EST', 'no city and no code: entry.air carries the abbreviation (the popup value)');
+  e = est(h, fl('c4b', { ...nocity, airport_destination_timezone_abbr: undefined }));
+  assert.equal(e.text, '13:35\u00a0UTC-3\u00a0\u00b7 17:35\u00a0Amsterdam', 'no city, no code, no abbreviation: the UTC suffix');
+  e = est(h, fl('c4c', nocity), true);
+  assert.equal(e.text, '13:35\u00a0EST\u00a0\u00b7 17:35\u00a0Amsterdam\u00a0MEZ', 'zone switch on: the airport zone name shows once');
+  e = est(h, fl('c4d', { ...nocity, airport_destination_timezone_abbr: undefined }), true);
+  assert.equal(e.text, '13:35\u00a0UTC-3\u00a0\u00b7 17:35\u00a0Amsterdam\u00a0MEZ', 'zone switch on, UTC suffix: shown once');
+  e = est(h, fl('c4e', { ...nocity, airport_destination_timezone_offset: 3600 }));
+  assert.equal(e.text, '17:35', 'same offset: one bare time, no zone name');
   // A multi-word city keeps its words together; a zone ID with a path takes its last part.
   h = house('America/Argentina/Buenos_Aires');
   e = est(h, cityFl('c5', { airport_destination_timezone_offset: 3600, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
@@ -258,7 +268,7 @@ hass = house();
 assert.equal(moving(hass, fl('s1')).length, 1, 'the flight qualifies (observed movement)');
 setTz(true);
 const listOn = texts(F.listRows(hass, { pin: '', now: T0 + MIN }));
-assert.ok(listOn.includes('Voraussichtliche Ankunft 18:40 18.11. BBB EST \u00b7 00:40 19.11. Amsterdam MEZ'), 'list row: both times with their cities, no colon');
+assert.ok(listOn.includes('Voraussichtliche Ankunft 18:40 18.11. BBB EST 00:40 19.11. Amsterdam MEZ') && !listOn.includes('\u00b7 00:40'), 'list row: both times with their cities, no colon, no dot between the times');
 const popHtml = popupTimes(hass, fl('s1'));
 const popOn = texts(popHtml);
 // Two plates, each with its heading outside above it: "Abflug" then "Ankunft" (13/600, uppercase, .04em, secondary colour).
@@ -281,7 +291,14 @@ assert.ok(texts(popupTimes(hass, fl('s1'))).includes('Voraussichtlich 00:40 19.1
   assert.ok(!rowOf(house(), fl('t2', { airport_destination_timezone_offset: 3600 })).includes('Amsterdam'), 'list row: same offset, no city');
   assert.ok(rowOf(house(null), fl('t3')).includes('Voraussichtliche Ankunft 18:40'), 'list row: no HA zone, the bare airport clock');
   const lh = house(); moving(lh, fl('t4', { airport_destination_city: 'Paramaribo', airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
-  assert.ok(texts(F.listRows(lh, { pin: '', now: T0 + MIN })).includes('Voraussichtliche Ankunft 13:35 Paramaribo \u00b7 17:35 Amsterdam'), 'list row: airport city, then home city');
+  const lrow = F.listRows(lh, { pin: '', now: T0 + MIN });
+  // Two times: the airport time on the "Voraussichtliche Ankunft" line, the home time on its own sub line (same style); no "·" between them.
+  assert.match(lrow, /<br><span style="([^"]*)">Voraussichtliche Ankunft 13:35\u00a0Paramaribo<\/span><br><span style="\1">17:35\u00a0Amsterdam<\/span>/, 'list row: airport time with its city, the home time on its own sub line');
+  assert.ok(!lrow.includes('\u00b7 17:35') && !texts(lrow).includes('Paramaribo \u00b7'), 'list row: no dot between the two times');
+  // One time (same offset): unchanged, a single sub line.
+  const l1 = house(); moving(l1, fl('t5', { airport_destination_timezone_offset: 3600, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) }));
+  const lrow1 = F.listRows(l1, { pin: '', now: T0 + MIN });
+  assert.ok(lrow1.includes('>Voraussichtliche Ankunft 17:35</span>') && !lrow1.includes('Amsterdam'), 'list row: one time, one sub line, unchanged');
   setTz(true);
 }
 
