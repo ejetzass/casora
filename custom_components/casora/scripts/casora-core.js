@@ -18194,7 +18194,10 @@ window.casoraSecurityIcon = window.casoraSecurityIcon || function (id, s, attrs)
   function openTarget(what, fallbackEntity) {
     if (what === DETECTION_OPENS) {
       // No popup (script not loaded yet, trigger unlisted since the row was built): the entity's info dialog.
-      if (!openListedPopup(listedDetection(fallbackEntity)) && fallbackEntity && window.casoraPopup) window.casoraPopup.moreInfo(fallbackEntity);
+      if (openListedPopup(listedDetection(fallbackEntity))) return;
+      userGuard(fallbackEntity, function () {
+        if (fallbackEntity && window.casoraPopup) window.casoraPopup.moreInfo(fallbackEntity);
+      });
       return;
     }
     if (what === DOORBELL_OPENS) {
