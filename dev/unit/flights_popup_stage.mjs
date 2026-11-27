@@ -80,11 +80,11 @@ test('progress row: label, percent, bar, time line and arrival line; without a p
   assert.match(row, /<span style="color:[^"]*">Ungefährer Fortschritt<\/span><span style="font-weight:600">50 %<\/span>/);
   assert.match(row, /data-flights-bar style="[^"]*width:50%/);
   assert.match(row, />Restzeit 2:30 Std\. · gesamt 4:00 Std\.</);
-  assert.match(row, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB · 10:30\u00a0AM\u00a0UTC</);
+  assert.match(row, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB<\/span><div[^>]*><span[^>]*>10:30\u00a0AM\u00a0UTC</);
   const bare = sec('fprog', 'c2');
   assert.doesNotMatch(bare, /progressbar|data-flights-bar|Ungefährer Fortschritt| %/);
   assert.match(bare, />Restzeit 2:30 Std\. · gesamt 4:00 Std\.</);
-  assert.match(bare, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB · 10:30\u00a0AM\u00a0UTC</);
+  assert.match(bare, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB<\/span><div[^>]*><span[^>]*>10:30\u00a0AM\u00a0UTC</);
 });
 
 test('left column: departure and movement; right column: arrival and aircraft', () => {

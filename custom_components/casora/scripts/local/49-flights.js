@@ -1692,7 +1692,13 @@
     var bar = pct == null ? '' : '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
       + '" aria-valuetext="' + esc(value) + '"><div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">'
       + esc(label) + '</span><span style="font-weight:600">' + esc(value) + '</span></div>' + F.progressBar(pct, 6, 12) + '</div>';
-    var rows = lines.filter(Boolean).map(function (t) { return '<div style="font-size:14px;margin-top:8px;white-space:normal;overflow-wrap:anywhere">' + esc(t) + '</div>'; }).join('');
+    // A line is text, or [text, sub]: the sub text (the home time) is a second line without a separator, so a narrow row never
+    // breaks next to a "·". Each part is unbreakable (a Dutch date has a hyphen), as F.timeHtml does for the screensaver.
+    var nw = function (t) { return '<span style="white-space:nowrap">' + esc(t) + '</span>'; };
+    var rows = lines.filter(Boolean).map(function (t) {
+      var a = Array.isArray(t) ? t : [t];
+      return '<div style="font-size:14px;margin-top:8px;white-space:normal;overflow-wrap:anywhere">' + (a[1] ? nw(a[0]) + '<div style="color:var(--secondary-text-color,currentColor)">' + nw(a[1]) + '</div>' : esc(a[0])) + '</div>';
+    }).join('');
     return bar || rows ? '<div style="padding:12px 16px;box-sizing:border-box;">' + bar + rows + '</div>' : '';
   };
 
@@ -1793,7 +1799,7 @@
       var now = c.now != null ? c.now : Date.now(), pv = F.mapView(h, c.src, c.flight, now), rem = F.remaining(f, now), dur = F.duration(f);
       var span = [rem != null ? tr('Restzeit') + ' ' + F.hm(rem) : '', dur != null ? String(tr('Gesamt')).toLocaleLowerCase(locale()) + ' ' + F.hm(dur) : ''].filter(Boolean).join(' · ');
       var ab = F.estimateOf(h, f, now);
-      var arr = ab.air ? tr('Voraussichtliche Ankunft') + ' ' + (ab.date ? ab.date + NB : '') + ab.air + (ab.home ? ' · ' + ab.home : '') : '';
+      var arr = ab.air ? [tr('Voraussichtliche Ankunft') + ' ' + (ab.date ? ab.date + NB : '') + ab.air, ab.home] : '';
       return progressHtml(pv && pv.progress != null ? pv.progress : null, [span, arr]);
     }
     if (part === 'fmove') return F.pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
