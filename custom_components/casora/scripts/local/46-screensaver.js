@@ -589,10 +589,10 @@
   // A single Flights kind: one flight per native turn (TURN_MS), in a fixed order (scheduled departure, then the flight
   // ID), round and round. The page keeps the last flight it showed: the next turn moves on from it (wherever it sits now
   // in the list), an earlier-landed flight takes the rest of its turn, and a fresh start of the saver moves on too.
-  // The layout (detail: false = map) flips when the pick wraps from the last flight back to the first, so each full
-  // round is either all on the map or all in detail. If flights come or go mid-round, the round ends at the end of the
+  // The layout (detail: false = the globe, true = the detail rows) flips when the pick wraps from the last flight back to the
+  // first, so each full round is either all globe or all detail. If flights come or go mid-round, the round ends at the end of the
   // current list. Returns { row, detail } for the flight to draw, or null with none. peek: the choice only, nothing
-  // kept, always the map (the Studio preview).
+  // kept, always the globe layout (the Studio preview).
   var FLIGHT_TURN = { slot: null, key: null, pos: 0, detail: false };
   var flightOrder = function (a, b) {
     var da = Number(a.entry.time_scheduled_departure) || Infinity, db = Number(b.entry.time_scheduled_departure) || Infinity;
@@ -782,7 +782,9 @@
     // Music
     + '.cs-sv.cs-musik{background:radial-gradient(90% 120% at 12% 20%, #6B3F74 0%, transparent 60%), radial-gradient(90% 120% at 96% 90%, #24477A 0%, transparent 62%), #1B1730;}'
     + '.cs-sv .cs-blur{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(' + u(70) + ') saturate(1.4) brightness(.6);}'
-    + '.cs-sv .cs-cover{position:absolute;left:' + u(M + 8) + ';top:50%;width:' + u(480) + ';height:' + u(480) + ';margin-top:-' + u(240) + ';border-radius:' + u(40) + ';overflow:hidden;background:linear-gradient(140deg, #C77DD8 0%, #7A6BE0 52%, #4C8FE0 100%) center/cover no-repeat;box-shadow:0 ' + u(46) + ' ' + u(90) + ' -' + u(30) + ' rgba(0,0,0,.7), inset 0 0 0 ' + u(1.5) + ' rgba(255,255,255,.14);display:grid;place-items:center;}'
+    // The music cover's box and the flights globe's box are one box (here, and in the narrow-box rules below).
+    + '.cs-sv .cs-cover, .cs-sv .cs-fl-live{position:absolute;left:' + u(M + 8) + ';top:50%;width:' + u(480) + ';height:' + u(480) + ';margin-top:-' + u(240) + ';}'
+    + '.cs-sv .cs-cover{border-radius:' + u(40) + ';overflow:hidden;background:linear-gradient(140deg, #C77DD8 0%, #7A6BE0 52%, #4C8FE0 100%) center/cover no-repeat;box-shadow:0 ' + u(46) + ' ' + u(90) + ' -' + u(30) + ' rgba(0,0,0,.7), inset 0 0 0 ' + u(1.5) + ' rgba(255,255,255,.14);display:grid;place-items:center;}'
     + '.cs-sv .cs-cover svg{width:38%;height:38%;color:rgba(255,255,255,.9);}'
     + '.cs-sv .cs-meta{position:absolute;left:' + u(M + 8 + 480 + 64) + ';right:' + u(M) + ';top:50%;transform:translateY(-44%);min-width:0;}'
     + '.cs-sv .cs-meta .cs-cap{color:rgba(255,255,255,.7);}'
@@ -865,8 +867,7 @@
     + '.cs-sv .cs-ke i{flex:none;width:' + u(10) + ';height:' + u(10) + ';border-radius:50%;background:var(--cs-c);}'
     // Flights: the globe on the left and the text column on the right, as the music saver has its cover and meta; the details as two columns of rows.
     + '.cs-sv.cs-flights{background:radial-gradient(90% 90% at 88% 6%, #1D3A47 0%, #070D1A 62%);}'
-    // The globe: matte, no glow, no lighting. Its box is the music cover's, the disc fills it.
-    + '.cs-sv .cs-fl-live{position:absolute;left:' + u(M + 8) + ';top:50%;width:' + u(480) + ';height:' + u(480) + ';margin-top:-' + u(240) + ';pointer-events:none;}'
+    // The globe: matte, no glow, no lighting. Its box is the music cover's (shared rule above), the disc fills it.
     + '.cs-sv.cs-flights.cs-globe{background:radial-gradient(90% 90% at 88% 6%, #1D1A17 0%, #191613 62%);}'
     + '.cs-sv .cs-fl-globe{pointer-events:none;}'
     // The sphere is drawn larger than the disc (zoom 1.25): what lies outside is cut off.
@@ -881,8 +882,8 @@
     + '.cs-sv .cs-gl-code{fill:#F7F1E8;font-size:30px;font-weight:600;stroke:#191613;stroke-width:6px;paint-order:stroke;stroke-linejoin:round;}'
     + '.cs-sv .cs-gl-plane path{fill:#E08A5C;stroke:#191613;stroke-width:3;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-nw{white-space:nowrap;}'
-    // The text column's lines: the percent left and the total time right over the bar; time left; the arrival block.
-    + '.cs-sv .cs-fl-pct{display:flex;justify-content:space-between;gap:' + u(24) + ';font-size:' + u(23) + ';font-weight:600;color:rgba(255,255,255,.72);margin-top:' + u(12) + ';font-variant-numeric:tabular-nums;white-space:nowrap;}.cs-sv .cs-fl-tot{margin-left:auto;}'
+    // The text column's lines: the percent left and the total time right under the bar (the music saver's time row .cs-tt, kept on one line); time left; the arrival block.
+    + '.cs-sv .cs-fl-meta .cs-tt{gap:' + u(24) + ';white-space:nowrap;}.cs-sv .cs-fl-tot{margin-left:auto;}'
     + '.cs-sv .cs-fl-left{font-size:' + u(30) + ';font-weight:600;margin-top:' + u(28) + ';white-space:nowrap;}'
     + '.cs-sv .cs-fl-arr{margin-top:' + u(36) + ';}'
     + '.cs-sv .cs-fl-arrval{font-size:' + u(30) + ';font-weight:600;}'
@@ -1093,7 +1094,7 @@
         + bar2 + '<em>' + (isFinite(hi2) ? Math.round(hi2) + '°' : '') + '</em></div>';
     }).join('') + '</div>' : '';
     return '<div class="cs-in"><div class="cs-wnow"><div class="cs-wt"><img src="' + esc(wx.icon) + '" alt=""><b>' + (wx.temp != null ? wx.temp + '°' : '') + '</b></div><p>' + esc(wx.text) + '</p></div>'
-      + '<div class="cs-corner"><div class="cs-time">' + esc(timeText(ctx.now)) + '</div><div class="cs-date">' + esc(dateText(ctx.now)) + '</div></div>'
+      + cornerHtml(ctx)
       + week + curve + '</div>';
   };
   // The day line (#233). A window that travels with the clock: three hours back, fifteen ahead, the same scale at
@@ -1401,14 +1402,14 @@
   };
   // The text column of the globe layout. Without a known progress there is no bar and no percent; a time that is not known has no line.
   S.flightColumnHtml = function (r, v, eta, now) {
-    var F = FL(), f = r.entry, pct = v && v.progress != null ? v.progress : null, rem = F ? F.remaining(f, now) : null, dur = F ? F.duration(f) : null;
+    var F = FL(), f = r.entry, pct = v && v.progress != null ? v.progress : null, hasPct = pct != null, rem = F ? F.remaining(f, now) : null, dur = F ? F.duration(f) : null;
     // One unbreakable line: a dot between two parts never starts or ends a line.
     var stat = [r.altitude, r.speed].filter(Boolean).join('\u00a0·\u00a0');
-    var total = F ? F.hmLabel('Gesamt', dur) : '', barHtml = pct != null ? F.progressBar(pct, u(10), u(40)) : '';
-    return '<div class="cs-meta"><div class="cs-cap" data-no-i18n>' + esc(r.route || '') + '</div><h2 data-no-i18n>' + esc(r.label) + '</h2>'
+    var total = F ? F.hmLabel('Gesamt', dur) : '', barHtml = hasPct ? F.progressBar(pct, u(10), u(40)) : '';
+    return '<div class="cs-meta cs-fl-meta"><div class="cs-cap" data-no-i18n>' + esc(r.route || '') + '</div><h2 data-no-i18n>' + esc(r.label) + '</h2>'
       + (stat ? '<h3 data-no-i18n>' + esc(stat) + '</h3>' : '')
-      + (pct != null ? '<span aria-hidden="true">' + barHtml + '</span>' : '')
-      + (pct != null || total ? '<div class="cs-fl-pct">' + (pct != null ? '<span>' + esc(F.progressText(pct)) + '</span>' : '') + (total ? '<span class="cs-fl-tot">' + esc(total) + '</span>' : '') + '</div>' : '')
+      + (hasPct ? '<span aria-hidden="true">' + barHtml + '</span>' : '')
+      + (hasPct || total ? '<div class="cs-tt">' + (hasPct ? '<span>' + esc(F.progressText(pct)) + '</span>' : '') + (total ? '<span class="cs-fl-tot">' + esc(total) + '</span>' : '') + '</div>' : '')
       + (rem != null ? '<div class="cs-fl-left">' + esc(F.hmLabel('Restzeit', rem)) + '</div>' : '')
       + (eta ? S.arrivalHtml(eta) : '') + '</div>';
   };
@@ -1437,8 +1438,8 @@
   // ── Globe view: the files load late ──────────────────────────────────────────────────────────────────────────────────
   // Only with a flight on show are the files of assets/globe/ asked for (d3-array, then d3-geo, which needs it;
   // topojson-client; the land; the countries). They come from the integration's own /casora_assets, never from the
-  // internet, and once per page. Until they are there, and when one fails, the text column stands alone: no globe, no
-  // error text, no retry while this screensaver runs; the next start (S.mount) tries again.
+  // internet, and once per page. Until they are there, and when a script or the land fails, the text column stands alone: no globe, no
+  // error text, no retry while this screensaver runs; the next start (S.mount) tries again. The countries are decoration: without them the globe just has no borders.
   var GLOBE_URL = '/casora_assets/globe/';
   var GLOBE_SCRIPTS = ['d3-array.min.js', 'd3-geo.min.js', 'topojson-client.min.js'];
   var globe = { data: null, pending: null, failed: false };
@@ -1450,16 +1451,19 @@
     if (globe.data) return Promise.resolve(true);
     if (globe.failed) return Promise.resolve(false);
     if (globe.pending) return globe.pending;
+    // The land is needed; the countries only draw the soft borders, so a missing or broken countries file leaves just those out.
+    var getJson = function (f) { return window.fetch(GLOBE_URL + f).then(function (r) { if (!r || !r.ok) throw new Error(f); return r.json(); }); };
     globe.pending = GLOBE_SCRIPTS.reduce(function (p, f) { return p.then(function () { return S.loadScript(GLOBE_URL + f); }); }, Promise.resolve())
-      .then(function () { return Promise.all(['land-110m.json', 'countries-110m.json'].map(function (f) {
-        return window.fetch(GLOBE_URL + f).then(function (r) { if (!r || !r.ok) throw new Error(f); return r.json(); });
-      })); })
+      .then(function () { return Promise.all([getJson('land-110m.json'), getJson('countries-110m.json').catch(function () { return null; })]); })
       .then(function (topos) {
         var d3 = window.d3, tj = window.topojson, land = topos[0], countries = topos[1];
-        if (!d3 || !d3.geoOrthographic || !d3.geoPath || !tj || !tj.feature || !tj.mesh || !land || !land.objects || !land.objects.land
-          || !countries || !countries.objects || !countries.objects.countries) throw new Error('globe files');
-        // The borders between countries only: a line shared by two countries (the coast belongs to one, so it is left out).
-        globe.data = { d3: d3, land: tj.feature(land, land.objects.land), borders: tj.mesh(countries, countries.objects.countries, function (a, b) { return a !== b; }) };
+        if (!d3 || !d3.geoOrthographic || !d3.geoPath || !tj || !tj.feature || !tj.mesh || !land || !land.objects || !land.objects.land) throw new Error('globe files');
+        var borders = null;
+        try {
+          // The borders between countries only: a line shared by two countries (the coast belongs to one, so it is left out).
+          if (countries && countries.objects && countries.objects.countries) borders = tj.mesh(countries, countries.objects.countries, function (a, b) { return a !== b; });
+        } catch (e) { borders = null; }
+        globe.data = { d3: d3, land: tj.feature(land, land.objects.land), borders: borders };
       })
       .catch(function () { globe.failed = true; })
       .then(function () { globe.pending = null; return !!globe.data; });
@@ -1476,7 +1480,7 @@
     if (!globe.data || !v || !v.cur) return null;
     return globe.data.d3.geoOrthographic().rotate(lonLat(v.cur).map(function (x) { return -x; })).translate([GLOBE_SIZE / 2, GLOBE_SIZE / 2]).scale(GLOBE_SIZE / 2 * GLOBE_ZOOM).clipAngle(90).precision(0.5);
   };
-  // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] like the flat map's points.
+  // Matte: flat fills and the coastline, colours in the stylesheet. v.cur is [latitude, longitude] (the flights module's view order).
   // The flight's layers, bottom to top: Unreported part, Remaining route, Flown trail. The lines are GeoJSON from the flights module
   // (F.mapGeo, [lon, lat], longitudes continuous over the date line): d3 draws the great circle between points and cuts at the horizon.
   var globeLine = function (path, fc, cls, attrs) {
@@ -1492,12 +1496,13 @@
       + globeLine(path, geo.trail, 'cs-gl-trail', ' stroke-linecap="round" stroke-linejoin="round"')
       + globeAirports(geo.points, proj, v) + globePlane(proj, v);
   };
-  // Airports on the visible side only: a dot and the code above it. One behind the horizon (more than 90 degrees from the aircraft,
-  // the disc's centre) has neither.
+  // Airports on the disc only: a dot and the code above it. The sphere is drawn GLOBE_ZOOM times as wide as the disc, so the disc
+  // ends asin(1/GLOBE_ZOOM) from the aircraft (its centre); one farther out has neither (no dot built and then clipped).
+  var GLOBE_REACH = Math.asin(1 / GLOBE_ZOOM);
   var globeAirports = function (points, proj, v) {
     var d3 = globe.data.d3, here = lonLat(v.cur), out = '';
     points.features.forEach(function (f) {
-      if (f.properties.role !== 'airport' || d3.geoDistance(here, f.geometry.coordinates) >= Math.PI / 2) return;
+      if (f.properties.role !== 'airport' || d3.geoDistance(here, f.geometry.coordinates) >= GLOBE_REACH) return;
       var xy = proj(f.geometry.coordinates), x = esc(xy[0].toFixed(2)), y = xy[1];
       out += '<circle class="cs-gl-ap" cx="' + x + '" cy="' + esc(y.toFixed(2)) + '" r="' + esc(GLOBE_AP_R) + '"/>'
         + (f.properties.code ? '<text class="cs-gl-code" x="' + x + '" y="' + esc((y - GLOBE_AP_R - 12).toFixed(2)) + '" text-anchor="middle" data-no-i18n>' + esc(f.properties.code) + '</text>' : '');
@@ -1534,7 +1539,7 @@
     return '<svg class="cs-gl-svg" viewBox="0 0 ' + GLOBE_SIZE + ' ' + GLOBE_SIZE + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(T('Globus mit dem Flug')) + '">'
       + '<circle class="cs-gl-sea" cx="' + esc(mid) + '" cy="' + esc(mid) + '" r="' + esc(mid) + '"/>'
       + '<path class="cs-gl-land" d="' + esc(path(globe.data.land) || '') + '"/>'
-      + '<path class="cs-gl-border" fill="none" d="' + esc(path(globe.data.borders) || '') + '"/>' + layersHtml + '</svg>';
+      + (globe.data.borders ? '<path class="cs-gl-border" fill="none" d="' + esc(path(globe.data.borders) || '') + '"/>' : '') + layersHtml + '</svg>';
   };
   // A soft wash in the colour of the playing cover over the screensavers that have a coloured ground (Studio switch).
   var TINT_KINDS = ['wort', 'wetter', 'linie', 'woche', 'energie', 'ruhe', 'kalender'];

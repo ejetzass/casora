@@ -1047,7 +1047,8 @@
     var t = F.hm(min);
     return t ? tr(label) + NB + t : '';
   };
-  // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
+  // The progress bar: a track of height h with the fill at pct %, below a top margin of m. h and m are px numbers or CSS lengths
+  // (text, e.g. a saver's scaled unit); a number gives a round-ended track, a text length a fully rounded one. The fill is a span, so it
   // sits in a button as well. The bar is a picture: its callers hide it from screen readers.
   F.progressBar = function (pct, h, m) {
     var len = function (x) { return typeof x === 'number' ? x + 'px' : x; };

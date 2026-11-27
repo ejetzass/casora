@@ -29,9 +29,8 @@ const ERROR_TEXT = /error|fehler|failed|could not|konnte/i;
   assert.deepEqual(R.box.requests, [], 'another kind on show: nothing loaded');
 }
 
-// A file that fails to load, or is missing: no globe, no error text, no retry until the next start; the next start tries again.
-for (const [what, files] of [['a script fails', { ...all, 'd3-geo.min.js': undefined }], ['the land is missing', { ...all, 'land-110m.json': undefined }],
-  ['the countries are missing', { ...all, 'countries-110m.json': undefined }]]) {
+// A script or the land that fails to load, or is missing (the countries are decoration: see screensaver_globe_only): no globe, no error text, no retry until the next start; the next start tries again.
+for (const [what, files] of [['a script fails', { ...all, 'd3-geo.min.js': undefined }], ['the land is missing', { ...all, 'land-110m.json': undefined }]]) {
   const R = page(files); R.start();
   const flat = R.host.innerHTML;
   await settle();
