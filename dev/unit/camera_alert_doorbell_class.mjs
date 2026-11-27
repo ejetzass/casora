@@ -1,26 +1,16 @@
-// @deckt: dashboards/casora/button_card_templates.json#casora_camera_alert_helper custom_components/casora/panel/casora-panel.js#cameraAlert
+// @deckt: custom_components/casora/scripts/casora-core.js#casoraCameraAlert custom_components/casora/panel/casora-panel.js#cameraAlert
 // A recent doorbell event qualifies by device_class alone, whatever its entity name is,
 // while the legacy ding|doorbell|button name match keeps firing with missing or conflicting
-// metadata. One table runs against both Dashboard helper copies and the Studio's own copy.
+// metadata. One table runs against the shared Dashboard helper and the Studio's own copy.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import './_detection_rule.mjs';
 
 const read = (path) => fs.readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
-const templates = JSON.parse(read('dashboards/casora/button_card_templates.json'));
 globalThis.window = globalThis;
 
-// Each copy defines window.casoraCameraAlert only when it is missing; capture the own reference
-// so both copies stay testable side by side.
-const dashboardCopy = (template) => {
-  delete window.casoraCameraAlert;
-  new Function('hass', 'states', 'entity', 'variables',
-    templates[template].variables.casora_camera_alert_helper.value.trim().slice(3, -3))({}, {}, {}, {});
-  assert.equal(typeof window.casoraCameraAlert, 'function', template);
-  const own = window.casoraCameraAlert;
-  return (hass, states, cams) => own(hass, states, cams, 5);
-};
-const badge = dashboardCopy('casora_badge_base');
-const popup = dashboardCopy('casora_popup_camera');
+// The Dashboard helper lives once, in casora-core.js; the Studio keeps its own copy of the rule.
+const dashboard = (hass, states, cams) => window.casoraCameraAlert(hass, states, cams, 5);
 
 // The Studio preview keeps its own copy of the rule; a fresh Studio has not loaded casora-core.js.
 const studioMatch = read('custom_components/casora/panel/casora-panel.js')
@@ -57,8 +47,7 @@ const STUDIO = { ding: 'Doorbell', motion: 'Motion Detected', none: '' };
 for (const [name, ev, attributes, device, ageSeconds, want] of cases) {
   const states = { [ev]: { state: new Date(NOW - ageSeconds * 1000).toISOString(), attributes } };
   const hass = { entities: { [camera]: { device_id: 'dev_cam' }, [ev]: { device_id: device } } };
-  assert.equal(badge(hass, states, [camera]), DASHBOARD[want], `badge: ${name}`);
-  assert.equal(popup(hass, states, [camera]), DASHBOARD[want], `popup: ${name}`);
+  assert.equal(dashboard(hass, states, [camera]), DASHBOARD[want], `dashboard: ${name}`);
   assert.equal(studio(hass, states, [camera], 5), STUDIO[want], `studio: ${name}`);
 }
 Date.now = realNow;

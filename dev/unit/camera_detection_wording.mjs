@@ -1,7 +1,7 @@
-// @deckt: dashboards/casora/button_card_templates.json#casora_camera_alert_helper
+// @deckt: custom_components/casora/scripts/casora-core.js#casoraCameraAlert
 // A detection reads "{name} erkannt" in the helper and in every place that shows its text.
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const templates = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url)));
@@ -31,7 +31,7 @@ const loadHelper = (template) => {
   delete window.casoraCameraAlert;
   delete window._casoraListedCameraAlerts;
   states[sensor] = { state: 'off', attributes: { friendly_name: 'Person' } };
-  new Function('hass', 'states', 'entity', 'variables', body(inherited(template, (t) => t.variables?.casora_camera_alert_helper?.value)))({}, {}, {}, {});
+  loadCameraAlert();
   window.casoraCameraAlert(hass, states, [camera], 5);
   states[sensor] = { state: 'on', last_changed: new Date(now).toISOString(), attributes: { friendly_name: 'Person' } };
 };

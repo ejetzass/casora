@@ -1,7 +1,7 @@
-// @deckt: dashboards/casora/button_card_templates.json#casora_camera_alert_helper
+// @deckt: custom_components/casora/scripts/casora-core.js#casoraCameraAlert
 // Ring-style doorbell alerts use the same state word as the other doorbell tile.
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
@@ -21,8 +21,7 @@ for (const [name, field, helper] of [
   ['casora_badge_security', 'name', 'casora_badge_base'],
   ['casora_badge_contact_group', 'name', 'casora_badge_base'],
 ]) {
-  delete window.casoraCameraAlert;
-  run(templates[helper].variables.casora_camera_alert_helper.value);
+  loadCameraAlert();
   assert.match(run(templates[name][field]), /Hat geklingelt/, name);
 }
 console.log('camera_alert_wording: ok');

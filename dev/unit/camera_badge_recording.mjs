@@ -2,7 +2,7 @@
 // The contact and security badges show a listed detection while the camera records, like the tiles; only the plain state
 // words stay when nothing was detected.
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const templates = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url)));
@@ -16,7 +16,7 @@ const sensor = 'binary_sensor.test_driveway_person';
 const states = {};
 const hass = { states, entities: { [camera]: { device_id: 'cam' } } };
 window.CASORA_SETTINGS = { cameras: [{ entity_id: camera, detection_triggers: [sensor] }] };
-new Function('hass', 'states', 'entity', 'variables', body(templates.casora_badge_base.variables.casora_camera_alert_helper.value))({}, {}, {}, {});
+loadCameraAlert();
 const sensorOff = { state: 'off', attributes: { friendly_name: 'Person' } };
 const sensorOn = () => ({ state: 'on', last_changed: new Date(now).toISOString(), attributes: { friendly_name: 'Person' } });
 const show = (name, state) => {

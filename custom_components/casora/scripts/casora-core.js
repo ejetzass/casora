@@ -15783,6 +15783,81 @@ window.casoraMenuGlass = {
     return at;
   };
 })();
+// The camera alert text of the camera tiles and badges: "Hat geklingelt", "<trigger> erkannt", "Bewegung erkannt" or ''.
+// Defined here once; the button-card templates call window.casoraCameraAlert (and guard for a core not loaded yet).
+(function () {
+  if (window.casoraCameraAlert) return;
+  /* Ring publishes ding/motion as event.* entities whose state is the
+     timestamp of the last one, so "recent" is the whole alert model.
+     Reading sensor.time subscribes the caller to the minute tick, which
+     is what lets a stale alert expire without another camera event. */
+  window.casoraCameraAlert = function (hass, states, cams, windowMinutes, card) {
+    const reg = (hass && hass.entities) || {};
+    const deviceClassOf = (st) => ((st || {}).attributes || {}).device_class;
+    const devs = {};
+    cams.forEach(function (id) {
+      const d = reg[id] && reg[id].device_id;
+      if (d) devs[d] = true;
+    });
+    const span = (Number(windowMinutes) > 0 ? Number(windowMinutes) : 5) * 60000;
+    const now = Date.now();
+    /* A sensor.time without a usable value never changes, so it cannot end the alert: the timer does that.
+       Without the module, preserve the original timer behaviour for a missing sensor. */
+    const unusable = window.casoraTimeUnusable ? window.casoraTimeUnusable(states) : !states['sensor.time'];
+    let ding = false, motion = false, expiry = Infinity;
+    const cache = window._casoraListedCameraAlerts || (window._casoraListedCameraAlerts = {});
+    const cameras = (window.CASORA_SETTINGS || {}).cameras || [];
+    let listed = null;
+    cameras.forEach(function (camera) {
+      if (!camera || !cams.some(function (id) { return id === camera.entity_id || (camera.device_id && reg[id] && reg[id].device_id === camera.device_id); })) return;
+      (camera.detection_triggers || []).forEach(function (id) {
+        const st = states[id], value = st && st.state;
+        const item = cache[id] || (cache[id] = {});
+        const at = window.casoraDetectionAt(id, value, item.previous, st && st.last_changed, hass);
+        item.previous = value;
+        if (at !== null) item.at = at;
+        if (item.at && now - item.at <= span && (!listed || item.at > listed.at)) listed = { at: item.at, name: ((st && st.attributes && st.attributes.friendly_name) || id) + ' erkannt' };
+      });
+    });
+    if (listed) expiry = Math.min(expiry, listed.at + span + 1);
+    Object.keys(reg).forEach(function (id) {
+      if (id.indexOf('event.') !== 0) return;
+      if (!devs[reg[id].device_id]) return;
+      const t = Date.parse(states[id] && states[id].state);
+      if (!isFinite(t) || now - t > span) return;
+      if (/ding|doorbell|button/.test(id) || deviceClassOf(states[id]) === 'doorbell') ding = true;
+      else if (/motion/.test(id)) motion = true;
+      else return;
+      expiry = Math.min(expiry, t + span + 1);
+    });
+    if (card && typeof card.addController === 'function') {
+      if (!card._casoraCameraAlertClock) {
+        const clock = { timer: null, disconnected: false, hostDisconnected() {
+          if (this.timer !== null) clearTimeout(this.timer);
+          this.timer = null;
+          this.disconnected = true;
+        }, hostConnected() {
+          if (this.disconnected) {
+            this.disconnected = false;
+            card.requestUpdate('_config', null);
+          }
+        } };
+        card._casoraCameraAlertClock = clock;
+        card.addController(clock);
+      }
+      const clock = card._casoraCameraAlertClock;
+      if (clock.timer !== null) clearTimeout(clock.timer);
+      clock.timer = null;
+      if (unusable && isFinite(expiry)) {
+        clock.timer = setTimeout(() => {
+          clock.timer = null;
+          if (card.isConnected) card.requestUpdate('_config', null);
+        }, Math.max(1, Math.min(expiry - now, 60000)));
+      }
+    }
+    return ding ? 'Hat geklingelt' : listed ? listed.name : motion ? 'Bewegung erkannt' : '';
+  };
+})();
 /* Sicherheits-Symbole an einer Stelle (03.10.2026): Kontakt-/Schloss-/Alarm-Unter-Badges
    (casora_badge_contact_group) und das Mitteilungszentrum nehmen dasselbe Symbol für denselben
    Zustand. Alarm-Modi wie im Alarm-Popup (casora_badge_security: Zuhause/Abwesend/Nacht/Urlaub/
