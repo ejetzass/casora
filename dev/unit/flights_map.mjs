@@ -25,7 +25,7 @@ const runtime = () => {
     clearInterval: (t) => { if (t) t.live = false; },
     addEventListener() {},
     _casoraNotifyOpenViaCard() {},
-    _casoraUI: { stage: (type, o) => 'STAGE[' + type + ',' + (o.html || o.text || '') + ']', empty: () => 'EMPTY' },
+    _casoraUI: { line: (m) => 'STAGE[line,' + m + ']', stage: (type, o) => 'STAGE[' + type + ',' + (o.html || o.text || '') + ']', empty: () => 'EMPTY' },
     _casoraLovelaceCfg: () => null,
     casoraLocale: () => 'en-US',
   };
@@ -316,7 +316,7 @@ assert.equal(F.mapBounds(null), null, 'no view, no bounds');
 ctx._casoraSoftKit = { secCard: (watch, code) => ({ watch, code }), layout: (o) => o };
 const pop = F.flightPopup(hass.states, hass, { source: 'sensor.a', flight: 'w1' });
 assert.ok(pop.fields.map && pop.fields.prog, 'popup has the map and the progress');
-assert.equal(pop.stage, 'map', 'the map is the stage');
+assert.deepEqual(JSON.parse(JSON.stringify(pop.top)), ['line', 'map', 'prog'], 'the map is the one stage, under the head line and over the progress row');
 const mapHtml = F.sec('fmap', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
 assert.match(mapHtml, /<casora-flight-map[^>]*data-src="sensor\.a"[^>]*data-key="w1"/, 'map element with the flight');
 // The host has a name and a role that allows the attribution link inside it: role="img" would make that link presentational
@@ -327,8 +327,8 @@ assert.equal(F.sec('fmap', { src: 'sensor.a', flight: 'gone' }, hass.states, has
 const prog = F.sec('fprog', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
 assert.match(prog, /Ungefährer Fortschritt/, 'progress label');
 assert.match(prog, new RegExp('aria-valuenow="' + v.progress + '"'), 'progress value');
-assert.equal(F.sec('fprog', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), '', 'no progress without the airports');
-assert.match(F.sec('fstage', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), /STAGE/, 'route text stays');
+assert.doesNotMatch(F.sec('fprog', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), /progressbar/, 'no progress bar without the airports');
+assert.match(F.sec('fline', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), /STAGE/, 'route text stays');
 assert.match(F.sec('fair', { src: 'sensor.a', flight: 'w1' }, hass.states, hass), /Testair/, 'details stay');
 // The tile shows no flight info and no progress: the list popup rows carry the progress text and the decorative bar.
 const tile = F.liveHtml(hass, '', nowB);

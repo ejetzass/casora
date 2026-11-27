@@ -784,7 +784,7 @@
   };
   // One wake-up at the earliest hide time, so the Flights tile and an open flight popup redraw without a new state.
   // The popup's parts are cards whose code sits in custom_fields (secCard); the tile's code is its state_display.
-  var LIVE_CODE = /liveHtml\(|_casoraFlights\.sec\("f(stage|map|prog|move|air|times)"|_casoraFlights\.list(Stage|Rows)\(/;
+  var LIVE_CODE = /liveHtml\(|_casoraFlights\.sec\("f(line|map|prog|dep|move|arr|air)"|_casoraFlights\.list(Stage|Rows)\(/;
   var liveCard = function (c) {
     var codes = [c && c.state_display].concat(c && c.custom_fields ? Object.keys(c.custom_fields).map(function (k) { return c.custom_fields[k]; }) : []);
     return codes.some(function (x) { return typeof x === 'string' && LIVE_CODE.test(x); });
@@ -1685,18 +1685,19 @@
     customElements.define('casora-flight-list', FlightList);
   };
   defineTileList();
-  // The progress line: a track with the fill and the value as text (not by colour alone).
-  var progressHtml = function (pct) {
-    var label = tr('Ungefährer Fortschritt'), value = F.progressText(pct);
-    return '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
-      + '" aria-valuetext="' + esc(value) + '" style="padding:12px 16px;box-sizing:border-box;">'
-      + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">' + esc(label)
-      + '</span><span style="font-weight:600">' + esc(value) + '</span></div>'
-      + F.progressBar(pct, 6, 12) + '</div>';
+  // The progress row under the map: label and value over a track (role=progressbar; the value as text, not by colour alone), then
+  // the text lines. A null pct leaves out the bar and the value; the lines stay.
+  var progressHtml = function (pct, lines) {
+    var label = tr('Ungefährer Fortschritt'), value = pct != null ? F.progressText(pct) : '';
+    var bar = pct == null ? '' : '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
+      + '" aria-valuetext="' + esc(value) + '"><div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">'
+      + esc(label) + '</span><span style="font-weight:600">' + esc(value) + '</span></div>' + F.progressBar(pct, 6, 12) + '</div>';
+    var rows = lines.filter(Boolean).map(function (t) { return '<div style="font-size:14px;margin-top:8px;white-space:normal;overflow-wrap:anywhere">' + esc(t) + '</div>'; }).join('');
+    return bar || rows ? '<div style="padding:12px 16px;box-sizing:border-box;">' + bar + rows + '</div>' : '';
   };
 
   // ── The flight popup (casora_popup_flight): one flight of one source, by its FR24 ID ──────────────────────────────────
-  // A flight that no longer qualifies (or whose source is gone) shows the unavailable stage and no details, never another
+  // A flight that no longer qualifies (or whose source is gone) says unavailable in the head line and shows no details, never another
   // flight with the same number. Building and redrawing the popup only reads the states; no tracking write from here.
   var place = function (f, side) {
     var o = f['airport_' + side] && typeof f['airport_' + side] === 'object' ? f['airport_' + side] : {};
@@ -1742,14 +1743,14 @@
   // The departure and arrival plates (popup rules §6): a heading outside above each plate; inside, the airport line as the first
   // row, then one row per timestamp kind: the kind word, the airport time on the right, and the home time as a small line under
   // the word when it differs. The airport line ends with the side's local date (not today at home). A side with neither an
-  // airport nor a time has no section.
-  var timePlates = function (h, f, tzOn, now) {
+  // airport nor a time has no section. `only` ('origin' or 'destination') draws one side.
+  var timePlates = function (h, f, tzOn, now, only) {
     var tm = F.times(h, f, tzOn, now);
     // Row padding and divider as the handbook's §6 (top and bottom 12; no icon, so the text starts at 16 like the heading; 1 px --casora-pill-divider).
     var ROW = 'min-height:52px;box-sizing:border-box;padding:12px 16px;';
     var DIV = '<div style="height:1px;margin:0 16px;background:var(--casora-pill-divider, rgba(127,127,127,0.25))"></div>';
     // Each side is data first (the airport line, then one entry per timestamp); the markup is built by the maps below.
-    var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep, date: tm.depDate }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr, date: tm.arrDate }].map(function (x) {
+    var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep, date: tm.depDate }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr, date: tm.arrDate }].filter(function (x) { return !only || x.side === only; }).map(function (x) {
       var rows = x.stamps.map(function (t) { return { word: tr(KIND_WORD[t.kind]), air: t.air, home: t.home }; });
       var spot = place(f, x.side), at = spot + (spot && x.date ? NB + '· ' : '') + x.date;
       if (at) rows.unshift({ line: at });
@@ -1774,10 +1775,8 @@
     var UI = window._casoraUI;
     if (!UI) return '';
     var r = F.flight(h, c.src, c.flight, Date.now());
-    if (part === 'fstage') {
-      if (!r) return UI.stage('status', { tone: 'off', icon: 'mdi:airplane-off', text: tr('Nicht verfügbar') });
-      return r.route ? UI.stage('status', { tone: 'good', icon: 'mdi:airplane', text: r.route }) : '';
-    }
+    // The status line (.hui-line) is lifted into the popup head by the frame; no route, no line.
+    if (part === 'fline') return !r ? UI.line(tr('Nicht verfügbar'), []) : r.route ? UI.line(r.route, []) : '';
     if (!r) return '';
     var f = r.entry;
     if (part === 'fmap') {
@@ -1791,14 +1790,18 @@
         + 'background:var(--casora-soft-row-fill, rgba(127,127,127,0.1));"></casora-flight-map>' });
     }
     if (part === 'fprog') {
-      var pv = F.mapView(h, c.src, c.flight, Date.now());
-      return pv && pv.progress != null ? progressHtml(pv.progress) : '';
+      var now = c.now != null ? c.now : Date.now(), pv = F.mapView(h, c.src, c.flight, now), rem = F.remaining(f, now), dur = F.duration(f);
+      var span = [rem != null ? tr('Restzeit') + ' ' + F.hm(rem) : '', dur != null ? String(tr('Gesamt')).toLocaleLowerCase(locale()) + ' ' + F.hm(dur) : ''].filter(Boolean).join(' · ');
+      var ab = F.estimateOf(h, f, now);
+      var arr = ab.air ? tr('Voraussichtliche Ankunft') + ' ' + (ab.date ? ab.date + NB : '') + ab.air + (ab.home ? ' · ' + ab.home : '') : '';
+      return progressHtml(pv && pv.progress != null ? pv.progress : null, [span, arr]);
     }
     if (part === 'fmove') return F.pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
       ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs über Grund', r.heading]]);
     if (part === 'fair') { var d = F.details(f); return F.pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
       ['Registrierung', d.registration], ['Rufzeichen', d.callsign]]); }
-    if (part === 'ftimes') return timePlates(h, f, F.tz(), c.now);
+    if (part === 'fdep') return timePlates(h, f, F.tz(), c.now, 'origin');
+    if (part === 'farr') return timePlates(h, f, F.tz(), c.now, 'destination');
     return '';
   };
   // A list row opens its flight's popup through the card opener: the popup template gets the source and the FR24 ID.
@@ -1816,15 +1819,15 @@
     var id = String((v && v.flight) || ''), f = flightsOf(hass, String((v && v.source) || '')).filter(function (x) { return idOf(x) === id; })[0];
     return (f && labelOf(f)) || tr('Flug');
   };
-  // The popup's content (casora_popup_flight): a stage with the route, the movement, the aircraft and the airports.
+  // The popup's content (casora_popup_flight): the route in the head line, the map as the one stage, the progress row, then departure and movement left, arrival and aircraft right.
   F.flightPopup = function (states, hass, vars) {
     var KIT = window._casoraSoftKit, UI = window._casoraUI, S = states || {}, v = vars || {};
     if (!KIT || !UI || !UI.stage || !hass) return { type: 'vertical-stack', cards: [] };
     var cj = JSON.stringify({ src: String(v.source || ''), flight: String(v.flight || '') });
     var watch = v.source ? [String(v.source)] : [];
     var card = function (part) { return { card: KIT.secCard(watch, 'return window._casoraFlights ? window._casoraFlights.sec(' + JSON.stringify(part) + ', ' + cj + ', states, hass) : "";', S) }; };
-    // The route text on top, the map as the stage, the progress under it; the details in the two columns as before.
-    return KIT.layout({ fields: { stage: card('fstage'), map: card('fmap'), prog: card('fprog'), move: card('fmove'), air: card('fair'), times: card('ftimes') },
-      top: ['stage'], stage: 'map', stageWide: true, left: ['prog', 'move', 'times'], right: ['air'] });
+    // The route in the head's status line, then the map as the one stage and the progress row, both across the columns.
+    return KIT.layout({ fields: { line: card('fline'), map: card('fmap'), prog: card('fprog'), dep: card('fdep'), move: card('fmove'), arr: card('farr'), air: card('fair') },
+      top: ['line', 'map', 'prog'], left: ['dep', 'move'], right: ['arr', 'air'], noBalance: true });
   };
 })();

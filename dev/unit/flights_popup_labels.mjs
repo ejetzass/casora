@@ -46,7 +46,7 @@ const c = { src: 'sensor.a', flight: 'p1' };
 
 // Each label appears once, marked once: no "~~Label~~" from a second translation.
 const labels = { fmove: ['Höhe', 'Geschwindigkeit über Grund', 'Vertikalgeschwindigkeit', 'Kurs über Grund'],
-  fair: ['Fluggesellschaft', 'Flugzeugmodell', 'Registrierung', 'Rufzeichen'], ftimes: ['Abflug', 'Ankunft', 'Geplant'] };
+  fair: ['Fluggesellschaft', 'Flugzeugmodell', 'Registrierung', 'Rufzeichen'], fdep: ['Abflug'], farr: ['Ankunft'] };
 for (const part of Object.keys(labels)) {
   const html = F.sec(part, c, hass.states, hass);
   assert.doesNotMatch(html, /~~/, part + ': no label is translated twice');

@@ -23,7 +23,7 @@ const runtime = (extra = {}) => {
     setTimeout: () => ({ live: false }), clearTimeout() {},
     addEventListener: (type, fn) => { (handlers[type] = handlers[type] || []).push(fn); },
     _casoraNotifyOpenViaCard: (...a) => { opened.push(a); return undefined; },
-    _casoraUI: { stage: (type, o) => 'STAGE[' + type + ',' + o.tone + ',' + o.icon + ',' + o.text + ']', empty: () => 'EMPTY' },
+    _casoraUI: { stage: (type, o) => 'STAGE[' + type + ']', line: (main) => 'LINE[' + main + ']', empty: () => 'EMPTY' },
     _casoraLovelaceCfg: () => cfg,
     casoraLocale: () => 'en-US',
   };
@@ -161,7 +161,7 @@ runtime(); hass = house();
 hass.source('sensor.a', [fl('p1')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('p1'), latitude: 10.05 }]);
 const c = { src: 'sensor.a', flight: 'p1' };
-assert.equal(F.sec('fstage', c, hass.states, hass), 'STAGE[status,good,mdi:airplane,AAA → BBB]', 'the route in the stage');
+assert.equal(F.sec('fline', c, hass.states, hass), 'LINE[AAA → BBB]', 'the route in the head status line');
 const move = F.sec('fmove', c, hass.states, hass);
 assert.match(move, /Höhe/); assert.match(move, /35,000\u00a0ft/);
 assert.match(move, /Geschwindigkeit über Grund/); assert.match(move, />450\u00a0kn</);
@@ -169,7 +169,7 @@ assert.match(move, /-2,000\u00a0ft\/min/, 'negative descent is shown');
 assert.match(move, /270°/);
 const air = F.sec('fair', c, hass.states, hass);
 assert.match(air, /Testair/); assert.match(air, /Example 900/); assert.match(air, /T-AAAA/); assert.match(air, /TST123/);
-const places = F.sec('ftimes', c, hass.states, hass);
+const places = F.sec('fdep', c, hass.states, hass) + F.sec('farr', c, hass.states, hass);
 assert.match(places, /AAA · Airport Alpha · Terminal 2/, 'airport code, name and terminal');
 assert.match(places, /BBB · Airport Beta/, 'a missing terminal is left out, no blank term');
 assert.doesNotMatch(places, /Terminal\s*<\/div>/);
@@ -186,9 +186,9 @@ F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ id: 'sp', flight_number: 'XY123', tracked_type: 'live', on_ground: 0, latitude: 10.05, longitude: 20, altitude: undefined, ground_speed: NaN }]);
 const sc = { src: 'sensor.a', flight: 'sp' };
 assert.equal(F.sec('fmove', sc, hass.states, hass), '', 'no movement value: no plate at all');
-assert.equal(F.sec('ftimes', sc, hass.states, hass), '', 'no airports and no times: no plate');
+assert.equal(F.sec('fdep', sc, hass.states, hass) + F.sec('farr', sc, hass.states, hass), '', 'no airports and no times: no plate');
 assert.equal(F.sec('fair', sc, hass.states, hass), '', 'no aircraft details: no plate');
-assert.equal(F.sec('fstage', sc, hass.states, hass), '', 'no route: no stage text');
+assert.equal(F.sec('fline', sc, hass.states, hass), '', 'no route: no status line');
 
 // ── The aircraft row: the model, or the aircraft code when FR24 gives no model ──
 runtime(); hass = house();
@@ -225,19 +225,19 @@ runtime(); hass = house();
 hass.source('sensor.a', [fl('g1'), fl('g2')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('g1'), latitude: 10.05 }, { ...fl('g2'), latitude: 10.05 }]);
 const gc = { src: 'sensor.a', flight: 'g1' };
-assert.match(F.sec('fstage', gc, hass.states, hass), /STAGE\[status,good/);
+assert.match(F.sec('fline', gc, hass.states, hass), /^LINE\[AAA/);
 // The flight lands: its ID stays in the list, but the ground flag hides it at once.
 hass.source('sensor.a', [{ ...fl('g1'), on_ground: 1, latitude: 10.1 }, { ...fl('g2'), latitude: 10.1 }]);
-assert.equal(F.sec('fstage', gc, hass.states, hass), 'STAGE[status,off,mdi:airplane-off,Nicht verfügbar]', 'landed: unavailable stage');
+assert.equal(F.sec('fline', gc, hass.states, hass), 'LINE[Nicht verfügbar]', 'landed: unavailable');
 assert.equal(F.sec('fmove', gc, hass.states, hass), '', 'landed: no live details');
 assert.equal(F.sec('fair', gc, hass.states, hass), '');
-assert.equal(F.sec('ftimes', gc, hass.states, hass), '');
+assert.equal(F.sec('fdep', gc, hass.states, hass) + F.sec('farr', gc, hass.states, hass), '');
 // The flight is replaced by one with the same number and another ID: the popup does not follow it.
 hass.source('sensor.a', [fl('g3', { latitude: 10.2 }), { ...fl('g2'), latitude: 10.2 }]);
-assert.equal(F.sec('fstage', gc, hass.states, hass), 'STAGE[status,off,mdi:airplane-off,Nicht verfügbar]', 'replaced ID: unavailable, not the new flight');
+assert.equal(F.sec('fline', gc, hass.states, hass), 'LINE[Nicht verfügbar]', 'replaced ID: unavailable, not the new flight');
 // The source is gone: the popup is unavailable as well.
 hass.states = {};
-assert.equal(F.sec('fstage', { src: 'sensor.a', flight: 'g2' }, hass.states, hass), 'STAGE[status,off,mdi:airplane-off,Nicht verfügbar]');
+assert.equal(F.sec('fline', { src: 'sensor.a', flight: 'g2' }, hass.states, hass), 'LINE[Nicht verfügbar]');
 
 // Ten minutes without observed movement hide the flight from the popup too (controlled clock, no sleep).
 runtime(); hass = house();
@@ -251,12 +251,12 @@ hass.source('sensor.a', [fl('k1')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('k1'), latitude: 10.05 }]);
 ctx._casoraSoftKit = { secCard: (watch, code) => ({ watch, code }), layout: (o) => o };
 const pop = F.flightPopup(hass.states, hass, { source: 'sensor.a', flight: 'k1' });
-assert.deepEqual(Object.keys(pop.fields).sort(), ['air', 'map', 'move', 'prog', 'stage', 'times']);
+assert.deepEqual(Object.keys(pop.fields).sort(), ['air', 'arr', 'dep', 'line', 'map', 'move', 'prog']);
 assert.deepEqual(deep(pop.fields.move.card.watch), ['sensor.a'], 'the popup redraws when the source changes');
 // The card's code is run the way the Studio runs it: with the states and the hass of the render.
 const runPart = (field) => vm.runInContext('(function (states, hass) {' + field.card.code + '})', ctx)(hass.states, hass);
 assert.match(runPart(pop.fields.move), /35,000\u00a0ft/, 'the card runs the sec() part for its flight');
-assert.ok(F.flightPopup(hass.states, hass, {}).fields, 'no flight chosen: the popup still builds, its stage says unavailable');
+assert.ok(F.flightPopup(hass.states, hass, {}).fields, 'no flight chosen: the popup still builds, its status line says unavailable');
 ctx._casoraSoftKit = undefined;
 
 // ── Previews and renders never write: a tile, a row and the popup parts leave the service calls empty ──
@@ -264,7 +264,7 @@ runtime(); hass = house();
 hass.source('sensor.a', [fl('w1')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('w1'), latitude: 10.05 }]);
 F.liveHtml(hass, '', T0 + MIN); F.sec('fmove', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
-F.sec('fstage', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
+F.sec('fline', { src: 'sensor.a', flight: 'w1' }, hass.states, hass);
 assert.deepEqual(hass.calls, [], 'rendering issues no service call');
 
 // ── Keyboard: Enter and Space on a focused row open its popup, as a tap does, and no tile tip follows ──

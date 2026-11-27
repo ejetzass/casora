@@ -68,7 +68,7 @@ const moving = (hass, flight, src = 'sensor.a', at = T0) => {
 const setTz = (on) => {
   cfg = { views: [{ cards: [{ variables: { casora_flights_source: 'sensor.a', casora_flights_timezones: on } }] }] };
 };
-const popupTimes = (hass, flight) => F.sec('ftimes', { src: 'sensor.a', flight: flight.id }, hass.states, hass);
+const popupTimes = (hass, flight) => ['fdep', 'farr'].map((part) => F.sec(part, { src: 'sensor.a', flight: flight.id }, hass.states, hass)).join('');
 const texts = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
 // ── Airport time leads: one time is bare, two times carry their city (rules of the flight times) ─────────────────────────

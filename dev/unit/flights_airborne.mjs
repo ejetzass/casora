@@ -243,7 +243,7 @@ assert.deepEqual(kicked, [cards[0]], 'only the Flights tile is redrawn');
 
 // The open flight popup expires with the same wake-up: its parts are redrawn at the hide time, not on the next state change.
 runtime(); hass = house();
-const popCard = { _config: { custom_fields: { c: '[[[\n return window._casoraFlights ? window._casoraFlights.sec("fstage", {"src":"sensor.a","flight":"t2"}, states, hass) : "";\n]]]' } } };
+const popCard = { _config: { custom_fields: { c: '[[[\n return window._casoraFlights ? window._casoraFlights.sec("fline", {"src":"sensor.a","flight":"t2"}, states, hass) : "";\n]]]' } } };
 cards = [popCard, { _config: { state_display: '[[[ return window._casoraFlights.tile(hass) ]]]' } }];
 kicked = [];
 hass.source('sensor.a', [fl('t2')]); show(hass, '', T0);
