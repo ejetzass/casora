@@ -112,7 +112,7 @@ studio(DRAFT, DRAFT);
 assert.equal(tile(hass), draftHtml, 'save: the live tile matches the preview text');
 
 // ── Show timezones draft: the zone names follow the switch in the preview, as on the tile ────────────────────────────
-const estimate = (html) => texts(html).match(/Voraussichtliche Ankunft: [^·]*·?[^<]*/)?.[0] || '';
+const estimate = (html) => texts(html).match(/Voraussichtliche Ankunft [^·]*·?[^<]*/)?.[0] || '';
 studio({ casora_flights_timezones: false }, SAVED);
 hass = house();
 hass.source('sensor.a', [fl()]);
@@ -122,7 +122,7 @@ const tzOff = tile(hass);
 assert.ok(!tzOff.includes('MEZ'), 'switch off in the draft: no zone name');
 studio({ casora_flights_timezones: true }, SAVED);
 const tzOn = tile(hass);
-assert.ok(texts(tzOn).includes('19.11. MEZ'), 'switch on in the draft: the zone name (the tile arrival shows the HA zone) is added in the preview');
+assert.ok(texts(tzOn).includes('19.11. Amsterdam MEZ'), 'switch on in the draft: the zone name (the tile arrival shows the HA zone) is added in the preview');
 assert.notEqual(estimate(tzOn), estimate(tzOff), 'the estimated arrival changes with the switch');
 studio({ casora_flights_timezones: false }, SAVED);
 assert.equal(tile(hass), tzOff, 'switch off again (Discard): the preview is the saved text');

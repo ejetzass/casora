@@ -150,7 +150,7 @@ const setCall = (target, value) => ({ domain: 'text', service: 'set_value', data
   assert.match(row, /XY123/, 'the tile shows the flight');
   const feet = (row.match(/(\d{1,3}(?:,\d{3})+ ft)/) || [])[1];
   assert.equal(feet, '35,000\u00a0ft', 'the tile shows altitude in the source unit (feet) by default');
-  const eta = (row.match(/Voraussichtliche Ankunft: ([^<]+)</) || [])[1];
+  const eta = (row.match(/Voraussichtliche Ankunft ([^<]+)</) || [])[1];
   assert.ok(eta, 'the estimated arrival is on the tile');
   const f = R.F.flight(R.hass, SRC, 'f1', R.clock.t);
   assert.ok(f, 'the popup\'s check of the same flight passes');

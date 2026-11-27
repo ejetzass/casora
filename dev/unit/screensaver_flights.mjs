@@ -564,7 +564,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(detail, /-500\u00a0ft\/min/); assert.match(detail, /Airport A/); assert.match(detail, /Airport B/); assert.match(detail, /T1/);
   assert.match(detail, /<span>Ankunft<\/span><b>Voraussichtlich: /); // a timing row names its side; its text names the kind
   assert.match(detail, /<span>Ankunft<\/span><b>Geplant: /); // scheduled and estimated arrival stay two rows
-  assert.match(detail, /Zeit am Zielort/);
+  assert.match(detail, /Voraussichtlich: [^<]*\u00b7 [^<]*Amsterdam<\/b>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
 }
 // The timing rows are the popup's own rows (49-flights.js timeRows): the same labels and texts, so the saver and the popup read alike.
 {
