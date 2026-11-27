@@ -69,7 +69,7 @@ assert.doesNotMatch(text, /[{}]|#container|#state|grid-template|outline/, 'the t
 
 // ── The styles go into the card's root once, and the card is a named group ─────────────────────────────────────────
 const Wrap = defined['casora-flight-list'];
-assert.ok(Wrap, 'the tile rows are wrapped in casora-flight-list');
+assert.ok(Wrap, 'the tile line is wrapped in casora-flight-list');
 const card = { tagName: 'HA-CARD', id: 'card', attrs: { role: 'button' },
   getAttribute(n) { return n in this.attrs ? this.attrs[n] : null; }, hasAttribute(n) { return n in this.attrs; }, setAttribute(n, v) { this.attrs[n] = String(v); },
   removeAttribute(n) { delete this.attrs[n]; } };
