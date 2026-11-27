@@ -129,7 +129,7 @@ const MIGRIERT = [
   // 24 Std. · 7 Tage in the stage.
   { popup: 'Aufgaben', vorlagen: ['casora_popup_tasks'], file: '43-aufgaben.js', from: '  T.innerHtml = function', to: '  T.box = function', stages: 1 },
   { popup: 'Flüge verwalten', vorlagen: ['casora_popup_flights'], file: '49-flights.js', from: '  F.sec = function', to: '  F.popup = function', stages: 1 },
-  { popup: 'Flug (Zeile der Flüge-Kachel)', vorlagen: ['casora_popup_flight'], file: '49-flights.js', from: '  var flightSec = function', to: '  // A tile row opens its flight', stages: 1 },
+  { popup: 'Flug (Zeile der Flüge-Kachel)', vorlagen: ['casora_popup_flight'], file: '49-flights.js', from: '  var flightSec = function', to: '  // A list row opens its flight', stages: 1 },
   { popup: 'Flüge-Liste (Handy-Kachel, zwei oder mehr)', vorlagen: ['casora_popup_flights_list'], file: '49-flights.js', from: '  // ── The list popup', to: '  // ── Airborne', stages: 1 },
   // S5: HA's own map card mounted into UI.stage('image'), across the wide popup (issue 159).
   { popup: 'Landkarte', vorlagen: ['casora_popup_map'], file: '44-landkarte.js', from: '  M.sec = function', to: '  M.popup = function', stages: 2 },

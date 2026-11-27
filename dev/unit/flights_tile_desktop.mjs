@@ -63,10 +63,6 @@ const seen = (flights) => {
   return base + 3 * MIN;
 };
 const text = (html) => html.replace(/<[^>]*>/g, '');
-// The visually hidden span of the row: its text is the percentage phrase, its style is the standard hidden one.
-const HIDDEN = /<span style="(position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;clip:rect\(0 0 0 0\);white-space:nowrap)">([^<]*)<\/span>/;
-const visible = (html) => text(html.replace(HIDDEN, ''));
-
 // ── One flight: the same one line as two or more, no row ──────────────────────────────────────────────────────────────
 const one = F.liveHtml(hass, '', seen([fl('1')]), 'Flüge');
 assert.equal(text(one), '1 in der Luft', 'one flight: one line with the count');

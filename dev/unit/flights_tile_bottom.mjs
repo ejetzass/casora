@@ -1,8 +1,9 @@
 // The Flights tile keeps its name and state where every other Casora tile has them: at the bottom of the tile, the icon at the
-// top left. One flight or more: the tile shows only the icon, the name and the state line (no flight rows), in casora_entity's own
-// grid (icon / name / state, the free space above the name). The phone tile (icon left, text right) is not changed. The check reads the tile's CSS (F._tileCss) the way the card applies it on desktop.
+// top left. With one flight or more, the tile shows only the icon, the name and the state line (no flight rows), in
+// casora_entity's own grid (icon / name / state, the free space above the name). The phone tile (icon left, text right) is not
+// changed. Desktop: no rule of the tile CSS (F._tileCss) gives the card its own areas or rows. Phone: the one @media rule.
 //   node dev/unit/flights_tile_bottom.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#TILE_CSS,liveHtml
+// @deckt: custom_components/casora/scripts/local/49-flights.js#TILE_CSS,liveHtml,airborne,liveHidden,defineTileList,setTileButton
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -36,18 +37,17 @@ const rules = (src) => {
   return out;
 };
 const desktop = rules(css).filter((r) => !r.media);
-const forOne = (r) => /:not\(\[data-flights-sum\]\)/.test(r.sel);
 const container = (set) => set.filter((r) => /^#container\b/.test(r.sel) && !/#state/.test(r.sel));
 
-// ── Slice 1: two or more flights (the summary line): the entity's own grid, nothing moves the name or state to the top ──
-const many = container(desktop.filter((r) => !forOne(r)));
+// ── Desktop and tablet: the entity's own grid, nothing moves the name or state to the top ──
+const many = container(desktop);
 assert.ok(many.length > 0, 'precondition: the tile CSS has a rule for the card grid');
 for (const r of many) {
-  assert.equal(r.decl['grid-template-rows'], undefined, 'two or more flights: the rows stay the entity rows (free space above, name and state at the bottom)');
-  assert.equal(r.decl['grid-template-areas'], undefined, 'two or more flights: the areas stay icon / name / state');
+  assert.equal(r.decl['grid-template-rows'], undefined, 'the rows stay the entity rows (free space above, name and state at the bottom)');
+  assert.equal(r.decl['grid-template-areas'], undefined, 'the areas stay icon / name / state');
 }
 
-// ── Slice 2: one flight is the same tile: only icon, name and the state line, no flight rows, no own grid ──────────────────
+// ── One flight is the same tile as two or more: only the state line, no flight rows ──────────────────
 const F = ctx._casoraFlights;
 const MIN = 60000, T0 = 1800000000000;
 const hass = { entities: {}, states: {} };
@@ -77,8 +77,9 @@ for (const ids of [['1'], ['1', '2']]) {
   assert.equal(text, ids.length + ' in der Luft', ids.length + ' flight(s): the tile text is only the state line');
   assert.doesNotMatch(html, /data-flights-row|data-flights-bar|XY1|AAA|BBB|\d ft|\d kn/, ids.length + ' flight(s): no flight rows, route, numbers or bar in the tile');
 }
-const own = desktop.filter((r) => /^#container\b/.test(r.sel) && (r.decl['grid-template-areas'] || r.decl['grid-template-rows']));
-assert.deepEqual(own, [], 'no desktop rule gives the card its own areas or rows: name and state stay where casora_entity puts them');
-assert.doesNotMatch(css, /:has\(/, 'the tile CSS has no one-flight form');
+assert.doesNotMatch(css, /:has\(|data-flights-row/, 'the tile CSS has no one-flight form and no row rule');
+const phoneRules = rules(css).filter((r) => r.media);
+assert.equal(phoneRules.length, 1, 'one phone rule');
+assert.equal(phoneRules[0].decl['grid-template-rows'], 'min-content minmax(0,1fr)', 'phone: the heading row is as high as its text, the state takes the rest');
 
 console.log('ok: flights tile bottom');

@@ -17,7 +17,6 @@ const T0 = 1800000000000;
 let phone = false;
 const calls = [];
 const pending = [];
-const mqChange = []; // the phone query's change listeners (resize, rotation)
 const flush = () => { pending.splice(0).forEach((fn) => fn()); };
 const listeners = {};
 const defined = {};
@@ -41,7 +40,7 @@ const ctx = {
   HTMLElement: FakeHTMLElement,
   customElements: { get: (n) => defined[n], define: (n, c) => { defined[n] = c; } },
   matchMedia: (q) => ({ matches: phone && q.includes('max-width:767px'),
-    addEventListener(n, fn) { if (n === 'change') mqChange.push(fn); } }),
+    addEventListener() {} }),
   // The page's stage and empty pieces, reduced to their text (the test reads the text, not the layout).
   _casoraUI: { stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
   // The popup opener: records the card config it is given, as the page would open that popup.
@@ -155,14 +154,6 @@ assert.equal(calls.length, 1, 'a click on the phone tile opens one popup');
 assert.equal(calls[0].cfg.template, 'casora_popup_flights_list', 'a click on the phone tile with two flights: the list popup');
 assert.equal(calls[0].cfg.variables, undefined, 'the list config carries no text');
 
-// Desktop: the same card without the tile marker is not a tap target for the tile.
-const deskCard = attrsOf();
-onPage(null, { 'data-name': 'Flüge' });
-phone = false;
-calls.length = 0;
-tap(deskCard);
-assert.equal(calls.length, 0, 'a click on a desktop card opens nothing');
-
 // ── Review: the summary tag is real HTML ───────────────────────────────────────────────────────────────────────────
 phone = true;
 now = seen(two);
@@ -172,24 +163,16 @@ assert.match(tag, /^<casora-flight-list data-flights-sum data-name="[^"]*" style
   'the summary tag has one real style attribute with display:block and overflow:hidden');
 assert.doesNotMatch(tag, /=""|" [a-z-]+"|=""/, 'the summary tag has no junk attribute');
 
-// ── Review: the card follows the phone query on every change (resize, rotation) ──────────────────────────────────
+// ── The card is one button on every width: the same mode after any connect, with a tab stop ───────────────────────────
 const modeOf = () => ({ role: card.attrs.role, label: card.attrs['aria-label'], marker: card.attrs['data-flights-tile-card'], tab: card.attrs.tabindex });
-const flipMode = () => mqChange.forEach((fn) => fn());
-calls.length = 0;
-phone = true;
-onPage(null, { 'data-flights-sum': '', 'data-name': 'Flüge' });
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'phone: a button, no label, marked, reachable by Tab');
-phone = false; flipMode();
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'desktop with the summary line after a change: still one button');
-seen(two); calls.length = 0;
-tap(card);
-assert.equal(calls.length, 1, 'desktop with two flights: a tap on the card opens the list (one button)');
-phone = true; flipMode();
-assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, 'phone again after a change: the button again');
-calls.length = 0;
-seen(two);
-tap(card);
-assert.equal(calls.length, 1, 'phone again: a tap on the card runs the tile tap');
+for (const p of [true, false]) {
+  phone = p;
+  onPage(null, { 'data-flights-sum': '', 'data-name': 'Flüge' });
+  assert.deepEqual(modeOf(), { role: 'button', label: undefined, marker: '', tab: '0' }, (p ? 'phone' : 'desktop') + ': a button, no label, marked, reachable by Tab');
+  seen(two); calls.length = 0;
+  tap(card);
+  assert.equal(calls.length, 1, (p ? 'phone' : 'desktop') + ': a tap on the card opens the list');
+}
 
 // ── Review: Enter and Space on the phone tile are one tap, no second action on the release ─────────────────────────
 const key = (target, k, type) => {
@@ -247,24 +230,15 @@ const listStyle = templates.casora_popup_flights_list.tap_action.casora_popup.st
 assert.match(listStyle, /F\.listRows|list of flight rows/, 'the list popup style comment names the list');
 assert.doesNotMatch(listStyle, /flightSec/, 'the list popup style comment does not point at the flight popup');
 
-// ── Review: keyboard focus on the phone tile, and the desktop group keeps no tab stop ───────────────────────────────
+// ── Review: keyboard focus: the tile card can be reached by Tab, on any width ──────────────────────────────────────
 const card2 = attrsOf();
 const root2 = { host: { _config: {} }, styles: [], appendChild(n) { this.styles.push(n); },
   querySelector: (sel) => (sel === '#card' ? card2 : null) };
-const connectRoot2 = () => {
-  const w = new defined['casora-flight-list']();
-  w._root = root2; w.setAttribute('data-name', 'Flüge');
-  w.connectedCallback();
-};
-phone = false;
-connectRoot2();
-assert.equal(card2.attrs.tabindex, undefined, 'desktop group: no tab stop (as before)');
-phone = true; flipMode();
-assert.equal(card2.attrs.tabindex, '0', 'phone: the tile card can be reached by Tab');
-assert.equal(card2.attrs.role, 'button', 'phone: the tile card is a button');
-phone = false; flipMode();
-assert.equal(card2.attrs.tabindex, undefined, 'back to the desktop group: the tab stop it got is removed');
-assert.equal(card2.attrs.role, 'group', 'back to the desktop group: role group');
+const w2 = new defined['casora-flight-list']();
+w2._root = root2; w2.setAttribute('data-name', 'Flüge');
+w2.connectedCallback();
+assert.equal(card2.attrs.tabindex, '0', 'the tile card can be reached by Tab');
+assert.equal(card2.attrs.role, 'button', 'the tile card is a button');
 
 // ── Review: a list row wraps long text inside the card (no clipped route at 390 px) ────────────────────────────────
 const rowTag = list.match(/<button[^>]*data-flights-row[^>]*>/)[0];

@@ -213,6 +213,11 @@ assert.ok(!texts(popupTimes(hass, fl('s1'))).includes('EST'), 'discard: popup wi
 
 // The popup shows only the timestamps that exist.
 hass = house();
+moving(hass, fl('s10', { time_estimated_arrival: undefined }));
+const noEta = texts(F.listRows(hass, { pin: '', now: T0 + MIN }));
+assert.ok(noEta.includes('→') || noEta.includes('XY'), 'precondition: the list shows the flight');
+assert.ok(!noEta.includes('Voraussichtliche Ankunft'), 'list row: no estimate, no estimate line');
+hass = house();
 moving(hass, fl('s11', { time_scheduled_departure: undefined, time_real_departure: sec(utc(2026, 11, 18, 9, 20)) }));
 const realPop = texts(popupTimes(hass, fl('s11', { time_scheduled_departure: undefined, time_real_departure: sec(utc(2026, 11, 18, 9, 20)) })));
 assert.ok(realPop.includes('Tatsächlich: 10:20 Ortszeit'), 'popup: actual departure shown as actual, one local time (same clock)');

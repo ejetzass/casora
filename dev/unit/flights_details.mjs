@@ -105,7 +105,7 @@ assert.deepEqual(deep(F.units()), { altitude: 'm', speed: 'kmh', vspeed: 'ms' })
 let hass = house();
 hass.source('sensor.a', [fl('u1')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('u1'), latitude: 10.05 }]);
-const tile = F.listRows(hass, { pin: '' });
+const tile = F.listRows(hass, { pin: '', now: T0 + MIN });
 assert.match(tile, /10,668\u00a0m · 833\u00a0km\/h/, 'the list rows show the saved units');
 runtime();
 cfg = null;
@@ -117,7 +117,7 @@ hass.source('sensor.a', [fl('id-old'), fl('id-new')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('id-old'), latitude: 10.05 }, { ...fl('id-new'), latitude: 10.07 }]);
 // Two flights: the tile is one line, and the rows are in the list popup (the same full row).
 assert.doesNotMatch(F.liveHtml(hass, '', T0 + MIN), /data-flights-row/, 'two flights: no rows on the tile');
-const html = F.listRows(hass, { pin: '' });
+const html = F.listRows(hass, { pin: '', now: T0 + MIN });
 assert.equal((html.match(/<button type="button" data-flights-row/g) || []).length, 2, 'one tappable row per flight');
 assert.match(html, /data-flights-key="id-old"/);
 assert.match(html, /data-flights-key="id-new"/);

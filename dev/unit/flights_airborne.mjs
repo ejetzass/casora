@@ -219,7 +219,7 @@ assert.equal(F.liveHidden(hass, T0 + MIN), true, 'frozen position: still hidden'
 hass.source('sensor.a', [at(fl('h1', { flight_number: '<i>XY</i>' }))]);
 assert.equal(F.liveHidden(hass, T0 + 2 * MIN), false, 'moving flight: shown');
 ctx._casoraUI = { empty: (o) => o.text };
-const html = F.listRows(hass, { pin: '' });
+const html = F.listRows(hass, { pin: '', now: T0 + 3 * MIN });
 assert.match(html, /&lt;i&gt;XY&lt;\/i&gt;/, 'label is escaped');
 assert.doesNotMatch(html, /<i>/);
 assert.match(html, /AAA → BBB/);
@@ -280,7 +280,7 @@ assert.doesNotMatch(tileMany, /data-flights-row/, 'nine flights: no rows on the 
 // The list popup (F.listRows) with the nine flights: every row is listed, none cut off, and the list has no height limit of
 // its own, so the popup itself scrolls the rows.
 ctx._casoraUI = { empty: (o) => o.text };
-const listMany = F.listRows(hass, { pin: '' });
+const listMany = F.listRows(hass, { pin: '', now: T0 + MIN });
 assert.equal((listMany.match(/data-flights-row data-flights-src/g) || []).length, 9, 'list popup: all nine rows listed, none cut off');
 assert.doesNotMatch(listMany, /max-height|height:100%|overflow-y:auto/, 'list popup: no height limit of its own (the popup scrolls)');
 // The tile's CSS is not in the text: it is in the card (casora-flight-list), so it cannot reach the card's name.
@@ -289,7 +289,8 @@ const tileCss = F._tileCss;
 assert.match(tileCss, /#container\{[^}]*height:100%/, 'the desktop grid is as high as the card');
 assert.match(tileCss, /@media[^}]*#container\{grid-template-rows:min-content minmax\(0,1fr\)/, 'the phone grid also limits the list to the card');
 assert.match(tileCss, /#state\{[^}]*min-height:0[^}]*overflow:hidden/, 'flight rows cannot paint over neighboring tiles');
-assert.match(tileCss, /\[data-flights-row\]:focus-visible[^{]*\{[^}]*outline:\s*2px/, 'a row shows a 2px focus ring');
+assert.doesNotMatch(tileCss, /data-flights-row/, 'the tile CSS has no row rule: the tile holds no rows');
+assert.match(listMany, /\[data-flights-row\]:focus-visible[^{]*\{[^}]*outline:\s*2px/, 'the list popup shows a 2px focus ring on a row');
 assert.doesNotMatch(tileMany, /opacity:\.75/, 'secondary text keeps its contrast');
 
 console.log('ok flights_airborne');
