@@ -4,7 +4,7 @@
 // keep „Kein Bild“. Runs for casora_camera and casora_frigate (same rule in both).
 //   node dev/unit/camera_listed_kein_bild.mjs
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const templates = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url)));
@@ -13,9 +13,8 @@ let fallbackName = '1';
 globalThis.document = { documentElement: {} };
 globalThis.getComputedStyle = () => ({ getPropertyValue: (name) => (name === '--casora-tile-fallback-name' ? fallbackName : '') });
 
-// The alert helper (window.casoraCameraAlert) comes from casora_camera; both templates call it.
-const helper = templates.casora_camera.variables.casora_camera_alert_helper.value;
-new Function('hass', 'states', 'entity', 'variables', helper.trim().slice(3, -3))({}, {}, {}, {});
+// The alert helper (window.casoraCameraAlert) comes from casora-core.js; both templates call it.
+loadCameraAlert();
 
 const realNow = Date.now;
 const now = Date.now();

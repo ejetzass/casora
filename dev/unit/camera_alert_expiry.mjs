@@ -2,7 +2,7 @@
 // A Ring-style camera alert must expire even when sensor.time is absent,
 // and also when sensor.time exists but has no usable value (unavailable, unknown, empty).
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 import { testhaus } from './lib/testhaus.mjs';
 
@@ -47,7 +47,7 @@ const vars = { cameras: [camera], label: 'Camera' };
 const freshCard = (name, field) => ({ isConnected: true, addController(controller) { this.controller = controller; },
   requestUpdate() { this.output = run(templates[name][field], this, hass, hass.states[camera], vars); } });
 const card = { isConnected: true, requestUpdate() { this.output = render(); }, addController(controller) { this.controller = controller; } };
-run(templates.casora_badge_base.variables.casora_camera_alert_helper.value, card, hass, hass.states[camera], vars);
+loadCameraAlert();
 const render = () => run(templates.casora_badge_camera_group.name, card, hass, hass.states[camera], vars);
 
 assert.match(render(), /klingel/i, 'ring is visible during the window');
@@ -113,7 +113,7 @@ for (const helper of ['casora_badge_base', 'casora_popup_camera']) {
       hass.states[motion].state = 'unknown';
       hass.states['sensor.time'] = { state: clockState };
       const fresh = freshCard(name, field);
-      run(templates[helper].variables.casora_camera_alert_helper.value, fresh, hass, hass.states[camera], vars);
+      loadCameraAlert();
       const what = `${helper} in ${name} with sensor.time "${clockState}"`;
       assert.match(run(templates[name][field], fresh, hass, hass.states[camera], vars), /klingel/i, `${what}: the alert shows`);
       assert.equal(pending.size, 1, `${what}: an expiry timer is scheduled`);
@@ -134,7 +134,7 @@ for (const helper of ['casora_badge_base', 'casora_popup_camera']) {
     hass.states[ding].state = '2026-01-01T12:00:00Z';
     hass.states[motion].state = 'unknown';
     const fresh = freshCard('casora_badge_camera_group', 'name');
-    run(templates.casora_badge_base.variables.casora_camera_alert_helper.value, fresh, hass, hass.states[camera], vars);
+    loadCameraAlert();
     for (const state of ['12:00', 'unavailable', 'unknown', '']) {
       hass.states['sensor.time'] = { state };
       assert.match(run(templates.casora_badge_camera_group.name, fresh, hass, hass.states[camera], vars), /klingel/i);

@@ -1,12 +1,11 @@
 // @deckt: custom_components/casora/scripts/casora-core.js#casoraDetectionAt, dashboards/casora/button_card_templates.json#global
 // The shared detection rule as the camera tile shows it: clock skew and one cache for cards with different windows.
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const templates = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url)));
-const source = templates.casora_badge_base.variables.casora_camera_alert_helper.value;
-new Function('hass', 'states', 'entity', 'variables', source.trim().slice(3, -3))({}, {}, {}, {});
+loadCameraAlert();
 const realNow = Date.now;
 const now = realNow();
 Date.now = () => now;

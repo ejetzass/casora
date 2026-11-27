@@ -1,7 +1,7 @@
-// @deckt: dashboards/casora/button_card_templates.json#casora_camera_alert_helper,dashboards/casora/button_card_templates.json#casora_reolink_doorbell
+// @deckt: custom_components/casora/scripts/casora-core.js#casoraCameraAlert,dashboards/casora/button_card_templates.json#casora_reolink_doorbell
 // A ring and a detection at the same time: the ring keeps its text (and its red dot on the doorbell tile).
 import assert from 'node:assert/strict';
-import './_detection_rule.mjs';
+import { loadCameraAlert } from './_detection_rule.mjs';
 import fs from 'node:fs';
 
 const templates = JSON.parse(fs.readFileSync(new URL('../../dashboards/casora/button_card_templates.json', import.meta.url)));
@@ -20,7 +20,7 @@ const states = {
 };
 const hass = { states, entities: { [camera]: { device_id: 'ring' }, [ding]: { device_id: 'ring' } } };
 window.CASORA_SETTINGS = { cameras: [{ entity_id: camera, detection_triggers: [sensor] }] };
-new Function('hass', 'states', 'entity', 'variables', body(templates.casora_popup_camera.variables.casora_camera_alert_helper.value))({}, {}, {}, {});
+loadCameraAlert();
 const alert = () => window.casoraCameraAlert(hass, states, [camera], 5);
 
 alert();
