@@ -45,7 +45,7 @@ source('sensor.a', [fl({ latitude: 10.05 })]);
 const c = { src: 'sensor.a', flight: 'p1' };
 
 // Each label appears once, marked once: no "~~Label~~" from a second translation.
-const labels = { fmove: ['Höhe', 'Geschwindigkeit über Grund', 'Vertikalgeschwindigkeit', 'Kurs'],
+const labels = { fmove: ['Höhe', 'Geschwindigkeit über Grund', 'Vertikalgeschwindigkeit', 'Kurs über Grund'],
   fair: ['Fluggesellschaft', 'Flugzeugmodell', 'Registrierung', 'Rufzeichen'], ftimes: ['Abflug', 'Ankunft', 'Geplant'] };
 for (const part of Object.keys(labels)) {
   const html = F.sec(part, c, hass.states, hass);

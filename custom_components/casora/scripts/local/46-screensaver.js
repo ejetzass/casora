@@ -1480,7 +1480,7 @@
         + (eta ? S.arrivalHtml(eta) : '');
     } else {
       var items = [[T('Fluggesellschaft'), d.airline], [T('Flugzeugmodell'), d.model], [T('Registrierung'), d.registration], [T('Rufzeichen'), d.callsign],
-        [T('Kurs'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
+        [T('Kurs über Grund'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
       // The timestamps (F.timeRows): the label names side and kind, the value is the time(s).
       items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), x[1]]; }) : []);
       bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {

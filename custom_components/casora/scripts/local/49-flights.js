@@ -1741,7 +1741,7 @@
       return pv && pv.progress != null ? progressHtml(pv.progress) : '';
     }
     if (part === 'fmove') return pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
-      ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs', r.heading]]);
+      ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs über Grund', r.heading]]);
     if (part === 'fair') { var d = F.details(f); return pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
       ['Registrierung', d.registration], ['Rufzeichen', d.callsign]]); }
     if (part === 'ftimes') return timePlates(h, f, F.tz(), c.now);

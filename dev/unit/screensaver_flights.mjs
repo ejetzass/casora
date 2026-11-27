@@ -561,6 +561,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const { html: detail } = mixDetail((s) => [entry('1', s)]); // the details come in the mix, on Flights' own turns
   assert.match(detail, /cs-fl-rows/);
   assert.match(detail, /Example Air/); assert.match(detail, /AB-CDE/); assert.match(detail, /XYZ1/); assert.match(detail, /90°/);
+  assert.match(detail, /<span>Kurs über Grund<\/span><b>90°<\/b>/); // the heading value is the ground track, labelled so
   assert.match(detail, /-500\u00a0ft\/min/); assert.match(detail, /Airport A/); assert.match(detail, /Airport B/); assert.match(detail, /T1/);
   assert.match(detail, /<span>Voraussichtliche Ankunft<\/span><b>/); // a timing row's label names side and kind
   assert.match(detail, /<span>Geplante Ankunft<\/span><b>/); // scheduled and estimated arrival stay two rows
