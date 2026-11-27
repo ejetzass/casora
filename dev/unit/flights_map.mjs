@@ -234,7 +234,7 @@ const v2 = F.mapView(hass2, 'sensor.c', 'w2', now2);
 assert.equal(v2.origin, null);
 assert.equal(v2.progress, null, 'no progress without the origin');
 assert.equal(v2.cur[0], 50.05, 'marker stays');
-assert.match(F.liveHtml(hass2, '', now2), /XY123/, 'textual row stays without airports');
+assert.match(F.listRows(hass2, { pin: '' }), /XY123/, 'textual row stays without airports');
 // An invalid airport coordinate counts as missing.
 assert.equal(F.progressOf(fl('x', { airport_destination_latitude: 0, airport_destination_longitude: 0 })), null, '(0,0) is no airport');
 assert.equal(F.progressOf(fl('x', { airport_destination_latitude: '50', airport_destination_longitude: 20 })), null, 'a text coordinate is no point');
@@ -330,18 +330,13 @@ assert.match(prog, new RegExp('aria-valuenow="' + v.progress + '"'), 'progress v
 assert.equal(F.sec('fprog', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), '', 'no progress without the airports');
 assert.match(F.sec('fstage', { src: 'sensor.a', flight: 'w2' }, hass.states, hass), /STAGE/, 'route text stays');
 assert.match(F.sec('fair', { src: 'sensor.a', flight: 'w1' }, hass.states, hass), /Testair/, 'details stay');
+// The tile shows no flight info and no progress: the list popup rows carry the progress text and the decorative bar.
 const tile = F.liveHtml(hass, '', nowB);
-// The tile's short row shows no progress text; the percentage is visually hidden text in the row (its accessible name).
-const hiddenPct = tile.match(/<span style="position:absolute[^"]*">([^<]*)<\/span>/);
-assert.ok(hiddenPct && hiddenPct[1] === 'Ungefährer Fortschritt: ' + v.progress + ' %', 'tile: the hidden text carries the percentage');
-assert.doesNotMatch(tile.replace(/<span style="position:absolute[^"]*">[^<]*<\/span>/, '').replace(/<[^>]*>/g, ''), /Ungefährer Fortschritt/, 'tile: no progress text line');
-assert.doesNotMatch(tile, /role="progressbar"/, 'tile: the bar has no progressbar role (it is decorative)');
-assert.doesNotMatch(F.liveHtml(hass2, '', now2), /Ungefährer Fortschritt/, 'no tile progress without airports');
-// The tile also shows the progress as a bar, at the same value as the popup (the hidden text above carries the number).
-const tileBar = tile.match(/data-flights-bar[^>]*width:(\d+)%/);
-assert.ok(tileBar, 'tile progress bar');
-assert.equal(Number(tileBar[1]), v.progress, 'bar at the popup value');
-assert.doesNotMatch(F.liveHtml(hass2, '', now2), /data-flights-bar/, 'no tile bar without airports');
+assert.doesNotMatch(tile, /Ungefährer Fortschritt|data-flights-bar|role="progressbar"/, 'tile: no progress text, bar or progressbar');
+const listRows = F.listRows(hass, { pin: '' });
+assert.match(listRows, new RegExp('Ungefährer Fortschritt: ' + v.progress), 'list row: the progress text');
+assert.match(listRows, new RegExp('data-flights-bar[^>]*width:' + v.progress + '%'), 'list row: bar at the popup value');
+assert.doesNotMatch(listRows, /role="progressbar"/, 'list row: the bar has no progressbar role (it is decorative)');
 
 // ── the element: draws on HA's map, follows the flight, and hides when the map is missing or fails ───────────────
 const fakeMl = () => {

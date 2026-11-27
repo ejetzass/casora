@@ -1,7 +1,7 @@
-// The Flights tile's progress bars (49-flights.js liveHtml): one airborne flight with airport coordinates gives one bar in
-// the tile; without the coordinates there is none; when they come back there is again one, not two.
+// The list popup's progress bars (49-flights.js listRows; the tile itself shows no bar): one airborne flight with airport
+// coordinates gives one bar; without the coordinates there is none; when they come back there is again one, not two.
 //   node dev/unit/flights_tile_bars.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,airborne,liveHidden,progressOf,progress,progressBar
+// @deckt: custom_components/casora/scripts/local/49-flights.js#listRows,airborne,liveHidden,progressOf,progress,progressBar
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ const MIN = 60000;
 const T0 = 1800000000000;
 
 const ctx = {
+  _casoraUI: { empty: (o) => o.text },
   console, Date, Math, Intl, JSON,
   localStorage: { getItem: () => null, setItem() {} },
   document: { querySelector: () => null, querySelectorAll: () => [] },
@@ -43,12 +44,12 @@ const tile = (f) => {
   F.liveHidden(hass, base);
   setSource([{ ...f, latitude: f.latitude + 0.05 }]);
   F.liveHidden(hass, base + 2 * MIN);
-  return F.liveHtml(hass, '', base + 3 * MIN, 'Flüge');
+  return F.listRows(hass, { pin: '', now: base + 3 * MIN });
 };
 const bars = (html) => (html.match(/data-flights-bar/g) || []).length;
 
-assert.equal(bars(tile(fl())), 1, 'one airborne flight with coordinates: one progress bar in the tile');
+assert.equal(bars(tile(fl())), 1, 'one airborne flight with coordinates: one progress bar in the list');
 assert.equal(bars(tile(fl({ airport_origin_latitude: null, airport_origin_longitude: null }))), 0, 'without the origin coordinates: no bar');
-assert.equal(bars(tile(fl())), 1, 'the coordinates return: one progress bar in the tile, not two');
+assert.equal(bars(tile(fl())), 1, 'the coordinates return: one progress bar in the list, not two');
 
 console.log('ok: flights tile bars');

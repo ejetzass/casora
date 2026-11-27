@@ -1,0 +1,84 @@
+// The Flights tile keeps its name and state where every other Casora tile has them: at the bottom of the tile, the icon at the
+// top left. One flight or more: the tile shows only the icon, the name and the state line (no flight rows), in casora_entity's own
+// grid (icon / name / state, the free space above the name). The phone tile (icon left, text right) is not changed. The check reads the tile's CSS (F._tileCss) the way the card applies it on desktop.
+//   node dev/unit/flights_tile_bottom.mjs
+// @deckt: custom_components/casora/scripts/local/49-flights.js#TILE_CSS,liveHtml
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+
+const SRC = fs.readFileSync(new URL('../../custom_components/casora/scripts/local/49-flights.js', import.meta.url), 'utf8');
+class FakeHTMLElement { setAttribute() {} getAttribute() { return null; } getRootNode() { return null; } }
+const ctx = {
+  console, Date, Math, Intl, JSON, HTMLElement: FakeHTMLElement,
+  localStorage: { getItem: () => null, setItem() {} },
+  document: { querySelector: () => null, querySelectorAll: () => [], createElement: (tag) => ({ tag }) },
+  setTimeout: () => ({}), clearTimeout() {}, addEventListener() {},
+  customElements: { get: () => undefined, define() {} },
+};
+ctx.window = ctx;
+vm.createContext(ctx);
+vm.runInContext(SRC, ctx);
+const css = ctx._casoraFlights._tileCss;
+
+// The tile CSS as a list of rules: { media, sel, decl }. Only what the tile CSS uses: flat rules and one @media block.
+const rules = (src) => {
+  const out = [];
+  const re = /(@media[^{]*)\{((?:[^{}]*\{[^{}]*\})*)\}|([^{}@]+)\{([^{}]*)\}/g;
+  const decls = (body) => Object.fromEntries(body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+    const i = d.indexOf(':'); return [d.slice(0, i).trim(), d.slice(i + 1).replace(/\s*!important$/, '').trim()]; }));
+  for (let m; (m = re.exec(src));) {
+    if (m[1]) {
+      const inner = /([^{}]+)\{([^{}]*)\}/g;
+      for (let n; (n = inner.exec(m[2]));) out.push({ media: m[1].trim(), sel: n[1].trim(), decl: decls(n[2]) });
+    } else out.push({ media: null, sel: m[3].trim(), decl: decls(m[4]) });
+  }
+  return out;
+};
+const desktop = rules(css).filter((r) => !r.media);
+const forOne = (r) => /:not\(\[data-flights-sum\]\)/.test(r.sel);
+const container = (set) => set.filter((r) => /^#container\b/.test(r.sel) && !/#state/.test(r.sel));
+
+// ── Slice 1: two or more flights (the summary line): the entity's own grid, nothing moves the name or state to the top ──
+const many = container(desktop.filter((r) => !forOne(r)));
+assert.ok(many.length > 0, 'precondition: the tile CSS has a rule for the card grid');
+for (const r of many) {
+  assert.equal(r.decl['grid-template-rows'], undefined, 'two or more flights: the rows stay the entity rows (free space above, name and state at the bottom)');
+  assert.equal(r.decl['grid-template-areas'], undefined, 'two or more flights: the areas stay icon / name / state');
+}
+
+// ── Slice 2: one flight is the same tile: only icon, name and the state line, no flight rows, no own grid ──────────────────
+const F = ctx._casoraFlights;
+const MIN = 60000, T0 = 1800000000000;
+const hass = { entities: {}, states: {} };
+const setSource = (flights) => {
+  hass.entities = { 'sensor.a': { entity_id: 'sensor.a', platform: 'flightradar24', device_id: 'd1', translation_key: 'additional_tracked' } };
+  hass.states = { 'sensor.a': { entity_id: 'sensor.a', state: String(flights.length), attributes: { flights } } };
+};
+const fl = (id) => ({
+  id, flight_number: 'XY' + id, callsign: 'TST' + id, aircraft_registration: 'T-AAAA', tracked_type: 'live', on_ground: 0,
+  latitude: 51, longitude: 4.5, altitude: 31000, ground_speed: 450, heading: 90, vertical_speed: 0, airline_short: 'Testair',
+  airport_origin_code_iata: 'AAA', airport_destination_code_iata: 'BBB', details_updated_at: T0,
+  airport_origin_latitude: 50, airport_origin_longitude: 4, airport_destination_latitude: 52, airport_destination_longitude: 5,
+  time_estimated_arrival: T0 / 1000 + 3600,
+});
+let base = T0;
+const tile = (ids) => {
+  base += 10 * MIN;
+  setSource(ids.map(fl));
+  F.liveHidden(hass, base);
+  setSource(ids.map((id) => ({ ...fl(id), latitude: 51.05 })));
+  F.liveHidden(hass, base + 2 * MIN);
+  return F.liveHtml(hass, '', base + 3 * MIN, 'Flüge');
+};
+for (const ids of [['1'], ['1', '2']]) {
+  const html = tile(ids);
+  const text = html.replace(/<[^>]*>/g, '');
+  assert.equal(text, ids.length + ' in der Luft', ids.length + ' flight(s): the tile text is only the state line');
+  assert.doesNotMatch(html, /data-flights-row|data-flights-bar|XY1|AAA|BBB|\d ft|\d kn/, ids.length + ' flight(s): no flight rows, route, numbers or bar in the tile');
+}
+const own = desktop.filter((r) => /^#container\b/.test(r.sel) && (r.decl['grid-template-areas'] || r.decl['grid-template-rows']));
+assert.deepEqual(own, [], 'no desktop rule gives the card its own areas or rows: name and state stay where casora_entity puts them');
+assert.doesNotMatch(css, /:has\(/, 'the tile CSS has no one-flight form');
+
+console.log('ok: flights tile bottom');
