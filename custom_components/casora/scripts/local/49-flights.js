@@ -34,6 +34,8 @@
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
 //   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
+//   window._casoraFlights.remaining(entry, now) / .duration(entry) → whole minutes to arrival / of the flight (null when unknown); .hm(min) → 'h:mm Std.'
+//   window._casoraFlights.progressText(pct) / .progressBar(pct, h, m) → the progress line's text and bar markup
 //   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin; in the Studio the draft)
 //   window._casoraFlights.addView(hass, id) / .submit(hass, id, text) / .paint() / .draft → the Add field's attempt
 //   window._casoraFlights.watch(hass) → the source IDs (and the pin) a card follows; .active(hass) → tile highlight
@@ -200,9 +202,6 @@
     missing: 'Kein Eingabefeld zum Hinzufügen gefunden.', scanning: T_SCANNING, noscan: T_MISSING_PART,
     ambiguous: 'Mehrere Eingabefelder zum Hinzufügen gefunden.', unavailable: 'Das Eingabefeld zum Hinzufügen ist nicht verfügbar.' };
   var esc = window.casoraEsc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
-  // German puts a narrow no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that
-  // knows both; the DOM pass only rewrites text for other languages, not for German.
-  var pctText = function (n) { return tr(n + ' %'); };
   var msgOf = function (a) { return a && MSG[a.state] ? fillName(tr(MSG[a.state]), a.name) : ''; };
   // A call HA refuses (the user may not use the control) is named apart from a failed call: the fix is a permission.
   var refused = function (e) { return !!e && (e.code === 'unauthorized' || /unauthori[sz]ed/i.test(String(e.message || ''))); };
@@ -1009,9 +1008,36 @@
     return hit ? { date: hit.own ? '' : tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
   };
 
+  // The progress text, one place for the list row, the flight popup and the screensaver. German puts a narrow
+  // no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that knows both; the DOM pass
+  // only rewrites text for other languages, not for German.
+  F.progressText = function (n) { return tr(n + ' %'); };
+  // Whole minutes between two epoch-ms values; null when a side is unknown or the result is negative (rounded to whole minutes).
+  var minutesBetween = function (from, to) {
+    if (from == null || to == null) return null;
+    var m = Math.round((to - from) / 60000);
+    return m < 0 ? null : m;
+  };
+  // Minutes left from `now` (ms) to the estimated arrival, else the scheduled one.
+  F.remaining = function (entry, now) {
+    var e = entry || {}, to = epochMs(e.time_estimated_arrival);
+    return minutesBetween(now, to != null ? to : epochMs(e.time_scheduled_arrival));
+  };
+  // Minutes from the actual departure (else scheduled) to the estimated arrival (else scheduled).
+  F.duration = function (entry) {
+    var e = entry || {}, from = epochMs(e.time_real_departure), to = epochMs(e.time_estimated_arrival);
+    return minutesBetween(from != null ? from : epochMs(e.time_scheduled_departure), to != null ? to : epochMs(e.time_scheduled_arrival));
+  };
+  // Minutes as h:mm with the hour unit; '' for no value.
+  F.hm = function (min) {
+    if (typeof min !== 'number' || !isFinite(min)) return '';
+    min = Math.round(min);
+    var m = min % 60;
+    return Math.floor(min / 60) + ':' + (m < 10 ? '0' : '') + m + ' ' + tr('Std.');
+  };
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
   // sits in a button as well. The bar is a picture: its callers hide it from screen readers.
-  var progressBar = function (pct, h, m) {
+  F.progressBar = function (pct, h, m) {
     return '<span style="display:block;position:relative;height:' + h + 'px;margin-top:' + m + 'px;border-radius:' + (h / 2)
       + 'px;overflow:hidden;opacity:.9;background:rgba(127,127,127,0.3)"><span data-flights-bar style="position:absolute;left:0;top:0;bottom:0;width:'
       + esc(pct) + '%;background:currentColor"></span></span>';
@@ -1026,7 +1052,7 @@
     var barHtml = '';
     if (pct != null) {
       // The same value as a bar; decorative, the text line above is the one screen readers get.
-      barHtml = subHtml(esc(tr('Ungefährer Fortschritt')) + ': ' + esc(pctText(pct))) + '<span aria-hidden="true">' + progressBar(pct, 4, 6) + '</span>';
+      barHtml = subHtml(esc(tr('Ungefährer Fortschritt')) + ': ' + esc(F.progressText(pct))) + '<span aria-hidden="true">' + F.progressBar(pct, 4, 6) + '</span>';
     }
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
@@ -1661,12 +1687,12 @@
   defineTileList();
   // The progress line: a track with the fill and the value as text (not by colour alone).
   var progressHtml = function (pct) {
-    var label = tr('Ungefährer Fortschritt'), value = pctText(pct);
+    var label = tr('Ungefährer Fortschritt'), value = F.progressText(pct);
     return '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
       + '" aria-valuetext="' + esc(value) + '" style="padding:12px 16px;box-sizing:border-box;">'
       + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">' + esc(label)
       + '</span><span style="font-weight:600">' + esc(value) + '</span></div>'
-      + progressBar(pct, 6, 12) + '</div>';
+      + F.progressBar(pct, 6, 12) + '</div>';
   };
 
   // ── The flight popup (casora_popup_flight): one flight of one source, by its FR24 ID ──────────────────────────────────
