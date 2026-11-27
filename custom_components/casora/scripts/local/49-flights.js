@@ -1666,25 +1666,30 @@
   // the word when it differs. A side with neither an airport nor a time has no section.
   var timePlates = function (h, f, tzOn) {
     var tm = F.times(h, f, tzOn);
-    // Row padding and divider as the handbook's §6 (top 12, right 16, bottom 12, left 12; 1 px --casora-pill-divider).
-    var ROW = 'min-height:52px;box-sizing:border-box;padding:12px 16px 12px 12px;';
-    var DIV = '<div style="height:1px;margin:0 16px 0 12px;background:var(--casora-pill-divider, rgba(127,127,127,0.25))"></div>';
+    // Row padding and divider as the handbook's §6 (top and bottom 12; no icon, so the text starts at 16 like the heading; 1 px --casora-pill-divider).
+    var ROW = 'min-height:52px;box-sizing:border-box;padding:12px 16px;';
+    var DIV = '<div style="height:1px;margin:0 16px;background:var(--casora-pill-divider, rgba(127,127,127,0.25))"></div>';
+    // Each side is data first (the airport line, then one entry per timestamp); the markup is built by the maps below.
     var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr }].map(function (x) {
-      var rows = [], at = place(f, x.side);
-      if (at) rows.push('<div style="' + ROW + 'display:flex;align-items:center"><div style="font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere">' + esc(at) + '</div></div>');
-      x.stamps.forEach(function (t) {
-        rows.push('<div style="' + ROW + 'display:flex;align-items:center;justify-content:space-between;gap:12px">'
-          + '<div style="min-width:0"><div style="font-size:15px;font-weight:700">' + esc(tr(KIND_WORD[t.kind])) + '</div>'
-          + (t.home ? '<div style="font-size:13px;font-weight:500;color:var(--secondary-text-color,currentColor)">' + esc(t.home) + '</div>' : '') + '</div>'
-          + '<div style="font-size:14px;font-weight:600;text-align:right;white-space:nowrap;flex:none">' + esc(t.air) + '</div></div>');
-      });
-      if (!rows.length) return '';
+      var rows = x.stamps.map(function (t) { return { word: tr(KIND_WORD[t.kind]), air: t.air, home: t.home }; });
+      var at = place(f, x.side);
+      if (at) rows.unshift({ line: at });
+      return { heading: x.heading, rows: rows };
+    }).filter(function (x) { return x.rows.length; });
+    if (!secs.length) return '';
+    return '<div style="display:flex;flex-direction:column;gap:24px">' + secs.map(function (x) {
       return '<div><div style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--secondary-text-color,currentColor);padding:0 16px;margin-bottom:8px">'
         + esc(tr(x.heading)) + '</div>'
         + '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
-        + rows.join(DIV) + '</div></div>';
-    }).filter(Boolean);
-    return secs.length ? '<div style="display:flex;flex-direction:column;gap:24px">' + secs.join('') + '</div>' : '';
+        + x.rows.map(function (r, i) {
+          return (i ? DIV : '') + (r.line
+            ? '<div style="' + ROW + 'display:flex;align-items:center"><div style="font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere">' + esc(r.line) + '</div></div>'
+            : '<div style="' + ROW + 'display:flex;align-items:center;justify-content:space-between;gap:12px">'
+              + '<div style="min-width:0"><div style="font-size:15px;font-weight:700">' + esc(r.word) + '</div>'
+              + (r.home ? '<div style="font-size:13px;font-weight:500;color:var(--secondary-text-color,currentColor)">' + esc(r.home) + '</div>' : '') + '</div>'
+              + '<div style="font-size:14px;font-weight:600;text-align:right;white-space:nowrap;flex:none">' + esc(r.air) + '</div></div>');
+        }).join('') + '</div></div>';
+    }).join('') + '</div>';
   };
   var flightSec = function (part, c, h) {
     var UI = window._casoraUI;
