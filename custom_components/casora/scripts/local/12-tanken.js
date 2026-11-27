@@ -502,12 +502,17 @@
     + '.leaflet-control-attribution{font-size:9px!important;line-height:1.3!important;padding:1px 6px!important;border-radius:8px 0 0 0;'
     + 'background:var(--ct-att-bg)!important;color:var(--ct-att-fg)!important;pointer-events:auto}'
     + '.leaflet-control-attribution a{color:inherit!important}';
+  // The one lookup of the Leaflet map, shared by the map tile (44-landkarte.js), the flight map and lmOf. Leaflet ha-map (no WebGL2): its own
+  // Leaflet map. mlOf never returns it, and lfOf never returns a MapLibre map.
+  // HA 2026.11 keeps the Leaflet map on ha-map._engine; older HA had it directly on ha-map.
+  var lfOf = function (m) { if (!m) return null; if (m.leafletMap) return m.leafletMap; var e = m._engine && m._engine.leafletMap; return e && typeof e === 'object' && typeof e.getSize === 'function' ? e : null; };
   // HA 2026.10: ha-map zeichnet direkt mit MapLibre (kein Leaflet mehr, m._engine._map). Gleiche Schnittstelle
   // wie Leaflet für syncMap; MapLibre zählt Zoom in 512er-Kacheln (eine Stufe weniger als Leaflet).
   var mlOf = function (m) { return m && !m.leafletMap && m._engine && m._engine._map && m._engine._map.project ? m._engine._map : null; };
   var lmOf = function (m) {
     if (!m) return null;
-    if (m.leafletMap) return m.leafletMap;
+    var lf = lfOf(m);
+    if (lf) return lf;
     var ml = mlOf(m);
     if (!ml) return null;
     return {
@@ -517,10 +522,7 @@
       containerPointToLatLng: function (pt) { var q = ml.unproject(pt); return { lat: q.lat, lng: q.lng }; },
     };
   };
-  // Shared with the map tile (44-landkarte.js): whether HA's map service exists, loading ha-map, its MapLibre map.
-  // Leaflet ha-map (no WebGL2): its own Leaflet map. mlOf never returns it, and lfOf never returns a MapLibre map.
-  // HA 2026.11 keeps the Leaflet map on ha-map._engine; older HA had it directly on ha-map.
-  var lfOf = function (m) { if (!m) return null; if (m.leafletMap) return m.leafletMap; var e = m._engine && m._engine.leafletMap; return e && typeof e === 'object' && typeof e.getSize === 'function' ? e : null; };
+  // Shared with the map tile (44-landkarte.js) and the flight map: whether HA's map service exists, loading ha-map, its MapLibre or Leaflet map.
   window._casoraHaMap = { ok: mapOk, defined: haMapDefined, ml: mlOf, lf: lfOf };
   var hmStyleMl = '.maplibregl-canvas{filter:var(--ct-filter,none)}.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right,.maplibregl-ctrl-scale{display:none!important}'
     + '.maplibregl-ctrl-attrib{font-size:9px!important;line-height:1.3!important;padding:1px 6px!important;border-radius:8px 0 0 0;background:var(--ct-att-bg)!important;color:var(--ct-att-fg)!important}'
@@ -548,7 +550,7 @@
       var t0 = Date.now();
       var wait = setInterval(function () {
         if (V !== v || !m.isConnected) { clearInterval(wait); return; }
-        var lm = m.leafletMap, mlx = mlOf(m);
+        var lm = lfOf(m), mlx = mlOf(m);
         if (mlx && !hm.hooked) {
           hm.hooked = true;
           ['dragPan', 'scrollZoom', 'boxZoom', 'doubleClickZoom', 'touchZoomRotate', 'keyboard', 'dragRotate', 'touchPitch'].forEach(function (x) { if (mlx[x] && mlx[x].disable) mlx[x].disable(); });
