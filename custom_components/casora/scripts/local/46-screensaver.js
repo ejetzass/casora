@@ -1463,11 +1463,12 @@
     return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
       + '<div class="cs-fl-arrval">' + S.partsHtml(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + S.partsHtml(a.home) + '</div>' : '') + '</div>';
   };
-  // A value of one or two times ("18:40 18-11 BBB · 00:40 19-11 Amsterdam"): each part is unbreakable (a Dutch date has a hyphen,
-  // at which a browser breaks), the separator sits between the spans, so a line breaks only between the parts. The text
-  // functions of 49-flights.js stay as they are: they join the parts with a protected space before the dot.
-  S.partsHtml = function (text) {
-    return String(text).split(/\u00a0· | · /).map(function (p) { return '<span class="cs-fl-nw">' + esc(p) + '</span>'; }).join('\u00a0· ');
+  // A time with its city and date: unbreakable (a Dutch date has a hyphen, at which a browser breaks), so a line breaks
+  // only between the times, which sit on their own lines.
+  S.partsHtml = function (text) { return '<span class="cs-fl-nw">' + esc(text) + '</span>'; };
+  // One value of a timing row: one time is bare text; with two, the home time is its own line under the airport time.
+  S.timeValueHtml = function (air, home) {
+    return home ? S.partsHtml(air) + '<div class="cs-fl-arrsub">' + S.partsHtml(home) + '</div>' : esc(air);
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
@@ -1489,10 +1490,10 @@
     } else {
       var items = [[T('Fluggesellschaft'), d.airline], [T('Flugzeugmodell'), d.model], [T('Registrierung'), d.registration], [T('Rufzeichen'), d.callsign],
         [T('Kurs über Grund'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
-      // The timestamps (F.timeRows): the label names side and kind, the value is the time(s).
-      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), x[1]]; }) : []);
+      // The timestamps (F.timeRows): the label names side and kind, the value (html) is the time(s).
+      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), S.timeValueHtml(x[1], x[2]), true]; }) : []);
       bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {
-        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + (/\u00a0· | · /.test(x[1]) ? S.partsHtml(x[1]) : esc(x[1])) + '</b></div>';
+        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + (x[2] ? x[1] : esc(x[1])) + '</b></div>';
       }).join('') + '</div>';
     }
     var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r, !!eta) : '';

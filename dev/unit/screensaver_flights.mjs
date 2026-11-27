@@ -566,7 +566,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(detail, /-500\u00a0ft\/min/); assert.match(detail, /Airport A/); assert.match(detail, /Airport B/); assert.match(detail, /T1/);
   assert.match(detail, /<span>Voraussichtliche Ankunft<\/span><b>/); // a timing row's label names side and kind
   assert.match(detail, /<span>Geplante Ankunft<\/span><b>/); // scheduled and estimated arrival stay two rows
-  assert.match(detail.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1'), /<span>Voraussichtliche Ankunft<\/span><b>[^<]*\u00b7 [^<]*Amsterdam<\/b>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
+  assert.match(detail.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1'), /<span>Voraussichtliche Ankunft<\/span><b>[^<]*<div class="cs-fl-arrsub">[^<]*Amsterdam<\/div><\/b>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
 }
 // The saver's timing rows (49-flights.js timeRows) label side and kind and show the time(s) only; the popup keeps its plates.
 {
@@ -580,7 +580,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     assert.match(h, /cs-fl-rows/, label);
     const want = R.F.timeRows(R.hass, entry('1', 1, o), false);
     assert.ok(want.some(([l]) => l === 'Geplanter Abflug') && want.some(([l]) => l === 'Geplante Ankunft'), label + ': departure and arrival rows');
-    want.forEach(([l, t]) => assert.ok(h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1').includes('<span>' + l + '</span><b>' + t + '</b>'), label + ': the popup row ' + l + ': ' + t));
+    want.forEach(([l, air, home]) => assert.ok(h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1').includes('<span>' + l + '</span><b>' + air + (home ? '<div class="cs-fl-arrsub">' + home + '</div>' : '') + '</b>'), label + ': the row ' + l + ': ' + air + ' / ' + home));
   });
 }
 {
@@ -872,7 +872,8 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   // Different offset: Paramaribo (UTC-3) against the house.
   const diff = { ...same, airport_destination_timezone_offset: -10800, airport_destination_timezone_abbr: 'SRT', airport_destination_city: 'Paramaribo' };
   const plain = (h) => h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1');
-  const rowsOf = (html) => [...plain(html).matchAll(/<div class="cs-fl-row"><span>([^<]*)<\/span><b>([^<]*)<\/b><\/div>/g)].map((m) => [m[1], m[2]]);
+  // A row's value as text: the home time's line element becomes a line break.
+  const rowsOf = (html) => [...plain(html).matchAll(/<div class="cs-fl-row"><span>([^<]*)<\/span><b>(.*?)<\/b><\/div>/g)].map((m) => [m[1], m[2].replace('<div class="cs-fl-arrsub">', '\n').replace('</div>', '')]);
   const timeRowsOf = (o) => rowsOf(mixDetail((s) => [entry('1', s, o)]).html)
     .filter(([l]) => /^(Geplanter|Tatsächlicher|Geplante|Voraussichtliche) (Abflug|Ankunft)$/.test(l));
   assert.deepEqual(timeRowsOf(same), [
@@ -881,9 +882,9 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   ], 'detail layout, one time per row: the label names side and kind, the value is the bare clock');
   assert.deepEqual(timeRowsOf(diff), [
     ['Geplanter Abflug', '08:15' + NBSP + 'AM'], ['Tatsächlicher Abflug', '09:29' + NBSP + 'AM'],
-    ['Geplante Ankunft', '01:35' + NBSP + 'PM' + NBSP + 'Paramaribo' + NBSP + '· 05:35' + NBSP + 'PM' + NBSP + 'Amsterdam'],
-    ['Voraussichtliche Ankunft', '02:03' + NBSP + 'PM' + NBSP + 'Paramaribo' + NBSP + '· 06:03' + NBSP + 'PM' + NBSP + 'Amsterdam'],
-  ], 'detail layout, two times: both carry their city');
+    ['Geplante Ankunft', '01:35' + NBSP + 'PM' + NBSP + 'Paramaribo' + '\n05:35' + NBSP + 'PM' + NBSP + 'Amsterdam'],
+    ['Voraussichtliche Ankunft', '02:03' + NBSP + 'PM' + NBSP + 'Paramaribo' + '\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam'],
+  ], 'detail layout, two times: the home time on its own line, no separator, both carry their city');
 
   // Map layout: the arrival block.
   const mapOf = (o, loc) => { const R = runtime(); if (loc) R.box.casoraLocale = () => loc; warm(R); move(R, 1, [entry('1', 1, o)]); at(R, SLOT0 + 1000); return at(R, SLOT0 + 2000); };
@@ -900,8 +901,8 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft · Thu' + NBSP + '19' + NBSP + 'Nov</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
     + '<div class="cs-fl-arrsub">06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, arrival not today (now is Nov 18): the date joins the caption, the lines carry no date');
-  // Line breaks (#546 decision 6): a time, its city and its date never break inside, a line breaks only between the parts at
-  // the separator. The saver wraps each part of a value in an unbreakable span; the separator stays outside the spans.
+  // Line breaks (#546 decision 6): a time, its city and its date never break inside. The saver wraps each time in an
+  // unbreakable span; with two times the home time is its own line.
   // A Dutch date has hyphens ("18-11"), at which a browser would otherwise break.
   {
     const part = '<span class="cs-fl-nw">[^<]+<\\/span>';
@@ -909,7 +910,8 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
     const { html: dnl } = mixDetail((s) => [entry('1', s, two)], 'nl-NL');
     const raw = [...dnl.matchAll(/<div class="cs-fl-row"><span>Geplante Ankunft<\/span><b>(.*?)<\/b><\/div>/g)].map((m) => m[1]);
     assert.equal(raw.length, 1, 'one planned-arrival row');
-    assert.match(raw[0], new RegExp('^' + part + '\u00a0\u00b7 ' + part + '$'), 'detail row: each part one unbreakable span, the separator outside');
+    assert.match(raw[0], new RegExp('^' + part + '<div class="cs-fl-arrsub">' + part + '</div>$'), 'detail row: the home time in its own line element, each line one unbreakable span');
+    assert.doesNotMatch(raw[0], /\u00b7/, 'detail row: no separator between the two times');
     const nl = mapOf(two, 'nl-NL');
     assert.match(rawBlock(nl), new RegExp('<div class="cs-fl-arrval">' + part + '</div><div class="cs-fl-arrsub">' + part + '</div>'),
       'map arrival lines: each one unbreakable');
