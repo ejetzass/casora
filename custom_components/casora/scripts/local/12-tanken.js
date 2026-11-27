@@ -502,13 +502,13 @@
     + '.leaflet-control-attribution{font-size:9px!important;line-height:1.3!important;padding:1px 6px!important;border-radius:8px 0 0 0;'
     + 'background:var(--ct-att-bg)!important;color:var(--ct-att-fg)!important;pointer-events:auto}'
     + '.leaflet-control-attribution a{color:inherit!important}';
-  // The one lookup of the Leaflet map, shared by the map tile (44-landkarte.js), the flight map and lmOf. Leaflet ha-map (no WebGL2): its own
-  // Leaflet map. mlOf never returns it, and lfOf never returns a MapLibre map.
+  // The one lookup of the Leaflet map, shared by the flight map, lmOf and mlOf. The map tile (44-landkarte.js) only calls H.ml. Leaflet ha-map (no WebGL2): its own
+  // Leaflet map. mlOf returns nothing for an ha-map that has one (old or new shape), and lfOf never returns a MapLibre map.
   // HA 2026.11 keeps the Leaflet map on ha-map._engine; older HA had it directly on ha-map.
   var lfOf = function (m) { if (!m) return null; if (m.leafletMap) return m.leafletMap; var e = m._engine && m._engine.leafletMap; return e && typeof e === 'object' && typeof e.getSize === 'function' ? e : null; };
   // HA 2026.10: ha-map zeichnet direkt mit MapLibre (kein Leaflet mehr, m._engine._map). Gleiche Schnittstelle
   // wie Leaflet für syncMap; MapLibre zählt Zoom in 512er-Kacheln (eine Stufe weniger als Leaflet).
-  var mlOf = function (m) { return m && !m.leafletMap && m._engine && m._engine._map && m._engine._map.project ? m._engine._map : null; };
+  var mlOf = function (m) { return m && !lfOf(m) && m._engine && m._engine._map && m._engine._map.project ? m._engine._map : null; };
   var lmOf = function (m) {
     if (!m) return null;
     var lf = lfOf(m);

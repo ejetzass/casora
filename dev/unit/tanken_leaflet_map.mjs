@@ -12,7 +12,7 @@ const a = Math.min(...['  var lfOf = ', '  var mlOf = '].map((k) => src.indexOf(
 const b = src.indexOf('  window._casoraHaMap = {');
 assert.ok(a > 0 && b > a, 'lfOf, mlOf and lmOf sit together before window._casoraHaMap');
 assert.ok(/var lmOf = /.test(src.slice(a, b)), 'lmOf is among them');
-const lmOf = vm.runInNewContext(src.slice(a, b) + '; lmOf', {});
+const { lmOf, mlOf } = vm.runInNewContext(src.slice(a, b) + '; ({ lmOf: lmOf, mlOf: mlOf })', {});
 const same = (x, y, m) => assert.strictEqual(JSON.stringify(x), JSON.stringify(y), m);
 
 // Leaflet map as HA 2026.11 builds it: an object with getSize (the engine has no _map).
@@ -30,6 +30,10 @@ assert.strictEqual(lmOf(el), leafletMap, 'HA 2026.11: the Leaflet map from ha-ma
 assert.strictEqual(lmOf({ leafletMap }), leafletMap, 'older HA: ha-map.leafletMap');
 // A Leaflet engine next to a MapLibre-looking _map: still the Leaflet map, never the wrapper.
 assert.strictEqual(lmOf({ _engine: { leafletMap, _map: mlMap } }), leafletMap, 'a Leaflet map is never replaced by a MapLibre wrapper');
+// mlOf (the ready poll's MapLibre branch) ignores an engine that has a Leaflet map, also next to a MapLibre-looking _map.
+assert.strictEqual(mlOf({ _engine: { leafletMap, _map: mlMap } }), null, 'mlOf: an engine with a Leaflet map is not a MapLibre map');
+assert.strictEqual(mlOf({ leafletMap, _engine: { _map: mlMap } }), null, 'mlOf: older HA shape with a Leaflet map');
+assert.strictEqual(mlOf({ _engine: { _map: mlMap } }), mlMap, 'mlOf: a MapLibre-only engine');
 // Nothing to find.
 assert.strictEqual(lmOf({ _engine: { leafletMap: {} } }), null, 'an engine map without getSize is not a Leaflet map');
 assert.strictEqual(lmOf({ _engine: {} }), null);
