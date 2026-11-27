@@ -37,7 +37,7 @@ const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, msg + ' (' + 
 // The picture: the globe replaces the flat map, in the map box that keeps clear of header and figures.
 assert.notEqual(globe, flat, 'the globe replaced the flat map');
 assert.ok(!/cs-fl-svg/.test(globe), 'no flat route picture');
-assert.match(globe, /<div class="cs-fl-live cs-fl-globe"[^>]*><svg[^>]*viewBox="0 0 1000 1000"[^>]*preserveAspectRatio="xMidYMid meet"/, 'a square picture that meets its box: the disc is as large as the area allows');
+assert.match(globe, /<div class="cs-fl-live cs-fl-globe[^"]*"[^>]*><svg[^>]*viewBox="0 0 1000 1000"[^>]*preserveAspectRatio="xMidYMid meet"/, 'a square picture that meets its box: the disc is as large as the area allows');
 assert.match(globe, /<circle class="cs-gl-sea" cx="500" cy="500" r="500"\/>/, 'the ocean is the full disc');
 const land = globe.match(/<path class="cs-gl-land" d="([^"]+)"/);
 assert.ok(land && land[1].length > 500, 'the land is drawn');

@@ -891,6 +891,9 @@
     + '.cs-sv .cs-fl-mk path{fill:#FFCC00;stroke:#070D1A;stroke-width:.14;stroke-linejoin:round;}'
     + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-stat.cs-fl-above{bottom:' + u(190) + ';}'
+    // With the arrival block the stats line sits at 190 units; the map ends above it with a gap (stats line 36 + gap 24 more).
+    + '.cs-sv .cs-fl-map.cs-fl-eta{bottom:' + u(250) + ';}.cs-sv .cs-fl-live.cs-fl-eta{bottom:' + u(255) + ';}'
+    + '.cs-sv .cs-fl-nw{white-space:nowrap;}'
     + '.cs-sv .cs-fl-arr{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(72) + ';}'
     + '.cs-sv .cs-fl-arrval{font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-arrsub{font-size:' + u(22) + ';font-weight:500;color:var(--ink2);}'
@@ -1449,16 +1452,22 @@
     return '<div class="cs-fl-mk" style="left:' + left + '%;top:' + top + '%;width:' + u(40) + ';height:' + u(40) + ';transform:translate(-50%, -50%) rotate(' + hd + 'deg)">'
       + '<svg viewBox="-1 -1.4 2 2.5" aria-hidden="true"><path d="M0 -1.3 L0.9 1 L0 0.4 L-0.9 1 Z"/></svg></div>';
   };
-  // The picture box, as large as fits the map's area (72 units left and right, 230 above, 190 below) at its own proportions.
-  S.routePicStyle = function (fr) {
-    var R = fr.W / fr.H, wb = 'calc(100cqw - ' + u(144) + ')', hb = 'calc(100cqh - ' + u(420) + ')';
+  // The picture box, as large as fits the map's area (72 units left and right, 230 above, 190 below; 250 with the arrival block) at its own proportions.
+  S.routePicStyle = function (fr, eta) {
+    var R = fr.W / fr.H, wb = 'calc(100cqw - ' + u(144) + ')', hb = 'calc(100cqh - ' + u(eta ? 480 : 420) + ')';
     return 'width:min(' + wb + ', calc(' + hb + ' * ' + R.toFixed(4) + '));height:min(' + hb + ', calc(' + wb + ' / ' + R.toFixed(4) + '))';
   };
   // The arrival of the map layout: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
   // with two times). The date joins the caption only when the arrival is not today.
   S.arrivalHtml = function (a) {
     return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
-      + '<div class="cs-fl-arrval">' + esc(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + esc(a.home) + '</div>' : '') + '</div>';
+      + '<div class="cs-fl-arrval">' + S.partsHtml(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + S.partsHtml(a.home) + '</div>' : '') + '</div>';
+  };
+  // A value of one or two times ("18:40 18-11 BBB · 00:40 19-11 Amsterdam"): each part is unbreakable (a Dutch date has a hyphen,
+  // at which a browser breaks), the separator sits between the spans, so a line breaks only between the parts. The text
+  // functions of 49-flights.js stay as they are: they join the parts with a protected space before the dot.
+  S.partsHtml = function (text) {
+    return String(text).split(/\u00a0· | · /).map(function (p) { return '<span class="cs-fl-nw">' + esc(p) + '</span>'; }).join('\u00a0· ');
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
@@ -1474,7 +1483,7 @@
       // While the aircraft's position glides (ctx.globeTrack, kept by the mount), the disc is drawn at the glided position.
       var globeHtml = fr && S.globeOn(ctx.vars) ? S.globeSvg(ctx.globeTrack && S.globeReady() ? S.globeStep(ctx.globeTrack, v, r.src + '|' + r.key) : v) : '';
       if (globeHtml) { ctx.globeDrawn = true; fr = null; }
-      bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map"><div class="cs-fl-pic" style="' + S.routePicStyle(fr) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
+      bodyHtml = (globeHtml ? '<div class="cs-fl-live cs-fl-globe' + (eta ? ' cs-fl-eta' : '') + '">' + globeHtml + '</div>' : '') + (fr ? '<div class="cs-fl-map' + (eta ? ' cs-fl-eta' : '') + '"><div class="cs-fl-pic" style="' + S.routePicStyle(fr, eta) + '">' + S.routeSvg(v, fr) + S.routeMarker(v, fr) + '</div></div>' : '')
         + (stat ? '<div class="cs-fl-stat' + (eta ? ' cs-fl-above' : '') + '">' + esc(stat) + '</div>' : '')
         + (eta ? S.arrivalHtml(eta) : '');
     } else {
@@ -1483,10 +1492,10 @@
       // The timestamps (F.timeRows): the label names side and kind, the value is the time(s).
       items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), x[1]]; }) : []);
       bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {
-        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></div>';
+        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + (/\u00a0· | · /.test(x[1]) ? S.partsHtml(x[1]) : esc(x[1])) + '</b></div>';
       }).join('') + '</div>';
     }
-    var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r) : '';
+    var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r, !!eta) : '';
     return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;
   };
   // ── Globe view: the files load late ──────────────────────────────────────────────────────────────────────────────────
@@ -1594,9 +1603,9 @@
   // airports and the aircraft as map layers from the same view. Until it is ready, and when it fails, the drawn picture
   // shows through. Always the last child of the scene: mountKeepingMap keeps this element across redraws. No attribute
   // that loads anything; the map takes its tiles from Home Assistant's own map.
-  S.liveMap = function (r) {
+  S.liveMap = function (r, eta) {
     if (!window.customElements || !window.customElements.get('casora-flight-map')) return '';
-    return '<casora-flight-map class="cs-fl-live" data-saver aria-hidden="true" data-src="' + esc(r.src) + '" data-key="' + esc(r.key) + '"></casora-flight-map>';
+    return '<casora-flight-map class="cs-fl-live' + (eta ? ' cs-fl-eta' : '') + '" data-saver aria-hidden="true" data-src="' + esc(r.src) + '" data-key="' + esc(r.key) + '"></casora-flight-map>';
   };
   // Redraws the scene without touching the map element. Only when the scene's opening tag (its classes) and the map element
   // are the same as before; a change of the tag (say cs-dark to cs-light) or of the flight rebuilds the element, by design.
