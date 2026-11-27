@@ -378,7 +378,7 @@ for (const f of ['custom_components/casora/translations/dashboard/phrases/en.jso
 {
   const TODAY18 = utc(2026, 11, 18, 12, 0), TODAY19 = utc(2026, 11, 19, 12, 0);
   setTz(false); LOC = 'nl-NL'; runtime();
-  const plate = (f, now) => { const h = house(); moving(h, f); return texts(F.sec('ftimes', { src: 'sensor.a', flight: f.id, now }, h.states, h)); };
+  const plate = (f, now) => { const h = house(); moving(h, f); return texts(['fdep', 'farr'].map((part) => F.sec(part, { src: 'sensor.a', flight: f.id, now }, h.states, h)).join('')); };
   const f1 = fl('e1', { airport_destination_city: undefined });
   let pt = plate(f1);
   assert.ok(pt.startsWith(' Abflug AAA · wo 18 nov Geplant 10:00 Ankunft BBB · wo 18 nov Geplant '), 'plate: the place line ends with the airport\'s local date (nl: "wo 18 nov")');
@@ -395,7 +395,7 @@ for (const f of ['custom_components/casora/translations/dashboard/phrases/en.jso
   const sameDay = fl('e3', { airport_destination_city: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) });
   assert.ok(list(sameDay).includes('Voraussichtliche Ankunft wo 18 nov 13:35 BBB 17:35 Amsterdam'), 'list row: the home time on the arrival day carries no date');
   // The place line's dot keeps a protected space before it: a wrap never leaves "·" at a line start or end (popup rules §4.8).
-  const hp = (() => { const h = house(); moving(h, f1); return F.sec('ftimes', { src: 'sensor.a', flight: f1.id }, h.states, h); })();
+  const hp = (() => { const h = house(); moving(h, f1); return ['fdep', 'farr'].map((part) => F.sec(part, { src: 'sensor.a', flight: f1.id }, h.states, h)).join(''); })();
   assert.ok(hp.includes('AAA · wo 18 nov'), 'plate: protected space before the dot of the date');
   // List row: the date and its clock never part (protected space between them).
   const lh2 = house(); moving(lh2, f1);
@@ -408,7 +408,7 @@ for (const f of ['custom_components/casora/translations/dashboard/phrases/en.jso
   // No HA zone: today is unknown, so the date is never dropped: plate and list both show it.
   const nz = (f, now) => { const h = house(null); moving(h, f); return h; };
   const hz = nz(f1);
-  assert.ok(texts(F.sec('ftimes', { src: 'sensor.a', flight: f1.id, now: TODAY18 }, hz.states, hz)).includes('Ankunft BBB · wo 18 nov'), 'no HA zone: the plate date stays');
+  assert.ok(texts(['fdep', 'farr'].map((part) => F.sec(part, { src: 'sensor.a', flight: f1.id, now: TODAY18 }, hz.states, hz)).join('')).includes('Ankunft BBB · wo 18 nov'), 'no HA zone: the plate date stays');
   assert.ok(texts(F.listRows(hz, { pin: '', now: TODAY18 })).includes('Voraussichtliche Ankunft wo 18 nov 18:40'), 'no HA zone: the list row date stays');
   // English format: weekday, month, day.
   LOC = 'en-US'; runtime();
