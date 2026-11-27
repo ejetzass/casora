@@ -1,6 +1,8 @@
 // Tracked flights: the timestamps (49-flights.js F.times): the airport time leads, the home time follows when its UTC
-// offset differs (cities only with two times), the estimated arrival on the tile and list, the popup's departure and arrival plates, the date style (the side's date once on the plate's place line, dropped when today; a time carries a date only on another day), airport offsets (seconds,
-// either sign), HA daylight saving, the optional timezone suffix, and that the browser's timezone never changes the text.
+// offset differs (cities only with two times), the estimated arrival on the tile and list, the popup's departure and
+// arrival plates, the date style (the side's date once on the plate's place line, dropped when today; a time carries a
+// date only on another day), airport offsets (seconds, either sign), HA daylight saving, the optional timezone suffix,
+// and that the browser's timezone never changes the text.
 // Controlled clock; synthetic flights; no real timezone mapping is needed beyond what Intl gives for a zone name.
 //   node dev/unit/flights_times.mjs
 // @deckt: custom_components/casora/scripts/local/49-flights.js#times,moment,estimateOf,tz,flightSec,timePlates,pairs,listRows,rowHtml,sec,flightPopup,setting,pinned
@@ -372,7 +374,7 @@ for (const f of ['custom_components/casora/translations/dashboard/phrases/en.jso
   assert.equal(dflt.home, '00:40 do 19 nov Amsterdam', 'home time one day later: its short date before the city');
 }
 
-// The date on the plate's place line, dropped when the side's day is today at home; the same rule on the list row and the tile.
+// The date on the plate's place line, dropped when the side's day is today at home; the same rule on the list row.
 {
   const TODAY18 = utc(2026, 11, 18, 12, 0), TODAY19 = utc(2026, 11, 19, 12, 0);
   setTz(false); LOC = 'nl-NL'; runtime();
@@ -392,6 +394,22 @@ for (const f of ['custom_components/casora/translations/dashboard/phrases/en.jso
   assert.ok(list(f1, TODAY18).includes('Voraussichtliche Ankunft 18:40 BBB 00:40 do 19 nov Amsterdam'), 'list row, arrival today: no date before the time, the home line keeps its date');
   const sameDay = fl('e3', { airport_destination_city: undefined, airport_destination_timezone_offset: -10800, time_estimated_arrival: sec(utc(2026, 11, 18, 16, 35)) });
   assert.ok(list(sameDay).includes('Voraussichtliche Ankunft wo 18 nov 13:35 BBB 17:35 Amsterdam'), 'list row: the home time on the arrival day carries no date');
+  // The place line's dot keeps a protected space before it: a wrap never leaves "·" at a line start or end (popup rules §4.8).
+  const hp = (() => { const h = house(); moving(h, f1); return F.sec('ftimes', { src: 'sensor.a', flight: f1.id }, h.states, h); })();
+  assert.ok(hp.includes('AAA · wo 18 nov'), 'plate: protected space before the dot of the date');
+  // List row: the date and its clock never part (protected space between them).
+  const lh2 = house(); moving(lh2, f1);
+  assert.ok(F.listRows(lh2, { pin: '' }).includes('wo 18 nov 18:40'), 'list row: the arrival date is tied to the clock by a protected space');
+  // List row: a time that carries its own date (its day differs from the side's real stamp) gets no second date in front.
+  const own = fl('e4', { airport_destination_city: undefined, time_real_arrival: sec(utc(2026, 11, 19, 6, 0)), time_estimated_arrival: sec(utc(2026, 11, 19, 4, 0)) });
+  const ownList = list(own);
+  assert.ok(ownList.includes('Voraussichtliche Ankunft 23:00 wo 18 nov BBB'), 'list row: the estimate on another day than the real stamp keeps its own date');
+  assert.ok(!ownList.includes('Ankunft do 19 nov'), 'list row: no second date in front of a time that has its own');
+  // No HA zone: today is unknown, so the date is never dropped: plate and list both show it.
+  const nz = (f, now) => { const h = house(null); moving(h, f); return h; };
+  const hz = nz(f1);
+  assert.ok(texts(F.sec('ftimes', { src: 'sensor.a', flight: f1.id, now: TODAY18 }, hz.states, hz)).includes('Ankunft BBB · wo 18 nov'), 'no HA zone: the plate date stays');
+  assert.ok(texts(F.listRows(hz, { pin: '', now: TODAY18 })).includes('Voraussichtliche Ankunft wo 18 nov 18:40'), 'no HA zone: the list row date stays');
   // English format: weekday, month, day.
   LOC = 'en-US'; runtime();
   assert.equal(F.times(house(), f1, false, NOW).arrDate, 'Wed, Nov 18', 'en: "Wed, Nov 18"');

@@ -929,19 +929,28 @@
     var air = offsetOk(off) ? part(ms, { off: off, abbr: abbr }, loc) : null;
     var zone = haZone(hass), home = zone ? part(ms, { zone: zone }, loc) : null;
     // The zone name is not repeated when it already stands as the city (an airport with no city and no IATA code).
+    var carriesDate = function (p) { return !!(sideDay && p.day !== sideDay); };
     var line = function (p, city) {
-      return nb(p.clock + (sideDay && p.day !== sideDay ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && p.name !== city ? ' ' + p.name : ''));
+      return nb(p.clock + (carriesDate(p) ? ' ' + p.date : '') + (city ? ' ' + city : '') + (tzOn && p.name && p.name !== city ? ' ' + p.name : ''));
     };
-    if (air && home && zoneOffset(ms, zone) === off) return { air: line(home), home: '' };
+    // own: the leading (airport) time already carries its date, so a caller must not put the side's date before it too.
+    var lead = function (p, city) { return { air: line(p, city), home: '', own: carriesDate(p) }; };
+    if (air && home && zoneOffset(ms, zone) === off) return lead(home);
     if (air && home) {
-      var city = airCity(f, side);
-      return { air: line(air, city || air.name), home: line(home, homeCity(zone)) };
+      var city = airCity(f, side), pair = lead(air, city || air.name);
+      pair.home = line(home, homeCity(zone));
+      return pair;
     }
-    if (air) return { air: line(air), home: '' };
-    if (home) return { air: line(home), home: '' };
+    if (air) return lead(air);
+    if (home) return lead(home);
     return null;
   };
-  // Every timestamp the flight has: {dep: [{kind, text, air, home}], arr: [...], depDate, arrDate} (air leads, home is '' when it is not shown),
+  // The calendar day (yyyy-mm-dd) of now in HA's zone; null without a zone, and then no date is ever dropped as "today".
+  var todayAt = function (hass, now, loc) {
+    var zone = haZone(hass);
+    return zone ? part(now == null ? Date.now() : now, { zone: zone }, loc).day : null;
+  };
+  // Every timestamp the flight has: {dep: [{kind, text, air, home, own}], arr: [...], depDate, arrDate} (air leads, home is '' when it is not shown),
   // scheduled before real before estimated. A missing timestamp is left out; the flight stays. depDate and arrDate are the side's
   // short local date (the airport's day of its best stamp: real, else estimated, else scheduled), '' when that day is today at home
   // (HA's zone; now defaults to Date.now()) or the side has no time. The tile and the popup use this.
@@ -949,22 +958,22 @@
     var out = { dep: [], arr: [], depDate: '', arrDate: '' }, loc = locale();
     if (!f || typeof f !== 'object') return out;
     var zone = haZone(hass), KINDS = ['scheduled', 'real', 'estimated'], BEST = ['real', 'estimated', 'scheduled'];
-    var today = zone ? part(now == null ? Date.now() : now, { zone: zone }, loc).day : null;
-    [{ out: 'dep', dateKey: 'depDate', side: 'origin', stamp: 'departure' }, { out: 'arr', dateKey: 'arrDate', side: 'destination', stamp: 'arrival' }].forEach(function (s) {
-      var off = f['airport_' + s.side + '_timezone_offset'], z = offsetOk(off) ? { off: off, abbr: '' } : zone ? { zone: zone } : null;
+    var today = todayAt(hass, now, loc);
+    [{ out: 'dep', dateKey: 'depDate', side: 'origin', stamp: 'departure' }, { out: 'arr', dateKey: 'arrDate', side: 'destination', stamp: 'arrival' }].forEach(function (spec) {
+      var off = f['airport_' + spec.side + '_timezone_offset'], z = offsetOk(off) ? { off: off, abbr: '' } : zone ? { zone: zone } : null;
       var best = null;
-      BEST.some(function (kind) { best = epochMs(f['time_' + kind + '_' + s.stamp]); return best != null; });
+      BEST.some(function (kind) { best = epochMs(f['time_' + kind + '_' + spec.stamp]); return best != null; });
       var sideDay = null;
       if (best != null && z) {
-        var bp = part(best, z, loc);
-        sideDay = bp.day;
-        out[s.dateKey] = bp.day === today ? '' : nb(bp.date);
+        var bestPart = part(best, z, loc);
+        sideDay = bestPart.day;
+        out[spec.dateKey] = bestPart.day === today ? '' : nb(bestPart.date);
       }
       KINDS.forEach(function (kind) {
-        var ms = epochMs(f['time_' + kind + '_' + s.stamp]);
+        var ms = epochMs(f['time_' + kind + '_' + spec.stamp]);
         if (ms == null) return;
-        var p = moment(hass, ms, f, s.side, !!tzOn, loc, sideDay);
-        if (p) out[s.out].push({ kind: kind, text: p.home ? p.air + NB + '\u00b7 ' + p.home : p.air, air: p.air, home: p.home });
+        var p = moment(hass, ms, f, spec.side, !!tzOn, loc, sideDay);
+        if (p) out[spec.out].push({ kind: kind, text: p.home ? p.air + NB + '\u00b7 ' + p.home : p.air, air: p.air, home: p.home, own: p.own });
       });
     });
     return out;
@@ -980,7 +989,7 @@
   // The list row's estimated arrival: the arrival side's date (not today at home), the airport time and the home time.
   var estimateOf = function (hass, f, now) {
     var tm = F.times(hass, f, F.tz(), now), hit = tm.arr.filter(function (x) { return x.kind === 'estimated'; })[0];
-    return hit ? { date: tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
+    return hit ? { date: hit.own ? '' : tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
   };
 
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
@@ -1005,7 +1014,7 @@
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
       + (extra ? subHtml(esc(extra)) : '')
-      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + (est.date ? esc(est.date) + ' ' : '') + esc(est.air)) : '')
+      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + (est.date ? esc(est.date) + NB : '') + esc(est.air)) : '')
       + (est.air && est.home ? subHtml(esc(est.home)) : '')
       + barHtml + '</button>';
   };
@@ -1684,7 +1693,7 @@
     // Each side is data first (the airport line, then one entry per timestamp); the markup is built by the maps below.
     var secs = [{ heading: 'Abflug', side: 'origin', stamps: tm.dep, date: tm.depDate }, { heading: 'Ankunft', side: 'destination', stamps: tm.arr, date: tm.arrDate }].map(function (x) {
       var rows = x.stamps.map(function (t) { return { word: tr(KIND_WORD[t.kind]), air: t.air, home: t.home }; });
-      var at = [place(f, x.side), x.date].filter(Boolean).join(' · ');
+      var spot = place(f, x.side), at = spot + (spot && x.date ? NB + '· ' : '') + x.date;
       if (at) rows.unshift({ line: at });
       return { heading: x.heading, rows: rows };
     }).filter(function (x) { return x.rows.length; });
