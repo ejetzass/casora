@@ -23,8 +23,11 @@
 //   window._casoraFlights.tile(hass, pin) / .popup(states, hass, vars) / .sec(part, c, states, hass)
 //   window._casoraFlights.airborne(hass, pin, now, units) → the qualifying flights now (the shared rule for every flight surface; units optional, a draft's)
 //   window._casoraFlights.details(entry)             → {airline, model, registration, callsign, origin, destination} ('' when missing)
-//   window._casoraFlights.timeRows(hass, entry, tzOn) → [[label, air, home]] departure and arrival timestamps (the screensaver's rows; the label names side and kind)
-//   window._casoraFlights.arrivalBlock(hass, entry, tzOn, nowMs) → {date, air, home}: the estimated arrival for the screensaver's map layout, or null
+//   window._casoraFlights.timeRows(hass, entry, tzOn, now) → [[label, [line, home?]]] departure and arrival timestamps (the screensaver's rows; the label
+//     names side and kind; the first line is the side's date (when not today at home), then the airport time; home is the home time's own line)
+//   window._casoraFlights.estimateOf(hass, entry, now, tzOn) → {date, air, home}: the estimated arrival (the list row's and the screensaver's map block); '' parts when none
+//   window._casoraFlights.pairs(rows, saver) → label/value rows as html: the popup's plate, or with saver the screensaver's flat rows; a value is text or [air, home]
+//   window._casoraFlights.timeHtml(air, home) → one time as unbreakable text, the home time (if any) as its own line under it
 //   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (one line, "N in the air") and its hidden state; `now` is optional
 //   window._casoraFlights.phone() → the phone breakpoint (the tile CSS's media query); .tapTile(hass, name) / .openList(hass, src, name)
 //   window._casoraFlights.listStage(hass, c) / .listRows(hass, c) / .listPopup(states, hass, v) → the list popup (phone and desktop; c = {pin, now}, now optional)
@@ -983,20 +986,26 @@
     });
     return out;
   };
-  // The timestamps as rows [label, air, home] for the screensaver (departure, then arrival). The label (German, to translate) names
-  // side and kind; air is the airport time, home the home time ('' with one time). A kind without a label here (an estimated departure, a real arrival) has no row.
+  // The timestamps as rows [label, lines] for the screensaver (departure, then arrival). The label (German, to translate) names
+  // side and kind; lines is the airport time, with the side's date (not today at home) before it unless the time carries its own date,
+  // and the home time as a second line when it shows. A kind without a label here (an estimated departure, a real arrival) has no row.
   var ROW_LABEL = { dep: { scheduled: 'Geplanter Abflug', real: 'Tatsächlicher Abflug' },
     arr: { scheduled: 'Geplante Ankunft', estimated: 'Voraussichtliche Ankunft' } };
-  F.timeRows = function (hass, f, tzOn) {
-    var tm = F.times(hass, f, tzOn), rows = [];
+  F.timeRows = function (hass, f, tzOn, now) {
+    var tm = F.times(hass, f, tzOn, now), rows = [];
     ['dep', 'arr'].forEach(function (side) {
-      tm[side].forEach(function (x) { if (ROW_LABEL[side][x.kind]) rows.push([ROW_LABEL[side][x.kind], x.air, x.home]); });
+      tm[side].forEach(function (x) {
+        if (!ROW_LABEL[side][x.kind]) return;
+        var date = x.own ? '' : side === 'dep' ? tm.depDate : tm.arrDate;
+        rows.push([ROW_LABEL[side][x.kind], x.home ? [(date ? date + NB : '') + x.air, x.home] : [(date ? date + NB : '') + x.air]]);
+      });
     });
     return rows;
   };
-  // The list row's estimated arrival: the arrival side's date (not today at home), the airport time and the home time.
-  var estimateOf = function (hass, f, now) {
-    var tm = F.times(hass, f, F.tz(), now), hit = tm.arr.filter(function (x) { return x.kind === 'estimated'; })[0];
+  // The estimated arrival: the arrival side's date (not today at home), the airport time and the home time. The list row and the
+  // screensaver's map block use it; tzOn (the screensaver's own setting) defaults to the saved switch.
+  F.estimateOf = function (hass, f, now, tzOn) {
+    var tm = F.times(hass, f, tzOn == null ? F.tz() : tzOn, now), hit = tm.arr.filter(function (x) { return x.kind === 'estimated'; })[0];
     return hit ? { date: hit.own ? '' : tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
   };
 
@@ -1012,7 +1021,7 @@
   var rowHtml = function (hass, r, style, now) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
     // The row's estimate has the airport time and, when it shows, the home time on its own line.
-    var est = estimateOf(hass, r.entry, now), pct = F.progressOf(r.entry);
+    var est = F.estimateOf(hass, r.entry, now), pct = F.progressOf(r.entry);
     var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
     var barHtml = '';
     if (pct != null) {
@@ -1678,9 +1687,18 @@
   };
   // A plate of label and value rows; a row without a value is left out, and no rows means no plate (no blank section).
   // pairs() translates the labels (callers pass German keys), not the values.
-  var pairs = function (rows) {
+  // saver = true: the screensaver's flat rows, styled by its classes (cs-fl-row, cs-fl-lbl, cs-fl-val), no plate around them;
+  // there a value may also be [air, home], a time (timeHtml).
+  F.pairs = function (rows, saver) {
     var ok = rows.filter(function (x) { return x[1]; });
     if (!ok.length) return '';
+    if (saver) {
+      return ok.map(function (x) {
+        var v = x[1];
+        return '<div class="cs-fl-row"><div class="cs-fl-lbl">' + esc(tr(x[0])) + '</div><div class="cs-fl-val">'
+          + (Array.isArray(v) ? F.timeHtml(v[0], v[1]) : esc(v)) + '</div></div>';
+      }).join('');
+    }
     return '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
       + ok.map(function (x, i) {
         return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '')
@@ -1688,6 +1706,12 @@
           + '<div style="font-size:15px;color:var(--secondary-text-color,currentColor);white-space:normal;flex:none">' + esc(tr(x[0])) + '</div>'
           + '<div style="font-size:14px;font-weight:600;text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere">' + esc(x[1]) + '</div></div>';
       }).join('') + '</div>';
+  };
+  // One time for the screensaver: unbreakable (a Dutch date has a hyphen, at which a browser breaks), so a line breaks only
+  // between the times; the home time is its own line (class cs-fl-arrsub) under the airport time.
+  F.timeHtml = function (air, home) {
+    var nw = function (t) { return '<span class="cs-fl-nw">' + esc(t) + '</span>'; };
+    return nw(air) + (home ? '<div class="cs-fl-arrsub">' + nw(home) + '</div>' : '');
   };
   // The departure and arrival plates (popup rules §6): a heading outside above each plate; inside, the airport line as the first
   // row, then one row per timestamp kind: the kind word, the airport time on the right, and the home time as a small line under
@@ -1744,9 +1768,9 @@
       var pv = F.mapView(h, c.src, c.flight, Date.now());
       return pv && pv.progress != null ? progressHtml(pv.progress) : '';
     }
-    if (part === 'fmove') return pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
+    if (part === 'fmove') return F.pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
       ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs über Grund', r.heading]]);
-    if (part === 'fair') { var d = F.details(f); return pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
+    if (part === 'fair') { var d = F.details(f); return F.pairs([['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model],
       ['Registrierung', d.registration], ['Rufzeichen', d.callsign]]); }
     if (part === 'ftimes') return timePlates(h, f, F.tz(), c.now);
     return '';

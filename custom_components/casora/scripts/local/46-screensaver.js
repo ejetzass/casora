@@ -899,7 +899,7 @@
     + '.cs-sv .cs-fl-arrsub{font-size:' + u(22) + ';font-weight:500;color:var(--ink2);}'
     + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
     + '.cs-sv .cs-fl-row{display:flex;justify-content:space-between;align-items:baseline;gap:' + u(16) + ';font-size:' + u(22) + ';padding-top:' + u(10) + ';border-top:1px solid rgba(246,239,230,.18);}'
-    + '.cs-sv .cs-fl-row span{opacity:.7;flex:none;}.cs-sv .cs-fl-row b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;}'
+    + '.cs-sv .cs-fl-lbl{opacity:.7;flex:none;}.cs-sv .cs-fl-val{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;}'
     + '.cs-sv .cs-ke em{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}'
     + '.cs-sv .cs-kmore{font-size:' + u(19) + ';font-weight:700;color:var(--ink3);padding-left:' + u(18) + ';}'
     // Two weeks: the span as the big thing, as large as its length leaves room beside the clock (--cs-res: what the
@@ -1460,15 +1460,8 @@
   // The arrival of the map layout: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
   // with two times). The date joins the caption only when the arrival is not today.
   S.arrivalHtml = function (a) {
-    return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
-      + '<div class="cs-fl-arrval">' + S.partsHtml(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + S.partsHtml(a.home) + '</div>' : '') + '</div>';
-  };
-  // A time with its city and date: unbreakable (a Dutch date has a hyphen, at which a browser breaks), so a line breaks
-  // only between the times, which sit on their own lines.
-  S.partsHtml = function (text) { return '<span class="cs-fl-nw">' + esc(text) + '</span>'; };
-  // One value of a timing row: one time is bare text; with two, the home time is its own line under the airport time.
-  S.timeValueHtml = function (air, home) {
-    return home ? S.partsHtml(air) + '<div class="cs-fl-arrsub">' + S.partsHtml(home) + '</div>' : esc(air);
+    return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? '\u00a0· ' + a.date : '')) + '</div>'
+      + '<div class="cs-fl-arrval">' + FL().timeHtml(a.air, a.home) + '</div></div>';
   };
   DRAW.flights = function (ctx) {
     var F = FL(), rows = ctx.flights || [], n = rows.length, t = ctx.turn || 0;
@@ -1476,7 +1469,8 @@
     var f = r.entry, v = F ? F.mapView(ctx.hass, r.src, r.key, +ctx.now) : null;
     var tzOn = S.on(ctx.vars && ctx.vars.casora_flights_timezones), d = F ? F.details(f) : {}, bodyHtml = '';
     if (!detail) {
-      var eta = F ? F.arrivalBlock(ctx.hass, f, tzOn, +ctx.now) : null;
+      var eta = F ? F.estimateOf(ctx.hass, f, +ctx.now, tzOn) : null;
+      if (eta && !eta.air) eta = null;
       var prog = v && v.progress != null ? T('Ungefährer Fortschritt') + ': ' + T(v.progress + ' %') : '';
       var stat = [r.altitude, r.speed, prog].filter(Boolean).join(' · ');
       var fr = v ? S.routeFrame(v) : null;
@@ -1488,13 +1482,12 @@
         + (stat ? '<div class="cs-fl-stat' + (eta ? ' cs-fl-above' : '') + '">' + esc(stat) + '</div>' : '')
         + (eta ? S.arrivalHtml(eta) : '');
     } else {
-      var items = [[T('Fluggesellschaft'), d.airline], [T('Flugzeugmodell'), d.model], [T('Registrierung'), d.registration], [T('Rufzeichen'), d.callsign],
-        [T('Kurs über Grund'), r.heading], [T('Vertikalgeschwindigkeit'), r.vspeed], [T('Abflug'), d.origin], [T('Ankunft'), d.destination]];
-      // The timestamps (F.timeRows): the label names side and kind, the value (html) is the time(s).
-      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn).map(function (x) { return [T(x[0]), S.timeValueHtml(x[1], x[2]), true]; }) : []);
-      bodyHtml = '<div class="cs-fl-rows">' + items.filter(function (x) { return x[1]; }).map(function (x) {
-        return '<div class="cs-fl-row"><span>' + esc(x[0]) + '</span><b>' + (x[2] ? x[1] : esc(x[1])) + '</b></div>';
-      }).join('') + '</div>';
+      // The shared row helper (49-flights.js F.pairs, saver style) translates the labels and leaves out a row without a value;
+      // the timestamps (F.timeRows) are rows too: the label names side and kind, the value is the time lines.
+      var items = [['Fluggesellschaft', d.airline], ['Flugzeugmodell', d.model], ['Registrierung', d.registration], ['Rufzeichen', d.callsign],
+        ['Kurs über Grund', r.heading], ['Vertikalgeschwindigkeit', r.vspeed], ['Abflug', d.origin], ['Ankunft', d.destination]];
+      items = items.concat(F ? F.timeRows(ctx.hass, f, tzOn, +ctx.now) : []);
+      bodyHtml = '<div class="cs-fl-rows">' + (F ? F.pairs(items, true) : '') + '</div>';
     }
     var mapHtml = !detail && v && !ctx.globeDrawn ? S.liveMap(r, !!eta) : '';
     return '<div class="cs-in">' + head(ctx, r.label, r.route) + bodyHtml + '</div>' + mapHtml;

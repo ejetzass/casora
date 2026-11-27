@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg,arrivalHtml,partsHtml,flightRows custom_components/casora/scripts/local/49-flights.js#arrivalBlock,timeRows,dayHead,moment
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg,arrivalHtml custom_components/casora/scripts/local/49-flights.js#estimateOf,timeRows,timeHtml,pairs,moment
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
 // Flights kind (one flight per native turn, in a fixed order; the map and the details alternate per round, and the next
@@ -562,11 +562,11 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const { html: detail } = mixDetail((s) => [entry('1', s)]); // the details come in the mix, on Flights' own turns
   assert.match(detail, /cs-fl-rows/);
   assert.match(detail, /Example Air/); assert.match(detail, /AB-CDE/); assert.match(detail, /XYZ1/); assert.match(detail, /90°/);
-  assert.match(detail, /<span>Kurs über Grund<\/span><b>90°<\/b>/); // the heading value is the ground track, labelled so
+  assert.match(detail, /<div class="cs-fl-lbl">Kurs über Grund<\/div><div class="cs-fl-val">90°<\/div>/); // the heading value is the ground track, labelled so
   assert.match(detail, /-500\u00a0ft\/min/); assert.match(detail, /Airport A/); assert.match(detail, /Airport B/); assert.match(detail, /T1/);
-  assert.match(detail, /<span>Voraussichtliche Ankunft<\/span><b>/); // a timing row's label names side and kind
-  assert.match(detail, /<span>Geplante Ankunft<\/span><b>/); // scheduled and estimated arrival stay two rows
-  assert.match(detail.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1'), /<span>Voraussichtliche Ankunft<\/span><b>[^<]*<div class="cs-fl-arrsub">[^<]*Amsterdam<\/div><\/b>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
+  assert.match(detail, /<div class="cs-fl-lbl">Voraussichtliche Ankunft<\/div><div class="cs-fl-val">/); // a timing row's label names side and kind
+  assert.match(detail, /<div class="cs-fl-lbl">Geplante Ankunft<\/div><div class="cs-fl-val">/); // scheduled and estimated arrival stay two rows
+  assert.match(detail.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1'), /<div class="cs-fl-lbl">Voraussichtliche Ankunft<\/div><div class="cs-fl-val">[^<]*<div class="cs-fl-arrsub">[^<]*Amsterdam<\/div><\/div>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
 }
 // The saver's timing rows (49-flights.js timeRows) label side and kind and show the time(s) only; the popup keeps its plates.
 {
@@ -578,9 +578,9 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   cases.forEach(([label, o]) => {
     const { html: h, R } = mixDetail((s) => [entry('1', s, o)]);
     assert.match(h, /cs-fl-rows/, label);
-    const want = R.F.timeRows(R.hass, entry('1', 1, o), false);
+    const want = R.F.timeRows(R.hass, entry('1', 1, o), false, R.clock.t);
     assert.ok(want.some(([l]) => l === 'Geplanter Abflug') && want.some(([l]) => l === 'Geplante Ankunft'), label + ': departure and arrival rows');
-    want.forEach(([l, air, home]) => assert.ok(h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1').includes('<span>' + l + '</span><b>' + air + (home ? '<div class="cs-fl-arrsub">' + home + '</div>' : '') + '</b>'), label + ': the row ' + l + ': ' + air + ' / ' + home));
+    want.forEach(([l, [air, home]]) => assert.ok(h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1').includes('<div class="cs-fl-lbl">' + l + '</div><div class="cs-fl-val">' + air + (home ? '<div class="cs-fl-arrsub">' + home + '</div>' : '') + '</div></div>'), label + ': the row ' + l + ': ' + air + ' / ' + home));
   });
 }
 {
@@ -873,7 +873,8 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   const diff = { ...same, airport_destination_timezone_offset: -10800, airport_destination_timezone_abbr: 'SRT', airport_destination_city: 'Paramaribo' };
   const plain = (h) => h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1');
   // A row's value as text: the home time's line element becomes a line break.
-  const rowsOf = (html) => [...plain(html).matchAll(/<div class="cs-fl-row"><span>([^<]*)<\/span><b>(.*?)<\/b><\/div>/g)].map((m) => [m[1], m[2].replace('<div class="cs-fl-arrsub">', '\n').replace('</div>', '')]);
+  const flat = (h) => plain(h).replace(/<div class="cs-fl-arrsub">([^<]*)<\/div>/g, '\n$1');
+  const rowsOf = (html) => [...flat(html).matchAll(/<div class="cs-fl-row"><div class="cs-fl-lbl">([^<]*)<\/div><div class="cs-fl-val">([^<]*)<\/div><\/div>/g)].map((m) => [m[1], m[2]]);
   const timeRowsOf = (o) => rowsOf(mixDetail((s) => [entry('1', s, o)]).html)
     .filter(([l]) => /^(Geplanter|Tatsächlicher|Geplante|Voraussichtliche) (Abflug|Ankunft)$/.test(l));
   assert.deepEqual(timeRowsOf(same), [
@@ -888,38 +889,72 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
 
   // Map layout: the arrival block.
   const mapOf = (o, loc) => { const R = runtime(); if (loc) R.box.casoraLocale = () => loc; warm(R); move(R, 1, [entry('1', 1, o)]); at(R, SLOT0 + 1000); return at(R, SLOT0 + 2000); };
-  const block = (html) => plain((html.match(/<div class="cs-fl-arr">.*?<\/div>(?=<\/div>)<\/div>/) || [''])[0]);
-  const rawBlock = (html) => (html.match(/<div class="cs-fl-arr">.*?<\/div>(?=<\/div>)<\/div>/) || [''])[0];
+  const block = (html) => (flat(html).match(/<div class="cs-fl-arr">[\s\S]*?<\/div><\/div>/) || [''])[0];
+  const rawBlock = (html) => (html.match(/<div class="cs-fl-arr">.*?<\/div><\/div><\/div>/) || [''])[0];
   assert.equal(block(mapOf(same)),
     '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">06:03' + NBSP + 'PM</div></div>',
     'map layout, one time: caption, one bare clock, no colon, no city, no zone word');
   assert.equal(block(mapOf(diff)),
-    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
-    + '<div class="cs-fl-arrsub">06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo'
+    + '\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, two times: airport time with its city, the home time with its city under it');
   assert.equal(block(mapOf({ ...diff, time_estimated_arrival: U(19, 17, 3) })),
-    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft · Thu' + NBSP + '19' + NBSP + 'Nov</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
-    + '<div class="cs-fl-arrsub">06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft' + NBSP + '· Thu,' + NBSP + 'Nov' + NBSP + '19</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo'
+    + '\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, arrival not today (now is Nov 18): the date joins the caption, the lines carry no date');
-  // Line breaks (#546 decision 6): a time, its city and its date never break inside. The saver wraps each time in an
+  // Line breaks (the list row's rule): a time, its city and its date never break inside. The saver wraps each time in an
   // unbreakable span; with two times the home time is its own line.
   // A Dutch date has hyphens ("18-11"), at which a browser would otherwise break.
   {
     const part = '<span class="cs-fl-nw">[^<]+<\\/span>';
     const two = { ...diff, time_scheduled_arrival: U(18, 17, 40), time_estimated_arrival: U(18, 17, 3) };
     const { html: dnl } = mixDetail((s) => [entry('1', s, two)], 'nl-NL');
-    const raw = [...dnl.matchAll(/<div class="cs-fl-row"><span>Geplante Ankunft<\/span><b>(.*?)<\/b><\/div>/g)].map((m) => m[1]);
+    const raw = [...dnl.matchAll(/<div class="cs-fl-lbl">Geplante Ankunft<\/div><div class="cs-fl-val">(.*?<\/span>(?:<div class="cs-fl-arrsub">.*?<\/span><\/div>)?)<\/div><\/div>/g)].map((m) => m[1]);
     assert.equal(raw.length, 1, 'one planned-arrival row');
     assert.match(raw[0], new RegExp('^' + part + '<div class="cs-fl-arrsub">' + part + '</div>$'), 'detail row: the home time in its own line element, each line one unbreakable span');
     assert.doesNotMatch(raw[0], /\u00b7/, 'detail row: no separator between the two times');
     const nl = mapOf(two, 'nl-NL');
-    assert.match(rawBlock(nl), new RegExp('<div class="cs-fl-arrval">' + part + '</div><div class="cs-fl-arrsub">' + part + '</div>'),
+    assert.match(rawBlock(nl), new RegExp('<div class="cs-fl-arrval">' + part + '<div class="cs-fl-arrsub">' + part + '</div></div>'),
       'map arrival lines: each one unbreakable');
     assert.match(SAVER_SRC, /\.cs-fl-nw\{white-space:nowrap;\}/, 'the stylesheet: a part does not wrap');
   }
-  // Dutch: the caption date is short weekday, day, short month (#546 decision 7). It pins behaviour; it was not red first.
+  // Dutch: the caption date is short weekday, day, short month (head date style). It pins behaviour; it was not red first.
   const nl = mapOf({ ...same, time_estimated_arrival: U(28, 17, 3) }, 'nl-NL');
-  assert.match(block(nl), /Voraussichtliche Ankunft · za\u00a028\u00a0nov<\/div>/, 'Dutch: the date reads za 28 nov');
+  assert.match(block(nl), /Voraussichtliche Ankunft\u00a0· za\u00a028\u00a0nov<\/div>/, 'Dutch: the date reads za 28 nov');
+}
+
+// ── Time labels, review fixes: the head date style in the rows, one source for the arrival, one row helper ─────────────
+{
+  const U = (d, h, m) => Date.UTC(2026, 10, d, h, m) / 1000;
+  const NBSP = ' ';
+  const diff = { airport_destination_timezone_offset: -10800, airport_destination_timezone_abbr: 'SRT', airport_destination_city: 'Paramaribo',
+    time_scheduled_departure: U(18, 7, 15), time_scheduled_arrival: U(28, 17, 40), time_estimated_arrival: U(28, 17, 3) };
+  const plain = (h) => h.replace(/<span class="cs-fl-nw">([^<]*)<\/span>/g, '$1');
+  const flat = (h) => plain(h).replace(/<div class="cs-fl-arrsub">([^<]*)<\/div>/g, '\n$1');
+  const valueOf = (html, label) => { const m = flat(html).match(new RegExp('<div class="cs-fl-lbl">' + label + '</div><div class="cs-fl-val">([^<]*)</div>')); return m && m[1]; };
+  const mapOf = (o, loc) => { const R = runtime(); if (loc) R.box.casoraLocale = () => loc; warm(R); move(R, 1, [entry('1', 1, o)]); at(R, SLOT0 + 1000); return { html: at(R, SLOT0 + 2000), R }; };
+  // The side's date stands before the time (rows have no place line); no "19-11" form; the home line has no date of its own.
+  const nl = mixDetail((s) => [entry('1', s, diff)], 'nl-NL').html;
+  assert.equal(valueOf(nl, 'Voraussichtliche Ankunft'), 'za' + NBSP + '28' + NBSP + 'nov' + NBSP + '14:03' + NBSP + 'Paramaribo\n18:03' + NBSP + 'Amsterdam', 'Dutch: date, time, city; the home time under it');
+  assert.equal(valueOf(nl, 'Geplante Ankunft'), 'za' + NBSP + '28' + NBSP + 'nov' + NBSP + '14:40' + NBSP + 'Paramaribo\n18:40' + NBSP + 'Amsterdam', 'Dutch: the planned arrival too');
+  assert.equal(valueOf(nl, 'Geplanter Abflug'), '08:15', 'a departure that is today at home has no date');
+  const en = mixDetail((s) => [entry('1', s, diff)]).html;
+  assert.equal(valueOf(en, 'Voraussichtliche Ankunft'), 'Sat,' + NBSP + 'Nov' + NBSP + '28' + NBSP + '02:03' + NBSP + 'PM' + NBSP + 'Paramaribo\n06:03' + NBSP + 'PM' + NBSP + 'Amsterdam', 'English: the same shape');
+  // The arrival block comes from F.estimateOf: the same date, air and home, and the date is not hidden near midnight.
+  const m1 = mapOf({ ...diff, time_estimated_arrival: U(18, 17, 3) });
+  assert.equal(typeof m1.R.F.estimateOf, 'function', 'F.estimateOf is public');
+  const midnight = { ...diff, time_estimated_arrival: U(19, 2, 30) }; // 23:30 in Paramaribo on Nov 18 (today), 03:30 on Nov 19 at home
+  const mm = mapOf(midnight);
+  const est = mm.R.F.estimateOf(mm.R.hass, midnight, SLOT0 + 2000);
+  assert.equal(est.date, '', 'the arrival is today at the airport: no caption date');
+  assert.match(plain(mm.html), new RegExp('<div class="cs-fl-arrsub">03:30' + NBSP + 'AM' + NBSP + 'Thu,' + NBSP + 'Nov' + NBSP + '19' + NBSP + 'Amsterdam</div>'), 'the home line keeps its own date');
+  // The caption separator is the protected-space form: no line starts with the dot.
+  const far = mapOf({ ...diff, time_estimated_arrival: U(19, 17, 3) });
+  assert.match(far.html, new RegExp('Voraussichtliche Ankunft' + NBSP + '· Thu,' + NBSP + 'Nov' + NBSP + '19</div>'), 'caption: NBSP + dot + space');
+  // The label is dimmed, the value is not: no descendant selector reaches the spans inside a value.
+  assert.doesNotMatch(SAVER_SRC, /\.cs-fl-row span\{/, 'no descendant selector on the row');
+  // The row helper is shared with the popup.
+  assert.equal(typeof far.R.F.pairs, 'function', 'F.pairs is the shared row helper');
 }
 
 console.log('ok screensaver_flights');

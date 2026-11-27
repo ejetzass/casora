@@ -24,7 +24,7 @@ vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js')
 win._casoraFlights = {
   mapView: () => ({ key: 'k1', label: 'XY1', cur: [50.2, 10.1], heading: 90, origin: [50, 4], destination: [52, 20], trail: [[50, 4], [50.1, 5]], progress: 40 }),
   unreportedOf: () => [], ROUTE_STYLE: { width: 2, dash: 6 },
-  details: () => ({}), times: () => ({ arr: [] }), timeRows: () => [], arrivalBlock: () => null,
+  details: () => ({}), times: () => ({ arr: [] }), timeRows: () => [], estimateOf: () => null, pairs: () => '',
 };
 const S = win._casoraSaver;
 const host = () => ({ isConnected: true, innerHTML: '', firstElementChild: null, getRootNode() { return doc; } });
