@@ -953,7 +953,7 @@
   // Every timestamp the flight has: {dep: [{kind, text, air, home, own}], arr: [...], depDate, arrDate} (air leads, home is '' when it is not shown),
   // scheduled before real before estimated. A missing timestamp is left out; the flight stays. depDate and arrDate are the side's
   // short local date (the airport's day of its best stamp: real, else estimated, else scheduled), '' when that day is today at home
-  // (HA's zone; now defaults to Date.now()) or the side has no time. The tile and the popup use this.
+  // (HA's zone; now defaults to Date.now()) or the side has no time. The list row, the flight popup and the screensaver use this.
   F.times = function (hass, f, tzOn, now) {
     var out = { dep: [], arr: [], depDate: '', arrDate: '' }, loc = locale();
     if (!f || typeof f !== 'object') return out;

@@ -105,8 +105,8 @@ assert.deepEqual(deep(F.units()), { altitude: 'm', speed: 'kmh', vspeed: 'ms' })
 let hass = house();
 hass.source('sensor.a', [fl('u1')]); F.airborne(hass, '', T0);
 hass.source('sensor.a', [{ ...fl('u1'), latitude: 10.05 }]);
-const tile = F.listRows(hass, { pin: '', now: T0 + MIN });
-assert.match(tile, /10,668\u00a0m · 833\u00a0km\/h/, 'the list rows show the saved units');
+const listHtml = F.listRows(hass, { pin: '', now: T0 + MIN });
+assert.match(listHtml, /10,668\u00a0m · 833\u00a0km\/h/, 'the list rows show the saved units');
 runtime();
 cfg = null;
 assert.deepEqual(deep(F.units()), { altitude: '', speed: '', vspeed: '' }, 'no saved setting: the source units');

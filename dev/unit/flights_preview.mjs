@@ -72,7 +72,7 @@ const moving = (hass, flight) => {
   return F.airborne(hass, '', T0 + MIN);
 };
 // The live tile shows no flight rows: the list popup's rows carry the values the preview follows.
-const tile = (hass) => F.listRows(hass, { pin: '', now: T0 + MIN });
+const listHtml = (hass) => F.listRows(hass, { pin: '', now: T0 + MIN });
 const texts = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
 // ── Draft units: the preview uses the draft, the saved units stay for the live tile until Save ─────────────────────────
@@ -89,13 +89,13 @@ hass = house();
 hass.source('sensor.a', [fl()]);
 F.airborne(hass, '', T0);
 hass.source('sensor.a', [fl({ latitude: 10.05 })]);
-const savedHtml = tile(hass);
+const savedHtml = listHtml(hass);
 assert.ok(savedHtml.includes(F.fmt.altitude(35000, '')), 'saved units: the tile shows the source altitude unit');
 assert.notEqual(F.fmt.altitude(35000, 'm'), F.fmt.altitude(35000, ''), 'the draft unit differs from the source unit');
 
 // Draft changed, not saved: the preview follows the draft at once.
 studio(DRAFT, SAVED);
-const draftHtml = tile(hass);
+const draftHtml = listHtml(hass);
 assert.ok(draftHtml.includes(F.fmt.altitude(35000, 'm')), 'draft altitude: the preview shows metres');
 assert.ok(draftHtml.includes(F.fmt.speed(450, 'kmh')), 'draft ground speed: the preview shows km/h');
 // The tile text has altitude and speed only; the vertical speed is on the row the popup reads.
@@ -105,11 +105,11 @@ assert.equal(JSON.stringify(F.units()), JSON.stringify({ altitude: 'm', speed: '
 
 // Discard: the draft is the saved dashboard again, so the preview is back to the saved units.
 studio(SAVED, SAVED);
-assert.equal(tile(hass), savedHtml, 'discard: the preview is the saved tile again');
+assert.equal(listHtml(hass), savedHtml, 'discard: the preview is the saved tile again');
 
 // Save: the saved dashboard now holds the draft, and the live tile shows the same text as the preview did.
 studio(DRAFT, DRAFT);
-assert.equal(tile(hass), draftHtml, 'save: the live tile matches the preview text');
+assert.equal(listHtml(hass), draftHtml, 'save: the live tile matches the preview text');
 
 // ── Show timezones draft: the zone names follow the switch in the preview, as on the tile ────────────────────────────
 const estimate = (html) => texts(html).match(/Voraussichtliche Ankunft [^·]*·?[^<]*/)?.[0] || '';
@@ -118,21 +118,21 @@ hass = house();
 hass.source('sensor.a', [fl()]);
 F.airborne(hass, '', T0);
 hass.source('sensor.a', [fl({ latitude: 10.05 })]);
-const tzOff = tile(hass);
+const tzOff = listHtml(hass);
 assert.ok(!tzOff.includes('MEZ'), 'switch off in the draft: no zone name');
 studio({ casora_flights_timezones: true }, SAVED);
-const tzOn = tile(hass);
+const tzOn = listHtml(hass);
 assert.ok(texts(tzOn).includes('00:40 Do., 19. Nov. Amsterdam MEZ'), 'switch on in the draft: the zone name (the list row shows the HA zone) is added in the preview');
 assert.notEqual(estimate(tzOn), estimate(tzOff), 'the estimated arrival changes with the switch');
 studio({ casora_flights_timezones: false }, SAVED);
-assert.equal(tile(hass), tzOff, 'switch off again (Discard): the preview is the saved text');
+assert.equal(listHtml(hass), tzOff, 'switch off again (Discard): the preview is the saved text');
 
 // ── Qualifying flight in the preview: values, not an empty tile ───────────────────────────────────────────────────────
 studio(DRAFT, DRAFT);
 hass = house();
 const rows = moving(hass, fl());
 assert.equal(rows.length, 1, 'the preview sees the qualifying flight');
-assert.ok(tile(hass).includes('data-flights-label="XY123"'), 'the tile shows the flight row XY123, with values');
+assert.ok(listHtml(hass).includes('data-flights-label="XY123"'), 'the tile shows the flight row XY123, with values');
 
 // ── Two sources, draft pin on the second: the preview shows that source's flights (red on the parent, which read the saved one)
 studio({ casora_flights_source: 'sensor.b' }, SAVED);
@@ -157,7 +157,7 @@ hass = house();
 hass.source('sensor.a', [fl()]);
 F.airborne(hass, '', T0);
 hass.source('sensor.a', [fl({ latitude: 10.05 })]);
-const outside = tile(hass);
+const outside = listHtml(hass);
 assert.ok(outside.includes(F.fmt.altitude(35000, 'm')), 'outside the Studio: the saved altitude unit (metres) is shown');
 assert.ok(outside.includes(F.fmt.speed(450, 'kmh')), 'outside the Studio: the saved speed unit (km/h) is shown');
 assert.ok(!outside.includes(F.fmt.altitude(35000, '')), 'outside the Studio: the stale draft unit is not used');
@@ -173,7 +173,7 @@ ctx.casoraInStudio = () => !!panel;
 studio(DRAFT, SAVED);
 hass = house();
 moving(hass, fl());
-tile(hass);
+listHtml(hass);
 F.timeRows(hass, fl(), true);
 F.times(hass, fl(), true);
 F.units();

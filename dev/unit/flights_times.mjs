@@ -1,5 +1,5 @@
 // Tracked flights: the timestamps (49-flights.js F.times): the airport time leads, the home time follows when its UTC
-// offset differs (cities only with two times), the estimated arrival on the tile and list, the popup's departure and
+// offset differs (cities only with two times), the estimated arrival on the list, the popup's departure and
 // arrival plates, the date style (the side's date once on the plate's place line, dropped when today; a time carries a
 // date only on another day), airport offsets (seconds, either sign), HA daylight saving, the optional timezone suffix,
 // and that the browser's timezone never changes the text.
