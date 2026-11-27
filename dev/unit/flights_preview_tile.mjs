@@ -1,6 +1,5 @@
 // The Studio's tile preview of the two Flights tiles (#423): it runs the tile's state_display with the draft settings, as the
-// Dashboard does with the saved ones, so the preview shows values (not an empty tile) and follows a draft unit or the Show
-// timezones switch at once. No call is sent to Home Assistant. Controlled clock; synthetic flights; real templates and modules.
+// Dashboard does with the saved ones, so the preview shows the state line (not an empty tile). No call is sent to Home Assistant. Controlled clock; synthetic flights; real templates and modules.
 //   node dev/unit/flights_preview_tile.mjs
 // @deckt: custom_components/casora/panel/casora-panel-types.js#casoraTileState,OWN_DATA
 import fs from 'node:fs';
@@ -65,25 +64,13 @@ assert.equal(F.airborne(hass, '', NOW + MIN).length, 1, 'the flight qualifies');
 
 studio({});
 const saved = preview('casora_flights_airborne');
-assert.ok(saved && saved.includes('XY123'), 'the Flights tile preview shows the flight, not an empty tile: ' + saved);
-assert.ok(saved.includes(F.fmt.altitude(35000, '')), 'saved units: source altitude: ' + saved + ' / ' + F.fmt.altitude(35000, ''));
+assert.ok(saved && saved.includes('1 in der Luft'), 'the Flights tile preview shows its state line, not an empty tile: ' + saved);
+assert.ok(!saved.includes('XY123'), 'the Flights tile preview shows no flight rows');
 assert.ok(/\d/.test(preview('casora_flights') || ''), 'the Manage flights tile preview shows its text: ' + preview('casora_flights'));
 
-studio({ casora_flights_altitude_unit: 'm', casora_flights_speed_unit: 'kmh' });
-const draft = preview('casora_flights_airborne');
-assert.ok(draft.includes(F.fmt.altitude(35000, 'm')) && draft.includes(F.fmt.speed(450, 'kmh')), 'draft units reach the preview at once: ' + draft);
-assert.ok(!draft.includes(F.fmt.altitude(35000, '')), 'the saved unit is gone from the preview');
-
-studio({ casora_flights_timezones: false });
-const off = preview('casora_flights_airborne');
-studio({ casora_flights_timezones: true });
-const on = preview('casora_flights_airborne');
-assert.ok(on.includes('MEZ') && !off.includes('MEZ'), 'the Show timezones draft adds the zone name: ' + off + ' / ' + on);
-
-// Outside the Studio the tile keeps the saved units.
-panel = null;
-ctx._casoraLovelaceCfg = () => ({ views: [{ cards: [{ variables: { casora_flights_source: 'sensor.a', casora_flights_altitude_unit: 'ft' } }] }] });
-assert.ok(preview('casora_flights_airborne').includes(F.fmt.altitude(35000, 'ft')), 'outside the Studio: the saved unit');
+// The tile shows no flight values, so a draft unit or the Show timezones switch does not change it.
+studio({ casora_flights_altitude_unit: 'm', casora_flights_speed_unit: 'kmh', casora_flights_timezones: true });
+assert.equal(preview('casora_flights_airborne'), saved, 'draft units and zone names do not reach the tile preview');
 
 assert.deepEqual(hass.calls, [], 'the preview sends no service call (no tracking command)');
 console.log('flights_preview_tile: all checks passed');

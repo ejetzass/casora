@@ -41,6 +41,7 @@ const runtime = () => {
   box.document = { nodeType: 1, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
     createElement: () => ({ style: {}, setAttribute() {}, appendChild() {} }), head: { appendChild() {} } };
   box.casoraLocale = () => 'en-US';
+  box._casoraUI = { empty: (o) => o.text, stage: (k, o) => o.text };
   vm.createContext(box);
   vm.runInContext(FLIGHTS_SRC, box);
   vm.runInContext(SAVER_SRC, box);
@@ -60,7 +61,8 @@ const fire = (R) => { const due = R.waits.filter((w) => w.live); R.waits.length 
 const saver = (R) => { R.api.update(); return R.host.innerHTML; }; // the screensaver's own update at the controlled clock
 const flightOf = (html) => (html.match(/XY(\d+)/) || [])[1];
 const kindOf = (html) => (html.match(/data-kind="([a-z]+)"/) || [])[1];
-const tile = (R) => R.F.liveHtml(R.hass, '', R.clock.t);
+// The tile is visible while a flight is in the air (its text is the state line); the flight values are on the list popup's rows.
+const tile = (R) => (R.F.liveHtml(R.hass, '', R.clock.t) ? R.F.listRows(R.hass, { pin: '', now: R.clock.t }) : '');
 const shown = (R) => plain(R.F.airborne(R.hass, '', R.clock.t).map((r) => r.key));
 
 // ── Synthetic FlightRadar24 entries. Positions follow `step`: the same step again is no movement ─────────────────────

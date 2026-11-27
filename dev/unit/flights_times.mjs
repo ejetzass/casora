@@ -3,7 +3,7 @@
 // either sign), HA daylight saving, the optional timezone suffix, and that the browser's timezone never changes the text.
 // Controlled clock; synthetic flights; no real timezone mapping is needed beyond what Intl gives for a zone name.
 //   node dev/unit/flights_times.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#times,tz,flightSec,liveHtml,sec,flightPopup,setting,pinned
+// @deckt: custom_components/casora/scripts/local/49-flights.js#times,tz,flightSec,sec,flightPopup,setting,pinned
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -63,7 +63,6 @@ const moving = (hass, flight, src = 'sensor.a', at = T0) => {
 const setTz = (on) => {
   cfg = { views: [{ cards: [{ variables: { casora_flights_source: 'sensor.a', casora_flights_timezones: on } }] }] };
 };
-const tile = (hass, pin = '', now = T0 + MIN) => F.liveHtml(hass, pin, now);
 const popupTimes = (hass, flight) => F.sec('ftimes', { src: 'sensor.a', flight: flight.id }, hass.states, hass);
 const texts = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
@@ -202,24 +201,17 @@ assert.equal(F.tz(), true, 'the saved switch is read');
 assert.equal(F.times(hass, fl('s1'), F.tz()).arr.find((x) => x.kind === 'estimated').text,
   '18:40 18.11. EST Zeit am Zielort · 00:40 19.11. MEZ Ortszeit', 'suffix on: zone names added, labels unchanged');
 
-// ── Surfaces: the tile shows the arrival as one short time, the popup both times; a Save/Discard draft changes both ──────────────────────
+// ── Surfaces: the popup shows both times; a Save/Discard draft changes it (the tile shows no times) ──────────────────────
 hass = house();
 assert.equal(moving(hass, fl('s1')).length, 1, 'the flight qualifies (observed movement)');
 setTz(true);
-let html = texts(tile(hass));
-assert.ok(html.includes('Voraussichtliche Ankunft: 00:40 19.11. MEZ'), 'tile: estimated arrival, one short time (local clock, date, zone name with the suffix on)');
 const popOn = texts(popupTimes(hass, fl('s1')));
 assert.ok(popOn.includes('Geplant: 10:00 MEZ Ortszeit'), 'popup: scheduled departure, same clock as the local zone: one local time, with the suffix on');
-assert.ok(popOn.includes('Voraussichtlich: 18:40 18.11. EST Zeit am Zielort'), 'popup: estimated arrival with the same text as the tile');
+assert.ok(popOn.includes('Voraussichtlich: 18:40 18.11. EST Zeit am Zielort'), 'popup: estimated arrival with both times');
 setTz(false); // Discard: the saved dashboard has no switch on.
-html = texts(tile(hass));
-assert.ok(html.includes('Voraussichtliche Ankunft: 00:40 19.11.'), 'discard: tile back to the short time without the zone name');
 assert.ok(!texts(popupTimes(hass, fl('s1'))).includes('EST'), 'discard: popup without suffix');
 
-// The tile shows the estimate only when the source has one; the popup shows only the timestamps that exist.
-hass = house();
-moving(hass, fl('s10', { time_estimated_arrival: undefined }));
-assert.ok(!texts(tile(hass)).includes('Voraussichtliche Ankunft'), 'tile: no estimate, no estimate line');
+// The popup shows only the timestamps that exist.
 hass = house();
 moving(hass, fl('s11', { time_scheduled_departure: undefined, time_real_departure: sec(utc(2026, 11, 18, 9, 20)) }));
 const realPop = texts(popupTimes(hass, fl('s11', { time_scheduled_departure: undefined, time_real_departure: sec(utc(2026, 11, 18, 9, 20)) })));

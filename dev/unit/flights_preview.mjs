@@ -3,7 +3,7 @@
 // no preview action writes to Home Assistant (no service call, no text.set_value to FlightRadar24).
 // Controlled clock; synthetic flights; the Studio is simulated by its panel object (_state = draft, _raw = saved).
 //   node dev/unit/flights_preview.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,draftOf,liveHtml,tile,units,tz,airborne,times
+// @deckt: custom_components/casora/scripts/local/49-flights.js#setting,draftOf,listRows,tile,units,tz,airborne,times
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -71,7 +71,8 @@ const moving = (hass, flight) => {
   hass.source('sensor.a', [{ ...flight, latitude: flight.latitude + 0.05 }]);
   return F.airborne(hass, '', T0 + MIN);
 };
-const tile = (hass) => F.liveHtml(hass, '', T0 + MIN);
+// The live tile shows no flight rows: the list popup's rows carry the values the preview follows.
+const tile = (hass) => F.listRows(hass, { pin: '', now: T0 + MIN });
 const texts = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
 // ── Draft units: the preview uses the draft, the saved units stay for the live tile until Save ─────────────────────────
@@ -144,7 +145,7 @@ hass.source('sensor.a', [fl({ latitude: 10.05 })]);
 hass.source('sensor.b', [fl({ id: 'f2', flight_number: 'XY999', latitude: 10.05 })]);
 F.airborne(hass, 'sensor.a', T0 + MIN);
 F.airborne(hass, 'sensor.b', T0 + MIN);
-const second = F.liveHtml(hass, F.setting(), T0 + MIN); // the pin the preview reads: the draft source
+const second = F.listRows(hass, { pin: F.setting(), now: T0 + MIN }); // the pin the preview reads: the draft source
 assert.ok(second.includes('data-flights-label="XY999"'), 'draft pin on sensor.b: the preview shows its flight XY999');
 assert.ok(!second.includes('XY123'), 'draft pin on sensor.b: the saved source sensor.a is not shown');
 

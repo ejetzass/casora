@@ -218,7 +218,8 @@ hass.source('sensor.a', [fl('h1', { flight_number: '<i>XY</i>', altitude: 31100 
 assert.equal(F.liveHidden(hass, T0 + MIN), true, 'frozen position: still hidden');
 hass.source('sensor.a', [at(fl('h1', { flight_number: '<i>XY</i>' }))]);
 assert.equal(F.liveHidden(hass, T0 + 2 * MIN), false, 'moving flight: shown');
-const html = F.liveHtml(hass, '', T0 + 3 * MIN);
+ctx._casoraUI = { empty: (o) => o.text };
+const html = F.listRows(hass, { pin: '' });
 assert.match(html, /&lt;i&gt;XY&lt;\/i&gt;/, 'label is escaped');
 assert.doesNotMatch(html, /<i>/);
 assert.match(html, /AAA → BBB/);
@@ -285,7 +286,7 @@ assert.doesNotMatch(listMany, /max-height|height:100%|overflow-y:auto/, 'list po
 // The tile's CSS is not in the text: it is in the card (casora-flight-list), so it cannot reach the card's name.
 assert.doesNotMatch(tileMany, /<style/, 'the tile text carries no style element');
 const tileCss = F._tileCss;
-assert.match(tileCss, /#container\{[^}]*height:100%[^}]*grid-template-rows:min-content min-content minmax\(0,1fr\)/, 'the desktop grid limits the list to the card');
+assert.match(tileCss, /#container\{[^}]*height:100%/, 'the desktop grid is as high as the card');
 assert.match(tileCss, /@media[^}]*#container\{grid-template-rows:min-content minmax\(0,1fr\)/, 'the phone grid also limits the list to the card');
 assert.match(tileCss, /#state\{[^}]*min-height:0[^}]*overflow:hidden/, 'flight rows cannot paint over neighboring tiles');
 assert.match(tileCss, /\[data-flights-row\]:focus-visible[^{]*\{[^}]*outline:\s*2px/, 'a row shows a 2px focus ring');
