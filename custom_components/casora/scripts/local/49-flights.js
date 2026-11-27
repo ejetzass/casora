@@ -27,14 +27,15 @@
 //     names side and kind; the first line is the side's date (when not today at home), then the airport time; home is the home time's own line)
 //   window._casoraFlights.estimateOf(hass, entry, now, tzOn) → {date, air, home}: the estimated arrival (the list row's and the screensaver's map block); '' parts when none
 //   window._casoraFlights.pairs(rows, saver) → label/value rows as html: the popup's plate, or with saver the screensaver's flat rows; a value is text or [air, home]
-//   window._casoraFlights.timeHtml(air, home) → one time as unbreakable text, the home time (if any) as its own line under it
+//   window._casoraFlights.timeHtml(air, home, plain) → one time as unbreakable text, the home time (if any) as its own line under it; the saver's classes, or with plain inline style (the popup)
+//   window._casoraFlights.arrivalLine(hass, entry, now) → {label, when, home} the estimated arrival as the list row and the popup write it (when = date and airport time), or null
 //   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (one line, "N in the air") and its hidden state; `now` is optional
 //   window._casoraFlights.phone() → the phone breakpoint (the tile CSS's media query); .tapTile(hass, name) / .openList(hass, src, name)
 //   window._casoraFlights.listStage(hass, c) / .listRows(hass, c) / .listPopup(states, hass, v) → the list popup (phone and desktop; c = {pin, now}, now optional)
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
 //   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
-//   window._casoraFlights.remaining(entry, now) / .duration(entry) → whole minutes to arrival / of the flight (null when unknown); .hm(min) → 'h:mm Std.'
+//   window._casoraFlights.remaining(entry, now) / .duration(entry) → whole minutes to arrival / of the flight (null when unknown); .hm(min) → 'h:mm Std.' (a no-break space before the unit)
 //   window._casoraFlights.progressText(pct) / .progressBar(pct, h, m) → the progress line's text and bar markup
 //   window._casoraFlights.setting(key) → one Dashboard setting (own value, else the phone's desktop twin; in the Studio the draft)
 //   window._casoraFlights.addView(hass, id) / .submit(hass, id, text) / .paint() / .draft → the Add field's attempt
@@ -1007,6 +1008,12 @@
     var tm = F.times(hass, f, tzOn == null ? F.tz() : tzOn, now), hit = tm.arr.filter(function (x) { return x.kind === 'estimated'; })[0];
     return hit ? { date: hit.own ? '' : tm.arrDate, air: hit.air, home: hit.home } : { date: '', air: '', home: '' };
   };
+  // The arrival line of the list row and the popup: the label, then when (date, no-break space, airport time), and the home time
+  // for its own line; null without an estimate. Callers keep the label breakable and make only `when` and `home` unbreakable.
+  F.arrivalLine = function (hass, f, now) {
+    var e = F.estimateOf(hass, f, now);
+    return e.air ? { label: tr('Voraussichtliche Ankunft'), when: (e.date ? e.date + NB : '') + e.air, home: e.home } : null;
+  };
 
   // The progress text, one place for the list row, the flight popup and the screensaver. German puts a narrow
   // no-break space before the sign, English none (wortliste.md, V1). tr() is the one place that knows both; the DOM pass
@@ -1028,12 +1035,12 @@
     var e = entry || {}, from = epochMs(e.time_real_departure), to = epochMs(e.time_estimated_arrival);
     return minutesBetween(from != null ? from : epochMs(e.time_scheduled_departure), to != null ? to : epochMs(e.time_scheduled_arrival));
   };
-  // Minutes as h:mm with the hour unit; '' for no value.
+  // Minutes as h:mm with the hour unit, joined by a no-break space so the value never breaks inside; '' for no value.
   F.hm = function (min) {
     if (typeof min !== 'number' || !isFinite(min)) return '';
     min = Math.round(min);
     var m = min % 60;
-    return Math.floor(min / 60) + ':' + (m < 10 ? '0' : '') + m + ' ' + tr('Std.');
+    return Math.floor(min / 60) + ':' + (m < 10 ? '0' : '') + m + NB + tr('Std.');
   };
   // The progress bar: a track of height h (px) with the fill at pct %, below a top margin of m (px). The fill is a span, so it
   // sits in a button as well. The bar is a picture: its callers hide it from screen readers.
@@ -1046,8 +1053,8 @@
   // on anything inside a button, so no progressbar here.
   var rowHtml = function (hass, r, style, now) {
     var extra = [r.altitude, r.speed].filter(Boolean).join(' · ');
-    // The row's estimate has the airport time and, when it shows, the home time on its own line.
-    var est = F.estimateOf(hass, r.entry, now), pct = F.progressOf(r.entry);
+    // The row's arrival line has the airport time and, when it shows, the home time on its own line.
+    var arr = F.arrivalLine(hass, r.entry, now), pct = F.progressOf(r.entry);
     var subHtml = function (textHtml) { return '<br><span style="color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + textHtml + '</span>'; };
     var barHtml = '';
     if (pct != null) {
@@ -1057,8 +1064,8 @@
     return '<button type="button" data-flights-row data-flights-src="' + esc(r.src) + '" data-flights-key="' + esc(r.key)
       + '" data-flights-label="' + esc(r.label) + '" style="' + esc(style) + '">' + esc(r.label) + (r.route ? ' · ' + esc(r.route) : '')
       + (extra ? subHtml(esc(extra)) : '')
-      + (est.air ? subHtml(esc(tr('Voraussichtliche Ankunft')) + ' ' + (est.date ? esc(est.date) + NB : '') + esc(est.air)) : '')
-      + (est.air && est.home ? subHtml(esc(est.home)) : '')
+      + (arr ? subHtml(esc(arr.label) + ' ' + esc(arr.when)) : '')
+      + (arr && arr.home ? subHtml(esc(arr.home)) : '')
       + barHtml + '</button>';
   };
   // The summary line: "N in the air". The whole tile is one button then (F.tapTile opens the list popup).
@@ -1686,21 +1693,16 @@
   };
   defineTileList();
   // The progress row under the map: label and value over a track (role=progressbar; the value as text, not by colour alone), then
-  // the text lines. A null pct leaves out the bar and the value; the lines stay.
-  var progressHtml = function (pct, lines) {
+  // the lines (html the caller built). A null pct leaves out the bar and the value; the lines stay.
+  var progressHtml = function (pct, linesHtml) {
     var label = tr('Ungefährer Fortschritt'), value = pct != null ? F.progressText(pct) : '';
     var bar = pct == null ? '' : '<div role="progressbar" aria-label="' + esc(label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + esc(pct)
       + '" aria-valuetext="' + esc(value) + '"><div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;white-space:normal;"><span style="color:var(--secondary-text-color,currentColor)">'
       + esc(label) + '</span><span style="font-weight:600">' + esc(value) + '</span></div>' + F.progressBar(pct, 6, 12) + '</div>';
-    // A line is text, or [text, sub]: the sub text (the home time) is a second line without a separator, so a narrow row never
-    // breaks next to a "·". Each part is unbreakable (a Dutch date has a hyphen), as F.timeHtml does for the screensaver.
-    var nw = function (t) { return '<span style="white-space:nowrap">' + esc(t) + '</span>'; };
-    var rows = lines.filter(Boolean).map(function (t) {
-      var a = Array.isArray(t) ? t : [t];
-      return '<div style="font-size:14px;margin-top:8px;white-space:normal;overflow-wrap:anywhere">' + (a[1] ? nw(a[0]) + '<div style="color:var(--secondary-text-color,currentColor)">' + nw(a[1]) + '</div>' : esc(a[0])) + '</div>';
-    }).join('');
-    return bar || rows ? '<div style="padding:12px 16px;box-sizing:border-box;">' + bar + rows + '</div>' : '';
+    return bar || linesHtml ? '<div style="padding:12px 16px;box-sizing:border-box;">' + bar + linesHtml + '</div>' : '';
   };
+  // One line of the progress row; it may wrap between words, never inside a time (the callers' unbreakable parts).
+  var progressLine = function (html) { return '<div style="font-size:14px;margin-top:8px;white-space:normal;overflow-wrap:anywhere">' + html + '</div>'; };
 
   // ── The flight popup (casora_popup_flight): one flight of one source, by its FR24 ID ──────────────────────────────────
   // A flight that no longer qualifies (or whose source is gone) says unavailable in the head line and shows no details, never another
@@ -1740,11 +1742,13 @@
           + '<div style="font-size:14px;font-weight:600;text-align:right;min-width:0;white-space:normal;overflow-wrap:anywhere">' + esc(x[1]) + '</div></div>';
       }).join('') + '</div>';
   };
-  // One time for the screensaver: unbreakable (a Dutch date has a hyphen, at which a browser breaks), so a line breaks only
-  // between the times; the home time is its own line (class cs-fl-arrsub) under the airport time.
-  F.timeHtml = function (air, home) {
-    var nw = function (t) { return '<span class="cs-fl-nw">' + esc(t) + '</span>'; };
-    return nw(air) + (home ? '<div class="cs-fl-arrsub">' + nw(home) + '</div>' : '');
+  // One time: unbreakable (a Dutch date has a hyphen, at which a browser breaks), so a line breaks only between the times; the home
+  // time is its own line under the airport time. The screensaver styles both by classes (cs-fl-nw, cs-fl-arrsub); plain (the popup)
+  // writes the same as inline style.
+  F.timeHtml = function (air, home, plain) {
+    var nw = function (t) { return '<span' + (plain ? ' style="white-space:nowrap"' : ' class="cs-fl-nw"') + '>' + esc(t) + '</span>'; };
+    var sub = plain ? '<div style="color:var(--secondary-text-color,currentColor)">' : '<div class="cs-fl-arrsub">';
+    return nw(air) + (home ? sub + nw(home) + '</div>' : '');
   };
   // The departure and arrival plates (popup rules §6): a heading outside above each plate; inside, the airport line as the first
   // row, then one row per timestamp kind: the kind word, the airport time on the right, and the home time as a small line under
@@ -1797,10 +1801,11 @@
     }
     if (part === 'fprog') {
       var now = c.now != null ? c.now : Date.now(), pv = F.mapView(h, c.src, c.flight, now), rem = F.remaining(f, now), dur = F.duration(f);
-      var span = [rem != null ? tr('Restzeit') + ' ' + F.hm(rem) : '', dur != null ? String(tr('Gesamt')).toLocaleLowerCase(locale()) + ' ' + F.hm(dur) : ''].filter(Boolean).join(' · ');
-      var ab = F.estimateOf(h, f, now);
-      var arr = ab.air ? [tr('Voraussichtliche Ankunft') + ' ' + (ab.date ? ab.date + NB : '') + ab.air, ab.home] : '';
-      return progressHtml(pv && pv.progress != null ? pv.progress : null, [span, arr]);
+      // Restzeit, Gesamt and the arrival each on their own line; the label joins its value by a no-break space.
+      var lines = [rem != null ? esc(tr('Restzeit') + NB + F.hm(rem)) : '', dur != null ? esc(tr('Gesamt') + NB + F.hm(dur)) : ''];
+      var arr = F.arrivalLine(h, f, now);
+      if (arr) lines.push(esc(arr.label) + ' ' + F.timeHtml(arr.when, arr.home, true));
+      return progressHtml(pv && pv.progress != null ? pv.progress : null, lines.filter(Boolean).map(progressLine).join(''));
     }
     if (part === 'fmove') return F.pairs([['Höhe', r.altitude], ['Geschwindigkeit über Grund', r.speed],
       ['Vertikalgeschwindigkeit', r.vspeed], ['Kurs über Grund', r.heading]]);

@@ -79,12 +79,49 @@ test('progress row: label, percent, bar, time line and arrival line; without a p
   assert.match(row, /role="progressbar" aria-label="Ungefährer Fortschritt"[^>]*aria-valuenow="50" aria-valuetext="50 %"/);
   assert.match(row, /<span style="color:[^"]*">Ungefährer Fortschritt<\/span><span style="font-weight:600">50 %<\/span>/);
   assert.match(row, /data-flights-bar style="[^"]*width:50%/);
-  assert.match(row, />Restzeit 2:30 Std\. · gesamt 4:00 Std\.</);
-  assert.match(row, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB<\/span><div[^>]*><span[^>]*>10:30\u00a0AM\u00a0UTC</);
+  assert.match(row, /<div[^>]*>Restzeit\u00a02:30\u00a0Std\.<\/div><div[^>]*>Gesamt\u00a04:00\u00a0Std\.<\/div>/);
+  assert.doesNotMatch(row, /·/);
+  assertArrival(row);
   const bare = sec('fprog', 'c2');
   assert.doesNotMatch(bare, /progressbar|data-flights-bar|Ungefährer Fortschritt| %/);
-  assert.match(bare, />Restzeit 2:30 Std\. · gesamt 4:00 Std\.</);
-  assert.match(bare, />Voraussichtliche Ankunft 12:30\u00a0PM\u00a0BBB<\/span><div[^>]*><span[^>]*>10:30\u00a0AM\u00a0UTC</);
+  assert.match(bare, /Restzeit\u00a02:30\u00a0Std\.<\/div><div[^>]*>Gesamt\u00a04:00\u00a0Std\./);
+  assertArrival(bare);
+});
+
+// The label stays breakable (a long language never overflows a narrow row); only the date and time, and the home time, are unbreakable.
+function assertArrival(html) {
+  assert.match(html, />Voraussichtliche Ankunft <span style="white-space:nowrap">12:30\u00a0PM\u00a0BBB<\/span><div style="[^"]*secondary[^"]*"><span style="white-space:nowrap">10:30\u00a0AM\u00a0UTC<\/span><\/div>/);
+}
+
+test('progress row: only the total time, or only the remaining time, shows one line', () => {
+  // An arrival in the past leaves no remaining time; no departure time leaves no total.
+  setup([fl('f1', { time_estimated_arrival: S0 - 60 }), fl('f2', { time_real_departure: undefined })]);
+  const noRem = sec('fprog', 'f1'), noTotal = sec('fprog', 'f2');
+  assert.match(noRem, /Gesamt\u00a0\d+:\d\d\u00a0Std\./);
+  assert.doesNotMatch(noRem, /Restzeit/);
+  assert.match(noTotal, /Restzeit\u00a02:30\u00a0Std\./);
+  assert.doesNotMatch(noTotal, /Gesamt/);
+});
+
+test('timeHtml: the saver keeps its classes; plain gives the popup inline style; one helper for both', () => {
+  assert.equal(F.timeHtml('12:30', '10:30'), '<span class="cs-fl-nw">12:30</span><div class="cs-fl-arrsub"><span class="cs-fl-nw">10:30</span></div>');
+  assert.equal(F.timeHtml('12:30', ''), '<span class="cs-fl-nw">12:30</span>');
+  assert.equal(F.timeHtml('12:30', '10:30', true),
+    '<span style="white-space:nowrap">12:30</span><div style="color:var(--secondary-text-color,currentColor)"><span style="white-space:nowrap">10:30</span></div>');
+});
+
+test('arrivalLine: label, then date and airport time, home time apart; empty without an estimate', () => {
+  setup([fl('h1'), fl('h2', { time_estimated_arrival: undefined })]);
+  const a = F.arrivalLine(hass, fl('h1'), T0);
+  assert.deepEqual(deep(a), { label: 'Voraussichtliche Ankunft', when: '12:30\u00a0PM\u00a0BBB', home: '10:30\u00a0AM\u00a0UTC' });
+  assert.equal(F.arrivalLine(hass, fl('h2', { time_estimated_arrival: undefined }), T0), null);
+});
+
+test('the popup bar is F.progressBar (no private copy)', () => {
+  setup([fl('g1')]);
+  const real = F.progressBar;
+  F.progressBar = () => '<i data-spy></i>';
+  try { assert.match(sec('fprog', 'g1'), /data-spy/); } finally { F.progressBar = real; }
 });
 
 test('left column: departure and movement; right column: arrival and aircraft', () => {

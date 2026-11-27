@@ -44,6 +44,10 @@ test('remaining: uses the estimated arrival', () => {
 test('remaining: falls back to the scheduled arrival', () => {
   assert.equal(F.remaining({ time_scheduled_arrival: S0 + 45 * 60 }, T0), 45);
 });
+test('remaining: across midnight (23:50 to 00:20 next day)', () => {
+  const now = Date.UTC(2027, 0, 15, 23, 50), arr = Date.UTC(2027, 0, 16, 0, 20) / 1000;
+  assert.equal(F.remaining({ time_estimated_arrival: arr }, now), 30);
+});
 test('remaining: no known time gives null', () => {
   assert.equal(F.remaining({}, T0), null);
   assert.equal(F.remaining({ time_estimated_arrival: 0, time_scheduled_arrival: null }, T0), null);
@@ -74,10 +78,10 @@ test('duration: a flight across midnight (22:30 to 03:10 next day)', () => {
   assert.equal(F.duration({ time_real_departure: dep, time_estimated_arrival: arr }), 280);
 });
 test('hm: hours, padded minutes, the hour unit', () => {
-  assert.equal(F.hm(252), '4:12 Std.');
-  assert.equal(F.hm(5), '0:05 Std.');
-  assert.equal(F.hm(59.6), '1:00 Std.'); // rounds before splitting, never 0:60
-  assert.equal(F.hm(60), '1:00 Std.');
+  assert.equal(F.hm(252), '4:12\u00a0Std.'); // no-break space: a value never breaks inside
+  assert.equal(F.hm(5), '0:05\u00a0Std.');
+  assert.equal(F.hm(59.6), '1:00\u00a0Std.'); // rounds before splitting, never 0:60
+  assert.equal(F.hm(60), '1:00\u00a0Std.');
 });
 test('hm: no value gives an empty string', () => {
   assert.equal(F.hm(null), '');
