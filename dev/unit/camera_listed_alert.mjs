@@ -33,7 +33,6 @@ assert.equal(window.casoraCameraAlert(hass, states, [camera], 5), '', 'unknown t
 states[event].state = new Date(now).toISOString();
 assert.equal(window.casoraCameraAlert(hass, states, [camera], 5), 'Motion erkannt');
 for (const name of ['casora_camera', 'casora_reolink_doorbell', 'casora_frigate']) {
-  loadCameraAlert();
   const render = new Function('hass', 'states', 'entity', 'variables', templates[name].state_display.trim().slice(3, -3));
   const result = render.call({}, hass, states, { entity_id: camera, state: 'idle' }, {});
   assert.equal(result, 'Motion erkannt', `${name} shows the trigger's name`);
