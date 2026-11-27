@@ -955,6 +955,10 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.doesNotMatch(SAVER_SRC, /\.cs-fl-row span\{/, 'no descendant selector on the row');
   // The row helper is shared with the popup.
   assert.equal(typeof far.R.F.pairs, 'function', 'F.pairs is the shared row helper');
+  // Text from the data is escaped once, in the label rows and in a time (the allow-list relies on it).
+  const evil = far.R.F.pairs([['Rufzeichen', '<b>X&Y</b>'], ['Ankunft', ['<i>a</i>', 'R&D <u>']]], true);
+  assert.ok(!/<b>|<i>|<u>/.test(evil), 'no markup from a value gets through');
+  assert.ok(evil.includes('&lt;b&gt;X&amp;Y&lt;/b&gt;') && evil.includes('R&amp;D &lt;u&gt;'), 'escaped once, not twice');
 }
 
 console.log('ok screensaver_flights');

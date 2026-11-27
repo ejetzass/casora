@@ -16,5 +16,6 @@ custom_components/casora/scripts/local/46-screensaver.js | re:^(?:pic|out|title|
 custom_components/casora/scripts/local/46-screensaver.js | re:^pct\(.*\)$ | number: a position on the day line in percent, clamped and rounded by the code | 7
 custom_components/casora/scripts/local/46-screensaver.js | re:^mmss\(m\.(?:pos|dur)\)$ | minutes:seconds built from a number | 2
 custom_components/casora/scripts/local/46-screensaver.js | re:^(?:left|top|hd|u\(40\))$ | number or CSS length of the aircraft marker, computed by the code (position in %, heading in degrees, size in saver units) | 5
-custom_components/casora/scripts/local/46-screensaver.js | re:^S\.route(?:PicStyle\(fr\)|Marker\(v, fr\))$ | CSS and markup built by the module itself from numbers (the route picture's box and the aircraft marker) | 2
+custom_components/casora/scripts/local/46-screensaver.js | re:^S\.route(?:PicStyle\(fr(?:, eta)?\)|Marker\(v, fr\))$ | CSS and markup built by the module itself from numbers (the route picture's box, sized by the arrival block, and the aircraft marker) | 2
 custom_components/casora/scripts/local/46-screensaver.js | re:^\(attrs \|\| ''\)$ | fixed attribute text of the globe's lines, built by the module from numbers (esc() on the lengths) | 1
+custom_components/casora/scripts/local/46-screensaver.js | (F ? F.pairs(items, true) : '') | markup built by F.pairs (49-flights.js): every label and value goes through esc(), a time through F.timeHtml | 1
