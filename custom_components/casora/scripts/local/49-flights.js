@@ -891,9 +891,13 @@
     var m = Math.abs(off) / 60, h = Math.floor(m / 60), mm = m % 60;
     return 'UTC' + (off < 0 ? '-' : '+') + h + (mm ? ':' + (mm < 10 ? '0' : '') + mm : '');
   };
+  // The Date and the Intl zone option to read one instant in one zone (an HA zone ID, or a fixed UTC offset in seconds).
+  var inZone = function (ms, z) {
+    return { zone: z.zone ? { timeZone: z.zone } : { timeZone: 'UTC' }, d: new Date(z.zone ? ms : ms + z.off * 1000) };
+  };
   // One moment in one zone: the clock, the calendar day (for comparing), the short date and the zone name.
   var part = function (ms, z, loc) {
-    var zone = z.zone ? { timeZone: z.zone } : { timeZone: 'UTC' }, d = new Date(z.zone ? ms : ms + z.off * 1000);
+    var iz = inZone(ms, z), zone = iz.zone, d = iz.d;
     var clock = d.toLocaleTimeString(loc, Object.assign({ hour: '2-digit', minute: '2-digit' }, zone));
     var day = new Intl.DateTimeFormat('en-CA', Object.assign({ year: 'numeric', month: '2-digit', day: '2-digit' }, zone)).format(d);
     var date = d.toLocaleDateString(loc, Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, zone));

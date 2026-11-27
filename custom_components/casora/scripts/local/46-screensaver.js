@@ -892,7 +892,6 @@
     + '.cs-sv .cs-fl-stat{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(120) + ';font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-stat.cs-fl-above{bottom:' + u(190) + ';}'
     + '.cs-sv .cs-fl-arr{position:absolute;left:' + u(72) + ';right:' + u(72) + ';bottom:' + u(72) + ';}'
-    + '.cs-sv .cs-fl-arrcap{font-size:' + u(21) + ';font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);}'
     + '.cs-sv .cs-fl-arrval{font-size:' + u(30) + ';font-weight:600;}'
     + '.cs-sv .cs-fl-arrsub{font-size:' + u(22) + ';font-weight:500;color:var(--ink2);}'
     + '.cs-sv .cs-fl-rows{position:absolute;left:' + u(72) + ';right:' + u(72) + ';top:' + u(230) + ';display:grid;grid-template-columns:1fr 1fr;gap:' + u(10) + ' ' + u(40) + ';}'
@@ -1458,7 +1457,7 @@
   // The arrival of the map layout: a caption in capitals (CSS), the airport time, and under it, smaller, the home time (only
   // with two times). The date joins the caption only when the arrival is not today.
   S.arrivalHtml = function (a) {
-    return '<div class="cs-fl-arr"><div class="cs-fl-arrcap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
+    return '<div class="cs-fl-arr"><div class="cs-cap">' + esc(T('Voraussichtliche Ankunft') + (a.date ? ' · ' + a.date : '')) + '</div>'
       + '<div class="cs-fl-arrval">' + esc(a.air) + '</div>' + (a.home ? '<div class="cs-fl-arrsub">' + esc(a.home) + '</div>' : '') + '</div>';
   };
   DRAW.flights = function (ctx) {

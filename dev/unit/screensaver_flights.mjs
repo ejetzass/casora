@@ -1,4 +1,4 @@
-// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg,arrivalHtml,flightRows
+// @deckt: custom_components/casora/scripts/local/46-screensaver.js#kindAt,pool,has,offered,context,html,sample,mount,vars,flightPick,routeFrame,routeSvg,arrivalHtml,flightRows custom_components/casora/scripts/local/49-flights.js#arrivalBlock,timeRows,dayHead,moment
 // The Flights screensaver kind (46-screensaver.js with the shared rule of 49-flights.js): eligibility and native fallback,
 // the native five-minute turns of „mix“ (every flight and both layouts take their turn, no timer of its own), a single
 // Flights kind (one flight per native turn, in a fixed order; the map and the details alternate per round, and the next
@@ -38,7 +38,7 @@ const runtime = () => {
   vm.createContext(box);
   vm.runInContext(FLIGHTS_SRC, box);
   vm.runInContext(SAVER_SRC, box);
-  const R = { S: box._casoraSaver, F: box._casoraFlights, conn, timers, clock: { t: SLOT0 + 1000 }, vars: {}, step: 0 };
+  const R = { box, S: box._casoraSaver, F: box._casoraFlights, conn, timers, clock: { t: SLOT0 + 1000 }, vars: {}, step: 0 };
   R.hass = house(R);
   R.host = { innerHTML: '', getRootNode: () => box.document };
   R.api = R.S.mount(R.host, null, { every: 3600000, kind: () => R.vars.kind || 'mix',
@@ -557,7 +557,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   at(R, SLOT0 + 1000);
   const map = at(R, SLOT0 + 2000);
   assert.match(map, /XY1\b/); assert.match(map, /35,000\u00a0ft/); assert.match(map, /450\u00a0kn/);
-  assert.match(map, /Ungefährer Fortschritt/); assert.match(map, /<div class="cs-fl-arrcap">Voraussichtliche Ankunft<\/div>/);
+  assert.match(map, /Ungefährer Fortschritt/); assert.match(map, /<div class="cs-cap">Voraussichtliche Ankunft<\/div>/);
   const { html: detail } = mixDetail((s) => [entry('1', s)]); // the details come in the mix, on Flights' own turns
   assert.match(detail, /cs-fl-rows/);
   assert.match(detail, /Example Air/); assert.match(detail, /AB-CDE/); assert.match(detail, /XYZ1/); assert.match(detail, /90°/);
@@ -567,7 +567,7 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(detail, /<span>Geplante Ankunft<\/span><b>/); // scheduled and estimated arrival stay two rows
   assert.match(detail, /<span>Voraussichtliche Ankunft<\/span><b>[^<]*\u00b7 [^<]*Amsterdam<\/b>/); assert.doesNotMatch(detail, /Zeit am Zielort|Ortszeit/); // two times: the home city names the second
 }
-// The timing rows are the popup's own rows (49-flights.js timeRows): the same labels and texts, so the saver and the popup read alike.
+// The saver's timing rows (49-flights.js timeRows) label side and kind and show the time(s) only; the popup keeps its plates.
 {
   const dep = { time_scheduled_departure: SLOT0 / 1000 - 1800, time_real_departure: SLOT0 / 1000 - 1700 };
   const cases = [
@@ -884,19 +884,22 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   ], 'detail layout, two times: both carry their city');
 
   // Map layout: the arrival block.
-  const mapOf = (o) => { const R = runtime(); warm(R); move(R, 1, [entry('1', 1, o)]); at(R, SLOT0 + 1000); return at(R, SLOT0 + 2000); };
+  const mapOf = (o, loc) => { const R = runtime(); if (loc) R.box.casoraLocale = () => loc; warm(R); move(R, 1, [entry('1', 1, o)]); at(R, SLOT0 + 1000); return at(R, SLOT0 + 2000); };
   const block = (html) => (html.match(/<div class="cs-fl-arr">.*?<\/div>(?=<\/div>)<\/div>/) || [''])[0];
   assert.equal(block(mapOf(same)),
-    '<div class="cs-fl-arr"><div class="cs-fl-arrcap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">06:03' + NBSP + 'PM</div></div>',
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">06:03' + NBSP + 'PM</div></div>',
     'map layout, one time: caption, one bare clock, no colon, no city, no zone word');
   assert.equal(block(mapOf(diff)),
-    '<div class="cs-fl-arr"><div class="cs-fl-arrcap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
     + '<div class="cs-fl-arrsub">06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, two times: airport time with its city, the home time with its city under it');
   assert.equal(block(mapOf({ ...diff, time_estimated_arrival: U(19, 17, 3) })),
-    '<div class="cs-fl-arr"><div class="cs-fl-arrcap">Voraussichtliche Ankunft · Thu' + NBSP + '19' + NBSP + 'Nov</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
+    '<div class="cs-fl-arr"><div class="cs-cap">Voraussichtliche Ankunft · Thu' + NBSP + '19' + NBSP + 'Nov</div><div class="cs-fl-arrval">02:03' + NBSP + 'PM' + NBSP + 'Paramaribo</div>'
     + '<div class="cs-fl-arrsub">06:03' + NBSP + 'PM' + NBSP + 'Amsterdam</div></div>',
     'map layout, arrival not today (now is Nov 18): the date joins the caption, the lines carry no date');
+  // Dutch: the caption date is short weekday, day, short month (#546 decision 7). It pins behaviour; it was not red first.
+  const nl = mapOf({ ...same, time_estimated_arrival: U(28, 17, 3) }, 'nl-NL');
+  assert.match(block(nl), /Voraussichtliche Ankunft · za\u00a028\u00a0nov<\/div>/, 'Dutch: the date reads za 28 nov');
 }
 
 console.log('ok screensaver_flights');
