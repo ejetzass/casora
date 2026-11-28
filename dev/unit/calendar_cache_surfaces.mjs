@@ -48,3 +48,33 @@ const view = saver.context({ kind: 'linie', now: new ClockDate(), hass, events: 
 const html = saver.html('linie', view);
 assert.ok(html.includes('Termin Jetzt'), 'the day line shows the cache pick at the top');
 console.log('ok day-line screensaver takes the cache pick');
+
+// 3. Day-line screensaver: an all-day tile pick does not hide the timed appointments the day line found itself.
+// The tile's pick is the ongoing all-day event; the day line only shows timed events, so it keeps its own choice.
+const allDayStates = {
+  'calendar.mock_b': { state: 'on', attributes: { message: 'Tag Frei', start_time: '2054-11-13 00:00:00', end_time: '2054-11-14 00:00:00', all_day: true } },
+};
+events['calendar.mock_b'] = [
+  { summary: 'Tag Frei', start: { date: '2054-11-13' }, end: { date: '2054-11-14' } },
+  { summary: 'Termin Laeuft', start: { dateTime: '2054-11-13T09:30:00' }, end: { dateTime: '2054-11-13T11:00:00' } },
+  { summary: 'Termin Danach', start: { dateTime: '2054-11-13T13:30:00' }, end: { dateTime: '2054-11-13T14:30:00' } },
+];
+const allDayHass = { states: allDayStates, callApi: hass.callApi };
+const allDayCal = { calendars: [{ entity: 'calendar.mock_b' }] };
+win._casoraCalendar.next(allDayStates, allDayCal);
+await settle();
+assert.equal(win._casoraCalendar.next(allDayStates, allDayCal, null, now).allDay, true, 'precondition: the tile picks the all-day event');
+const at = (h, m) => new Date(2054, 10, 13, h, m).getTime();
+const lineEvents = [
+  { title: 'Tag Frei', start: at(0, 0), end: at(24, 0), allDay: true, cal: 'calendar.mock_b' },
+  { title: 'Termin Laeuft', start: at(9, 30), end: at(11, 0), allDay: false, cal: 'calendar.mock_b' },
+  { title: 'Termin Danach', start: at(13, 30), end: at(14, 30), allDay: false, cal: 'calendar.mock_b' },
+];
+const lineCal = { hass: allDayHass, cals: ['calendar.mock_b'] };
+const running = saver.dayLine(lineEvents, now, lineCal);
+assert.equal(running.running && running.running.title, 'Termin Laeuft', 'the running timed appointment leads, not nothing');
+const allDayHtml = saver.html('linie', saver.context({ kind: 'linie', now: new ClockDate(), hass: allDayHass, cals: ['calendar.mock_b'], events: lineEvents, settings: {}, rooms: [], sun: null, wx: null, daily: [], hourly: [], bins: [], media: null, cams: [] }));
+assert.ok(allDayHtml.includes('Termin Laeuft') && !allDayHtml.includes('Heute nichts mehr'), 'the headline names the running appointment');
+const later = saver.dayLine(lineEvents, at(11, 15), lineCal);
+assert.equal(later.next && later.next.title, 'Termin Danach', 'between appointments the next timed one leads');
+console.log('ok day-line screensaver keeps its timed choice when the tile picks an all-day event');
