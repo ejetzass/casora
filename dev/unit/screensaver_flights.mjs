@@ -824,4 +824,18 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.ok(evil.includes('&lt;b&gt;X&amp;Y&lt;/b&gt;') && evil.includes('R&amp;D &lt;u&gt;'), 'escaped once, not twice');
 }
 
+
+// Sky first (found by a hand check): "One after the other" with only Flights picked opens on the sky because the
+// first sight of a flight is only a baseline (the shared rule needs one observed movement). The flights take over with the
+// first draw after that movement, while the flight is in the air all the time. The test pins this cause; whether the first
+// picture may show a flight that has not moved yet is an open product question, not decided here.
+{
+  const R = runtime();
+  R.vars = { kind: 'mix', casora_screensaver_mix: ['flights'] };
+  assert.equal(kindOf(at(R, SLOT0)), 'himmel', 'cause: the first draw sees only a baseline, so the pool falls back to the sky');
+  assert.deepEqual(J(R.S.pool(R.vars, (id) => R.S.has(id, { hass: R.hass, vars: R.vars, now: new Date(SLOT0) }))), ['himmel'], 'cause: the pool is the sky');
+  move(R, 1);
+  assert.equal(kindOf(at(R, SLOT0 + 20000)), 'flights', 'after the first observed movement the flights are the picture');
+}
+
 console.log('ok screensaver_flights');
