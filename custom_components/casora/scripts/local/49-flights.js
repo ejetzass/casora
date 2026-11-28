@@ -1084,7 +1084,8 @@
   var summaryText = function (n) { return tr(n + ' in der Luft'); };
   F.liveHtml = function (hass, pin, now, name) {
     var flights = F.airborne(hass, pin, now);
-    if (!flights.length) return '';
+    // No flight in the air: no text on the Dashboard (the tile is hidden); the Studio preview says "0 in the air", so its place shows.
+    if (!flights.length && !inStudio()) return '';
     // One flight or more, phone and desktop: one line, the state. The tile shows no flight details (the list popup and the
     // flight popup do), so the tile keeps casora_entity's own layout: icon, name, state.
     return '<casora-flight-list data-flights-sum data-name="' + esc(tr(name || '')) + '" style="display:block;height:100%;max-height:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere">'
@@ -1092,7 +1093,8 @@
   };
   // Phone check: the tile CSS's own media query (PHONE_MQ), so this and the CSS switch at the same width.
   F.phone = function () { return !!(window.matchMedia && window.matchMedia(PHONE_MQ).matches); };
-  F.liveHidden = function (hass, now) { return !F.airborne(hass, F.setting(), now).length; };
+  // The Studio never hides it (like the trash tile), so the preview shows where the tile sits; the Dashboard hides it without a flight.
+  F.liveHidden = function (hass, now) { return !inStudio() && !F.airborne(hass, F.setting(), now).length; };
 
   // ── Map and approximate progress: one presentation for the popup and the tile line ───────────
   // F.mapView is the selected flight now, from the shared rule (F.flight): no marker, trail or progress for a flight that

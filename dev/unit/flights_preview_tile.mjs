@@ -72,5 +72,31 @@ assert.ok(/\d/.test(preview('casora_flights') || ''), 'the Manage flights tile p
 studio({ casora_flights_altitude_unit: 'm', casora_flights_speed_unit: 'kmh', casora_flights_timezones: true });
 assert.equal(preview('casora_flights_airborne'), saved, 'draft units and zone names do not reach the tile preview');
 
+// Always visible in the Studio (the Dashboard keeps hiding the tile without a flight in the air, like the trash tile never hides in the Studio).
+{
+  const two = [flight(), flight({ id: 'f2', flight_number: 'XY456' })];
+  // No flight in the air: the Dashboard hides the tile and draws nothing; the Studio shows the count line "0 in der Luft".
+  hass.source([]);
+  panel = null;
+  assert.equal(F.liveHidden(hass, NOW + 3 * MIN), true, 'Dashboard, none in the air: the tile is hidden');
+  assert.equal(F.liveHtml(hass, '', NOW + 3 * MIN, 'Flüge'), '', 'Dashboard, none in the air: no text');
+  studio({});
+  assert.equal(F.liveHidden(hass, NOW + 3 * MIN), false, 'Studio, none in the air: the tile is not hidden');
+  assert.ok(String(preview('casora_flights_airborne')).includes('0 in der Luft'), 'Studio, none in the air: the preview says 0 in der Luft: ' + preview('casora_flights_airborne'));
+  assert.match(F.liveHtml(hass, '', NOW + 3 * MIN, 'Flüge'), /0 in der Luft/, 'Studio, none in the air: liveHtml returns the count line');
+  // One and two flights in the air: the preview shows what the Dashboard shows.
+  for (const n of [1, 2]) {
+    boot(); hass = house(); const F2 = ctx._casoraFlights;
+    const list = two.slice(0, n);
+    hass.source(list); F2.airborne(hass, '', NOW); hass.source(list.map((f) => ({ ...f, latitude: f.latitude + 0.05 })));
+    panel = null;
+    const dash = F2.liveHtml(hass, '', NOW + MIN, 'Flüge');
+    studio({});
+    assert.equal(F2.liveHidden(hass, NOW + MIN), false, 'Studio, ' + n + ' in the air: shown');
+    assert.equal(F2.liveHtml(hass, '', NOW + MIN, 'Flüge'), dash, 'Studio, ' + n + ' in the air: the same content as the Dashboard');
+    assert.ok(dash.includes(n + ' in der Luft'), 'the Dashboard line counts ' + n);
+  }
+}
+
 assert.deepEqual(hass.calls, [], 'the preview sends no service call (no tracking command)');
 console.log('flights_preview_tile: all checks passed');
