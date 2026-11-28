@@ -3243,7 +3243,10 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Med Fully Kiosk Browser: slår også på skjermen på nettbrettet. Om natten bare dempet, eller ikke i det hele tatt.",
     "Weather effects on the dashboard": "Væreffekter på dashbordet",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Regn, snø, tåke og vind utenfor glir lett over rombildet.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regn, snø, tåke og vind fra været vises lett over rombildet. I klart vær vises ingenting."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regn, snø, tåke og vind fra været vises lett over rombildet. I klart vær vises ingenting.",
+    "1 camera": "1 kamera",
+    "{n} cameras": "{n} kameraer",
+    "1 photo": "1 bilde"
   },
   "patterns": [
     [

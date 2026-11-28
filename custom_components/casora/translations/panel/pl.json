@@ -3243,7 +3243,10 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Z Fully Kiosk Browser: włącza też ekran tabletu. W nocy tylko przyciemniony albo wcale.",
     "Weather effects on the dashboard": "Efekty pogody na pulpicie",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Deszcz, śnieg, mgła i wiatr z zewnątrz lekko przesuwają się po zdjęciu pokoju.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Deszcz, śnieg, mgła i wiatr z pogody widać lekko na zdjęciu pokoju. Przy bezchmurnej pogodzie nic się nie pokazuje."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Deszcz, śnieg, mgła i wiatr z pogody widać lekko na zdjęciu pokoju. Przy bezchmurnej pogodzie nic się nie pokazuje.",
+    "1 camera": "1 kamera",
+    "{n} cameras": "Kamery: {n}",
+    "1 photo": "1 zdjęcie"
   },
   "patterns": [
     [

@@ -3243,7 +3243,10 @@
     "With Fully Kiosk Browser: also switches the tablet's screen on. At night only dimmed, or not at all.": "Con Fully Kiosk Browser: accende anche lo schermo del tablet. Di notte solo attenuato, o per niente.",
     "Weather effects on the dashboard": "Effetti meteo sulla dashboard",
     "Rain, snow, fog and wind outside move lightly over the room photo.": "Pioggia, neve, nebbia e vento di fuori scorrono leggeri sulla foto della stanza.",
-    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Pioggia, neve, nebbia e vento del meteo appaiono leggeri sulla foto della stanza. Con il tempo sereno non appare nulla."
+    "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Pioggia, neve, nebbia e vento del meteo appaiono leggeri sulla foto della stanza. Con il tempo sereno non appare nulla.",
+    "1 camera": "1 telecamera",
+    "{n} cameras": "{n} telecamere",
+    "1 photo": "1 foto"
   },
   "patterns": [
     [
