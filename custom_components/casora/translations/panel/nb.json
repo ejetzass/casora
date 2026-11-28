@@ -3246,7 +3246,10 @@
     "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Regn, snø, tåke og vind fra været vises lett over rombildet. I klart vær vises ingenting.",
     "1 camera": "1 kamera",
     "{n} cameras": "{n} kameraer",
-    "1 photo": "1 bilde"
+    "1 photo": "1 bilde",
+    "Choose calendars": "Velg kalendere",
+    "Choose photos": "Velg bilder",
+    "All photos": "Alle bilder"
   },
   "patterns": [
     [

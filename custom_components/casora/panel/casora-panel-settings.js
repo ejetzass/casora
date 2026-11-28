@@ -1661,13 +1661,13 @@
       // Which room photos „Fotos“ shows: all of them, or the ones picked here (casora_screensaver_photos, the day
       // photo's name, on every room like the other screensaver settings). A draft like every setting.
       // Camera, calendar and photo pickers sit in the shared row (.adv > .advsum): the word, and while closed one grey
-      // line with the choice: nothing picked = all (cameras: Automatic), else the count; 0 when nothing is there.
+      // line with the choice: nothing picked = all (cameras: Automatic), else the count; "Nothing to choose" when empty.
       const foldPicker = (host, fold, title, body, picked, total) => {
         const count = (n) => t(n === 1 ? fold.one : fold.many).replace("{n}", n);
-        const line = picked ? count(picked) : total ? t(fold.all) : count(0);
+        const line = picked ? count(picked) : total ? t(fold.all) : t("Nothing to choose");
         host.appendChild(this._uxFold("saver-" + fold.name, title, [body], fold.cls, line));
       };
-      const photoFold = { name: "photos", all: "All", one: "1 photo", many: "{n} photos" };
+      const photoFold = { name: "photos", all: "All photos", one: "1 photo", many: "{n} photos" };
       const pick = el("div", "cs-saver-photos");
       pick.style.cssText = "margin:14px 0 0;";
       wrap.appendChild(pick);
@@ -1683,7 +1683,7 @@
         const body = el("div");
         if (!list.length) {
           body.appendChild(el("p", "cs-lede", t("No room photos available. Add a photo to a room.")));
-          foldPicker(pick, photoFold, "Photos", body, 0, 0);
+          foldPicker(pick, photoFold, "Choose photos", body, 0, 0);
           return;
         }
         const cur = (rooms.map((r) => (r.variables || {}).casora_screensaver_photos).find((v) => Array.isArray(v) && v.length) || []).map(String);
@@ -1722,7 +1722,7 @@
           grid.appendChild(b);
         });
         body.appendChild(grid);
-        foldPicker(pick, photoFold, "Photos", body, list.filter((p) => cur.includes(p.ref)).length, list.length);
+        foldPicker(pick, photoFold, "Choose photos", body, list.filter((p) => cur.includes(p.ref)).length, list.length);
       };
       // What alternates (One after the other), which cameras and which calendars: a list in Casora's way of choosing,
       // no ticks: a picked row is filled and its icon in colour, the others grey. None picked = all (the default); a
@@ -1827,7 +1827,7 @@
         out.appendChild(list);
         done();
       };
-      const calendarFold = { name: "calendars", all: "All", one: "1 calendar", many: "{n} calendars" };
+      const calendarFold = { name: "calendars", all: "All calendars", one: "1 calendar", many: "{n} calendars" };
       const calendarPickerVisible = () => {
         if (calendarKinds.has(show)) return true;
         if (show !== "mix" || typeof SV.vars !== "function" || typeof SV.selected !== "function") return false;
@@ -1846,7 +1846,7 @@
         if (calendarPickerVisible() && typeof SV.calendars === "function") {
           const S0 = (hass && hass.states) || {};
           pickList("casora_screensaver_calendars", SV.calendars(hass).map((id) => ({ id, label: String(((S0[id] || {}).attributes || {}).friendly_name || id), raw: true,
-            icon: "mdi:calendar-blank-outline", tone: "#DE8A4E" })), "Calendars",
+            icon: "mdi:calendar-blank-outline", tone: "#DE8A4E" })), "Choose calendars",
             "Appointments of all calendars. Tap one to leave it out.", "Only the appointments of the calendars picked here.",
             "No calendar found. The preview shows an example.", undefined, lists, calendarFold);
         }

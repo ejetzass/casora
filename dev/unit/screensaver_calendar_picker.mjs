@@ -101,7 +101,7 @@ const makePreview = (variables = {}, states = {
   return { box, variables: panel._state.compact.rooms[0].variables };
 };
 // The shared row around the calendars: its bold word, its closed grey line, and where it sits.
-const foldOf = (box) => box.querySelectorAll('.adv').find((row) => row.querySelectorAll('.advsum')[0]?.children[0].textContent === 'Calendars');
+const foldOf = (box) => box.querySelectorAll('.adv').find((row) => row.querySelectorAll('.advsum')[0]?.children[0].textContent === 'Choose calendars');
 const greyOf = (box) => foldOf(box).querySelectorAll('.uxsum')[0].textContent;
 const lists = (box) => box.querySelectorAll('.cs-saver-list');
 const listFor = (box, key) => lists(box).find((list) => list.dataset.key === key);
@@ -114,9 +114,9 @@ assert.ok(foldOf(rowed.box), 'the calendars sit in the shared row');
 assert.ok(foldOf(rowed.box).querySelectorAll('.cs-saver-list').length === 1, 'the list is inside the row');
 assert.equal(foldOf(rowed.box).classList.contains('open'), false, 'the row starts closed');
 assert.equal(greyOf(rowed.box), '1 calendar', 'one calendar picked; one that is gone is not counted');
-assert.equal(greyOf(makePreview().box), 'All', 'nothing picked means All');
+assert.equal(greyOf(makePreview().box), 'All calendars', 'nothing picked means All calendars');
 assert.equal(greyOf(makePreview({ casora_screensaver_calendars: ['calendar.example_a', 'calendar.example_b'] }).box), '2 calendars');
-assert.equal(greyOf(makePreview({}, {}).box), '0 calendars', 'nothing available shows the count with 0');
+assert.equal(greyOf(makePreview({}, {}).box), 'Nothing to choose', 'nothing available says so, no count of 0');
 const aloneRow = makePreview({ casora_screensaver_kind: 'woche' });
 const aloneParent = foldOf(aloneRow.box).parentNode;
 assert.equal(aloneParent.className, 'cs-saver-lists', 'picked alone: the row is below the mode choices');

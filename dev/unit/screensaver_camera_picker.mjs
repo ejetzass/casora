@@ -181,13 +181,23 @@ for (const variables of [
   panel._hass.states = {};
   const empty = new Element('div');
   panel._csSaverPreview(empty, new Element('div'));
-  assert.equal(grey(empty), '0 cameras', 'nothing available shows the count with 0');
+  assert.equal(grey(empty), 'Nothing to choose', 'nothing available says so, no count of 0');
   head(empty).click();
   assert.ok(fold(empty).textContent.includes('No camera found. The preview shows an example.'),
     'empty camera picker retains its explanation');
 }
 // Texts of the closed row: the new count words exist in every language, as source and as built file.
-const words = ['1 camera', '{n} cameras', '1 photo'];
+const words = ['1 camera', '{n} cameras', '1 photo', 'Choose calendars', 'Choose photos', 'All photos'];
+const table = {
+  de: ['Kalender wählen', 'Fotos wählen', 'Alle Fotos'],
+  nl: ['Agenda’s kiezen', 'Foto’s kiezen', 'Alle foto’s'],
+  fr: ['Choisir les calendriers', 'Choisir les photos', 'Toutes les photos'],
+  es: ['Elegir calendarios', 'Elegir fotos', 'Todas las fotos'],
+  it: ['Scegli calendari', 'Scegli foto', 'Tutte le foto'],
+  pl: ['Wybierz kalendarze', 'Wybierz zdjęcia', 'Wszystkie zdjęcia'],
+  pt: ['Escolher calendários', 'Escolher fotos', 'Todas as fotos'],
+  nb: ['Velg kalendere', 'Velg bilder', 'Alle bilder'],
+};
 for (const lang of ['de', 'es', 'fr', 'it', 'nb', 'nl', 'pl', 'pt']) {
   const source = JSON.parse(read('translations/panel/' + lang + '.json')).exact;
   const built = JSON.parse(read('panel/i18n/' + lang + '.json')).exact;
@@ -195,6 +205,7 @@ for (const lang of ['de', 'es', 'fr', 'it', 'nb', 'nl', 'pl', 'pt']) {
     assert.ok(source[word], lang + ' translates ' + word);
     assert.equal(built[word], source[word], lang + ' built file has ' + word);
   }
+  assert.deepEqual(['Choose calendars', 'Choose photos', 'All photos'].map((w) => source[w]), table[lang], lang + ' matches the agreed table');
   assert.notEqual(source['{n} cameras'], '{n} cameras', lang + ' does not copy English');
   assert.match(source['{n} cameras'], /\{n\}/, lang + ' keeps the count');
 }

@@ -102,14 +102,14 @@ assert.ok(order.indexOf(byClass(wrap, 'cs-saver-list')[0]) < order.indexOf(byCla
   'photo grid follows rotation participation choices');
 assert.equal(byClass(s.root(), 'cs-saver-grid').length, 1, 'only one grid');
 // The photo grid sits in the shared row: closed at first, the grey line names the choice.
-const photoFold = (root) => byClass(root, 'adv').find((e) => byClass(e, 'advsum')[0].children[0].textContent === 'Photos');
+const photoFold = (root) => byClass(root, 'adv').find((e) => byClass(e, 'advsum')[0].children[0].textContent === 'Choose photos');
 const photoGrey = (root) => byClass(photoFold(root), 'uxsum')[0].textContent;
 assert.ok(byClass(photoFold(s.root()), 'cs-saver-grid').length === 1, 'the grid is inside the row');
 assert.equal(photoFold(s.root()).classList.contains('open'), false, 'the row starts closed');
-assert.equal(photoGrey(s.root()), 'All', 'nothing picked means All');
+assert.equal(photoGrey(s.root()), 'All photos', 'nothing picked means All photos');
 assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-b'] }).root()), '1 photo');
 assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-a', 'room-b'] }).root()), '2 photos');
-assert.equal(photoGrey(studio({}, []).root()), '0 photos', 'nothing available shows the count with 0');
+assert.equal(photoGrey(studio({}, []).root()), 'Nothing to choose', 'nothing available says so, no count of 0');
 assert.equal(photoFold(studio({ casora_screensaver_kind: 'fotos' }).root()).parentNode.className.includes('cs-saver'), true, 'picked alone: the row stays in the picker');
 assert.ok(s.photos().every((e) => e.tagName === 'BUTTON' && e.type === 'button'), 'native keyboard controls');
 assert.deepEqual(s.photos().map((e) => e.getAttribute('aria-pressed')), ['true', 'true'], 'all photos initially selected');

@@ -3246,7 +3246,10 @@
     "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "La lluvia, la nieve, la niebla y el viento del tiempo se ven suavemente sobre la foto de la habitación. Con tiempo despejado no se ve nada.",
     "1 camera": "1 cámara",
     "{n} cameras": "{n} cámaras",
-    "1 photo": "1 foto"
+    "1 photo": "1 foto",
+    "Choose calendars": "Elegir calendarios",
+    "Choose photos": "Elegir fotos",
+    "All photos": "Todas las fotos"
   },
   "patterns": [
     [

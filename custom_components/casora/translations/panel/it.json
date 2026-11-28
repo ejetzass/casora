@@ -3246,7 +3246,10 @@
     "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "Pioggia, neve, nebbia e vento del meteo appaiono leggeri sulla foto della stanza. Con il tempo sereno non appare nulla.",
     "1 camera": "1 telecamera",
     "{n} cameras": "{n} telecamere",
-    "1 photo": "1 foto"
+    "1 photo": "1 foto",
+    "Choose calendars": "Scegli calendari",
+    "Choose photos": "Scegli foto",
+    "All photos": "Tutte le foto"
   },
   "patterns": [
     [
