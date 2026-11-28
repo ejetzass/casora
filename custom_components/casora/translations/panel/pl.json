@@ -3269,7 +3269,7 @@
     "A listed ring opens the popup of this camera.": "Dzwonek z listy otwiera okno tej kamery.",
     "Triggers": "Wyzwalacze",
     "Open camera popup by itself": "Otwórz okno kamery automatycznie",
-    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Tylko dla wybranych wyzwalaczy. Nic starszego niż 2 minuty, najwyżej raz na minutę dla każdego wyzwalacza. Tylko na tabletach ściennych; zamyka się przez „Zamykaj okna przy bezczynności”.",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Tylko dla wybranych wyzwalaczy. Nic starszego niż 2 minuty, najwyżej raz na minutę dla każdego wyzwalacza. Tylko na tabletach ściennych; zamyka się zgodnie z ustawieniem „Zamykaj okna przy bezczynności”.",
     "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Czujniki lub zdarzenia oznaczające dzwonek przy tej kamerze. Nazwa pochodzi z Home Assistant."
   },
   "patterns": [

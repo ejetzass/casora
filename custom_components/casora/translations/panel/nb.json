@@ -427,7 +427,7 @@
     "Cameras": "Kameraer",
     "Cameras, popups and user interface": "Kameraer, popup-er og brukergrensesnitt",
     "Open popup on a ring": "Åpne popupen når det ringer",
-    "Open popup on a detection": "Åpne popupen ved registrering",
+    "Open popup on a detection": "Åpne popupen ved deteksjon",
     "As all dashboards (off)": "Som alle dashbord (av)",
     "As all dashboards (on)": "Som alle dashbord (på)",
     "When two cameras want to open at the same time, a ring goes first, otherwise the order of this list.": "Når to kameraer vil åpne samtidig, går ringing først, ellers følger rekkefølgen i denne listen.",

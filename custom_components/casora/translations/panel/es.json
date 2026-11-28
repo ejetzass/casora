@@ -2683,7 +2683,7 @@
     "A listed ring opens the popup of this camera.": "Un timbre listado abre la ventana de esta cámara.",
     "Triggers": "Disparadores",
     "Open camera popup by itself": "Abrir la ventana de la cámara automáticamente",
-    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Solo para los disparadores elegidos. Nada de más de 2 minutos, como máximo una vez por minuto y por disparador. Solo en tabletas de pared; se cierra con «Cerrar ventanas sin actividad».",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Solo para los disparadores elegidos. Nada con más de 2 minutos de antigüedad, como máximo una vez por minuto y por disparador. Solo en tabletas de pared; se cierra con «Cerrar ventanas sin actividad».",
     "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensores o eventos que cuentan como un timbre en esta cámara. El nombre procede de Home Assistant.",
     "On a phone. “Automatic” starts with the sub stream when Frigate has one, otherwise with the desktop's stream.": "En el móvil. «Automático» empieza con el subflujo si Frigate tiene uno; si no, con el flujo del escritorio.",
     "In the chart": "En el gráfico",

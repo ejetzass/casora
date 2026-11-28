@@ -2683,7 +2683,7 @@
     "A listed ring opens the popup of this camera.": "Une sonnette choisie ouvre la fenêtre de cette caméra.",
     "Triggers": "Déclencheurs",
     "Open camera popup by itself": "Ouvrir la fenêtre de la caméra automatiquement",
-    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Seulement pour les déclencheurs choisis. Rien de plus vieux que 2 minutes, au plus une fois par minute et par déclencheur. Uniquement sur les tablettes murales ; se ferme avec « Fermer les fenêtres en cas d'inactivité ».",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Seulement pour les déclencheurs choisis. Rien de plus ancien que 2 minutes, au plus une fois par minute et par déclencheur. Uniquement sur les tablettes murales ; se ferme avec « Fermer les fenêtres en cas d'inactivité ».",
     "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Capteurs ou événements considérés comme une sonnette pour cette caméra. Le nom vient de Home Assistant.",
     "On a phone. “Automatic” starts with the sub stream when Frigate has one, otherwise with the desktop's stream.": "Sur un téléphone. « Automatique » démarre avec le flux secondaire si Frigate en a un, sinon avec le flux de l’ordinateur.",
     "In the chart": "Dans le graphique",

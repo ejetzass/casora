@@ -3267,9 +3267,9 @@
     "Rain, snow, fog and wind from the weather show lightly over the room photo. Clear weather shows nothing.": "A chuva, a neve, o nevoeiro e o vento do tempo aparecem suavemente sobre a foto da divisão. Com tempo limpo não aparece nada.",
     "Sensors or events that count as a ring or a detection at a camera. The name comes from Home Assistant.": "Sensores ou eventos que contam como campainha ou deteção numa câmara. O nome vem do Home Assistant.",
     "A listed ring opens the popup of this camera.": "Uma campainha escolhida abre a janela desta câmara.",
-    "Triggers": "Disparadores",
+    "Triggers": "Gatilhos",
     "Open camera popup by itself": "Abrir a janela da câmara automaticamente",
-    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Apenas para os disparadores escolhidos. Nada com mais de 2 minutos, no máximo uma vez por minuto e por disparador. Apenas em tablets de parede; fecha com «Fechar janelas quando inativo».",
+    "Only for listed triggers. Not for anything older than 2 minutes, at most once a minute per trigger. Wall tablets only; closes with \"Close popups when idle\".": "Apenas para os gatilhos escolhidos. Nada com mais de 2 minutos, no máximo uma vez por minuto e por gatilho. Apenas em tablets de parede; fecha com «Fechar janelas quando inativo».",
     "Sensors or events that count as a ring at this camera. The name comes from Home Assistant.": "Sensores ou eventos que contam como campainha nesta câmara. O nome vem do Home Assistant."
   },
   "patterns": [
