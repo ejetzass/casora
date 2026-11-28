@@ -1012,14 +1012,17 @@
     var running = timed.filter(function (e) { return e.start <= t && endOf(e) > t; }).sort(function (a, b) { return endOf(a) - endOf(b); })[0] || null;
     var next = timed.filter(function (e) { return e.start > t; })[0] || null;
     // The calendar tile's pick (06-kalender.js, the shared cache when ready) names the running and the next appointment
-    // when that module is loaded; the day line only shows timed events, so an all-day pick counts for nothing.
+    // when that module is loaded. The day line only shows timed events: an all-day pick or no pick keeps its own timed
+    // choice above, so an ongoing all-day event does not hide the appointments of the day.
     var calRule = window._casoraCalendar, viaRule = !!(calRule && calRule.next && cal && cal.hass && cal.cals && cal.cals.length);
     if (viaRule) {
       var pick = calRule.next(cal.hass.states || {}, { calendars: cal.cals.map(function (id) { return { entity: id }; }) }, null, t);
       var pickEv = pick && !pick.allDay ? (timed.filter(function (e) { return e.start === +pick.start && e.title === pick.name; })[0]
         || { title: pick.name, start: +pick.start, end: +pick.end, allDay: false, on: pick.on }) : null;
-      running = pickEv && pickEv.on ? pickEv : null;
-      next = pickEv && !pickEv.on ? pickEv : null;
+      if (pickEv) {
+        running = pickEv.on ? pickEv : null;
+        next = pickEv.on ? null : pickEv;
+      }
     }
     var lead = running || next;
     var items = timed.filter(function (e) { return e.start < to && endOf(e) > from; }).slice(0, 24).map(function (e) {
