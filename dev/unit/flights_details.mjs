@@ -88,6 +88,11 @@ assert.equal(F.fmt.vspeed(-1, 'ms'), '0.0\u00a0m/s', 'a tiny negative rounds to 
 assert.equal(F.fmt.altitude(NaN, 'm'), '', 'NaN is left out');
 assert.equal(F.fmt.speed(undefined, 'kmh'), '', 'missing is left out, never 0');
 assert.equal(F.fmt.altitude(31000, 'unknown-unit'), '31,000\u00a0ft', 'an unknown saved unit falls back to the source unit');
+// Feet and meters: feet first, then meters, joined by a protected " · " (no-break spaces); a missing value stays ''.
+assert.equal(F.fmt.altitude(35000, 'ft_m'), '35,000\u00a0ft\u00a0·\u00a010,668\u00a0m', 'ft_m: feet first, then meters');
+assert.equal(F.fmt.altitude(0, 'ft_m'), '0\u00a0ft\u00a0·\u00a00\u00a0m', 'ft_m: zero is a value');
+assert.equal(F.fmt.altitude(NaN, 'ft_m'), '', 'ft_m: a missing value is left out');
+assert.equal(F.fmt.altitude(undefined, 'ft_m'), '', 'ft_m: undefined is left out');
 
 // Localized numbers: the page locale decides the grouping, the unit name stays.
 ctx.casoraLocale = () => 'de-DE';

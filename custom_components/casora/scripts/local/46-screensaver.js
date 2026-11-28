@@ -553,14 +553,17 @@
   };
   // ── Flights: which flights qualify is decided by the shared rule (49-flights.js); here only the turn picks one ─────────
   var FL = function () { return window._casoraFlights || null; };
-  var flightUnits = function (vars) {
-    return { altitude: vars.casora_flights_altitude_unit || '', speed: vars.casora_flights_speed_unit || '', vspeed: vars.casora_flights_vspeed_unit || '' };
+  // The unit settings of a draft, under the key names the shared module owns (F.UNIT_KEYS).
+  var flightUnits = function (F, vars) {
+    var out = {};
+    Object.keys(F.UNIT_KEYS).forEach(function (k) { out[k] = vars[F.UNIT_KEYS[k]] || ''; });
+    return out;
   };
   // The flights on show now: the selected source's qualifying flights, in source order, with the saved draft's units.
   S.flightRows = function (hass, vars, now) {
     var F = FL();
     if (!F || !hass) return [];
-    return F.airborne(hass, (vars && vars.casora_flights_source) || '', now == null ? Date.now() : +now, flightUnits(vars || {}));
+    return F.airborne(hass, (vars && vars.casora_flights_source) || '', now == null ? Date.now() : +now, flightUnits(F, vars || {}));
   };
   // The flight settings of the open dashboard: the phone takes the ones it has no value for from its desktop twin
   // (49-flights.js F.setting). Only for the live dashboard; a Studio preview keeps the draft's own values.

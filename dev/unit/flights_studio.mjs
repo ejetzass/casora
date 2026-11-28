@@ -13,7 +13,7 @@ assert.ok(field, 'the setting is a field of the dashboard settings');
 assert.equal(field.scope, 'dashboard', 'Dashboard settings scope: every room carries it, new rooms inherit it');
 assert.equal(field.type, 'select');
 // Units of the flight displays: three Dashboard-scope selects in the same section, defaults = the source units.
-const UNITS = { casora_flights_altitude_unit: ['', 'm', 'km'], casora_flights_speed_unit: ['', 'kmh', 'mph'], casora_flights_vspeed_unit: ['', 'ms'] };
+const UNITS = { casora_flights_altitude_unit: ['', 'm', 'km', 'ft_m'], casora_flights_speed_unit: ['', 'kmh', 'mph'], casora_flights_vspeed_unit: ['', 'ms'] };
 const flightsSection = I.SECTIONS.find((s) => s.label === 'General').fields.filter((f) => f.key === 'casora_flights_source' || f.key === 'casora_flights_timezones' || UNITS[f.key]);
 assert.deepEqual(flightsSection.map((f) => f.key), ['casora_flights_source', 'casora_flights_altitude_unit', 'casora_flights_speed_unit', 'casora_flights_vspeed_unit', 'casora_flights_timezones']);
 // The zone-name switch: Dashboard scope, off by default, a draft like the units (Save or Discard).

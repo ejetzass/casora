@@ -837,6 +837,7 @@
   // source value by a factor and rounds to a fixed number of decimals; '' is the source unit.
   var UNIT = {
     altitude: { '': [1, 0, 'ft'], m: [0.3048, 0, 'm'], km: [0.0003048, 1, 'km'] },
+    // ft_m: not a factor but two readings (feet, then meters), joined in F.fmt.altitude.
     speed: { '': [1, 0, 'kn'], kmh: [1.852, 0, 'km/h'], mph: [1.150779, 0, 'mph'] },
     vspeed: { '': [1, 0, 'ft/min'], ms: [0.00508, 1, 'm/s'] },
   };
@@ -855,7 +856,12 @@
   };
   var fmtOf = function (kind, v, unit) { var set = UNIT[kind]; return num(v, set[unit] || set['']); };
   F.fmt = {
-    altitude: function (v, unit) { return fmtOf('altitude', v, unit); },
+    altitude: function (v, unit) {
+      if (unit !== 'ft_m') return fmtOf('altitude', v, unit);
+      var ft = fmtOf('altitude', v, ''), m = fmtOf('altitude', v, 'm');
+      // Protected separator: no line break inside "35,000 ft · 10,668 m".
+      return ft && m ? ft + '\u00a0·\u00a0' + m : '';
+    },
     speed: function (v, unit) { return fmtOf('speed', v, unit); },
     vspeed: function (v, unit) { return fmtOf('vspeed', v, unit); },
     heading: function (v) {

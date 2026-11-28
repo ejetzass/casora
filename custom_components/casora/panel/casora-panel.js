@@ -2769,7 +2769,7 @@ const SECTIONS = [
       // Units of the flight displays (49-flights.js F.fmt): the same Dashboard scope and draft as the source. '' = the
       // source unit (feet, knots, feet per minute); shown where FlightRadar24 is.
       { key: "casora_flights_altitude_unit", sub: "chrome", label: "Altitude", type: "select", auto: true, scope: "dashboard",
-        options: ["", "m", "km"], optionLabels: { "": "Feet", m: "Meters", km: "Kilometers" },
+        options: ["", "m", "km", "ft_m"], optionLabels: { "": "Feet", m: "Meters", km: "Kilometers", ft_m: "Feet and meters" },
         when: (v, hass) => { const F = window.casoraFlightsMod && window.casoraFlightsMod(); return !!(F && F.present(hass)); } },
       { key: "casora_flights_speed_unit", sub: "chrome", label: "Ground speed", type: "select", auto: true, scope: "dashboard",
         options: ["", "kmh", "mph"], optionLabels: { "": "Knots", kmh: "Kilometers per hour", mph: "Miles per hour" },

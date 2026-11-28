@@ -594,6 +594,15 @@ const defaultHas = (R) => (id) => R.S.has(id, { hass: R.hass, vars: {}, rooms: [
   assert.match(h, /833\u00a0km\/h/, 'saved speed unit');
 }
 {
+  const R = runtime();
+  warm(R);
+  R.vars = { kind: 'flights', casora_flights_altitude_unit: 'ft_m' };
+  move(R, 1);
+  at(R, SLOT0 + 1000);
+  const h = at(R, SLOT0 + 2000);
+  assert.match(h, /35,000\u00a0ft\u00a0·\u00a010,668\u00a0m/, 'feet and meters on the screensaver');
+}
+{
   const bare = (step) => [entry('1', step, { airline: undefined, airline_short: undefined, aircraft_registration: undefined, callsign: undefined,
     heading: undefined, vertical_speed: undefined, airport_origin_terminal: undefined })];
   const { html: h } = mixDetail(bare);
