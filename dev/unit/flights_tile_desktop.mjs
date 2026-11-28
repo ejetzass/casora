@@ -30,7 +30,7 @@ const ctx = {
   addEventListener() {},
   customElements: { get: () => undefined, define: (n, c) => { defined[n] = c; } },
   matchMedia: (q) => ({ matches: false, addEventListener() {} }),
-  _casoraUI: { section: (k, b) => b,  stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
+  _casoraUI: { section: (k, b) => b, stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
   _casoraNotifyOpenViaCard: (src, done, cfg) => { calls.push({ src, cfg }); return true; },
 };
 ctx.window = ctx;

@@ -99,7 +99,6 @@ const MIGRIERT = [
   { popup: 'Abfall', vorlagen: ['casora_trash'], file: null, stages: 1 },
   // S8: the table in UI.stage('content') (K.stage); the colCard wrapper names it once more.
   { popup: 'Fußball', vorlagen: ['casora_popup_football'], file: '11-fussball.js', from: '  K.v3 = function', to: '  /* Popup-Ring (Weich)', stages: 2 },
-  // Flights: Manage and list popups have no stage (no status dial); the list is the main area (S8, §4.1), the region may not call UI.stage.
   // S8: the list (and Mehr's lists, charts, tiles) in UI.stage('content'), each also as an empty stage.
   { popup: 'Liste von Entitäten / „Mehr“', vorlagen: ['casora_popup_entity_list', 'casora_popup_more'], file: '34-entity-list.js', from: '  L.v3 = function', to: null, stages: 4 },
   // Fallback rule S7 (a plate; a ring only for a percentage, S6): template badge, nothing chosen (Studio hint / live calm word,
@@ -129,6 +128,7 @@ const MIGRIERT = [
   // Built for v3 (issue 124): S6 with a range (0–150 ppm in the colour of the level, thresholds as marks), the Verlauf
   // 24 Std. · 7 Tage in the stage.
   { popup: 'Aufgaben', vorlagen: ['casora_popup_tasks'], file: '43-aufgaben.js', from: '  T.innerHtml = function', to: '  T.box = function', stages: 1 },
+  // Flights: Manage and list popups have no stage (no status dial); the list is the main area (S8, §4.1), the region may not call UI.stage.
   { popup: 'Flüge verwalten', vorlagen: ['casora_popup_flights'], file: '49-flights.js', from: '  F.sec = function', to: '  F.popup = function', stages: 0, noStage: true },
   { popup: 'Flug (Zeile der Flüge-Kachel)', vorlagen: ['casora_popup_flight'], file: '49-flights.js', from: '  var flightSec = function', to: '  // A list row opens its flight', stages: 1 },
   { popup: 'Flüge-Liste (Handy-Kachel, zwei oder mehr)', vorlagen: ['casora_popup_flights_list'], file: '49-flights.js', from: '  // ── The list popup', to: '  // ── Airborne', stages: 0, noStage: true },

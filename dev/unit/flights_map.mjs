@@ -25,7 +25,7 @@ const runtime = () => {
     clearInterval: (t) => { if (t) t.live = false; },
     addEventListener() {},
     _casoraNotifyOpenViaCard() {},
-    _casoraUI: { section: (k, b) => b,  line: (m) => 'STAGE[line,' + m + ']', stage: (type, o) => 'STAGE[' + type + ',' + (o.html || o.text || '') + ']', empty: () => 'EMPTY' },
+    _casoraUI: { section: (k, b) => b, line: (m) => 'STAGE[line,' + m + ']', stage: (type, o) => 'STAGE[' + type + ',' + (o.html || o.text || '') + ']', empty: () => 'EMPTY' },
     _casoraLovelaceCfg: () => null,
     casoraLocale: () => 'en-US',
   };

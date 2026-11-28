@@ -23,7 +23,7 @@ const runtime = (extra = {}) => {
     setTimeout: () => ({ live: false }), clearTimeout() {},
     addEventListener: (type, fn) => { (handlers[type] = handlers[type] || []).push(fn); },
     _casoraNotifyOpenViaCard: (...a) => { opened.push(a); return undefined; },
-    _casoraUI: { section: (k, b) => b,  stage: (type, o) => 'STAGE[' + type + ']', line: (main) => 'LINE[' + main + ']', empty: () => 'EMPTY' },
+    _casoraUI: { section: (k, b) => b, stage: (type, o) => 'STAGE[' + type + ']', line: (main) => 'LINE[' + main + ']', empty: () => 'EMPTY' },
     _casoraLovelaceCfg: () => cfg,
     casoraLocale: () => 'en-US',
   };

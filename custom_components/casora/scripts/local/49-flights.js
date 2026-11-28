@@ -630,9 +630,10 @@
     if (part === 'list') {
       if (!m.rows) {
         var st0 = F.resolve(h, c && c.pin).state;
-        if (st0 !== 'choose' && st0 !== 'missing') return '';
-        // No stage any more: the state the stage used to say ("Quelle nicht verfügbar") stands above the hint.
-        return UI.note(tr(m.text)) + UI.note(tr(SOURCE_HINT));
+        // No stage any more: the state the stage used to say ("Quelle nicht verfügbar") stands here, in every case that has a
+        // text; the Studio hint follows only where a source is to be chosen.
+        var stateNote = m.text ? UI.note(tr(m.text)) : '';
+        return st0 === 'choose' || st0 === 'missing' ? stateNote + UI.note(tr(SOURCE_HINT)) : stateNote;
       }
       // The complete list (airborne or not): a row's Stop tracking button needs only the source and the row's FR24 ID.
       var rs = F.resolve(h, c && c.pin), live = !!rs.source && (rs.state === 'pinned' || rs.state === 'auto');
@@ -783,7 +784,7 @@
   };
   // One wake-up at the earliest hide time, so the Flights tile and an open flight popup redraw without a new state.
   // The popup's parts are cards whose code sits in custom_fields (secCard); the tile's code is its state_display.
-  var LIVE_CODE = /liveHtml\(|_casoraFlights\.sec\("f(line|map|prog|dep|move|arr|air)"|_casoraFlights\.list(Stage|Rows)\(/;
+  var LIVE_CODE = /liveHtml\(|_casoraFlights\.sec\("f(line|map|prog|dep|move|arr|air)"|_casoraFlights\.listRows\(/;
   var liveCard = function (c) {
     var codes = [c && c.state_display].concat(c && c.custom_fields ? Object.keys(c.custom_fields).map(function (k) { return c.custom_fields[k]; }) : []);
     return codes.some(function (x) { return typeof x === 'string' && LIVE_CODE.test(x); });

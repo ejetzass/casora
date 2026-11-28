@@ -12,7 +12,7 @@ const MIN = 60000;
 const T0 = 1800000000000;
 
 const ctx = {
-  _casoraUI: { section: (k, b) => b,  empty: (o) => o.text },
+  _casoraUI: { section: (k, b) => b, empty: (o) => o.text },
   console, Date, Math, Intl, JSON,
   localStorage: { getItem: () => null, setItem() {} },
   document: { querySelector: () => null, querySelectorAll: () => [] },

@@ -245,5 +245,16 @@ h = house();
 h.add('sensor.a', { dev: 'd1', key: 'additional_tracked', state: '0', attrs: { flights: [] } });
 assert.equal(html(h, 'sensor.gone', 'list'), `<note>Quelle nicht verfügbar</note><note>${sourceHint}</note>`, 'missing pin: the state, then the Studio path');
 assert.deepEqual(noteCalls, ['Quelle für verfolgte Flüge auswählen', sourceHint, 'Quelle nicht verfügbar', sourceHint], 'the note renderer receives plain text for its admin check and escaping');
+// No stage any more: every state with a text is said in the list part (state 'none', and a pinned source without a flights list).
+{
+  noteCalls.length = 0;
+  const none = house();
+  assert.equal(F.resolve(none, '').state, 'none');
+  assert.equal(html(none, '', 'list'), '<note>Quelle nicht verfügbar</note>', "state none: the missing source is named, no Studio hint");
+  const bare = house();
+  bare.add('sensor.a', { dev: 'd1', key: 'additional_tracked', state: 'unavailable', attrs: {} });
+  assert.equal(F.resolve(bare, 'sensor.a').state, 'pinned');
+  assert.equal(html(bare, 'sensor.a', 'list'), '<note>Quelle nicht verfügbar</note>', 'a pinned source without a flights list: the missing source is named, no Studio hint');
+}
 
 console.log('ok flights_source');
