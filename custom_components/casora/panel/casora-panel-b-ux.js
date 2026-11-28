@@ -1069,7 +1069,7 @@
     const labelOf = (row) => { const l = row && row.querySelector(":scope > label, :scope > .lab"); return l ? l.textContent.trim() : ""; };
     const isLabel = (row, en) => { const t = labelOf(row); return t === en || t === tr(en); };
     // Eine aufklappbare Gruppe wie „Popup“ (gleiche Optik), Inhalt = nodes. key merkt sich offen/zu.
-    // summary: der Text der grauen Zeile (zu), schon übersetzt.
+    // summary: the grey line shown while the row is closed, already translated.
     P._uxFold = function (key, title, nodes, cls, summary) {
       const det = document.createElement("div");
       det.className = "adv " + (cls || "");

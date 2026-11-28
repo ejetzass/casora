@@ -109,6 +109,11 @@ assert.equal(photoFold(s.root()).classList.contains('open'), false, 'the row sta
 assert.equal(photoGrey(s.root()), 'All photos', 'nothing picked means All photos');
 assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-b'] }).root()), '1 photo');
 assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-a', 'room-b'] }).root()), '2 photos');
+// A stored photo that no longer exists is not counted and does not hide the others.
+assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-b', 'room-gone'] }).root()), '1 photo');
+const stale = studio({ casora_screensaver_photos: ['room-gone'] });
+assert.equal(photoGrey(stale.root()), 'All photos', 'only a missing photo stored means all');
+assert.deepEqual(stale.photos().map((e) => e.getAttribute('aria-pressed')), ['true', 'true']);
 assert.equal(photoGrey(studio({}, []).root()), 'Nothing to choose', 'nothing available says so, no count of 0');
 assert.equal(photoFold(studio({ casora_screensaver_kind: 'fotos' }).root()).parentNode.className.includes('cs-saver'), true, 'picked alone: the row stays in the picker');
 assert.ok(s.photos().every((e) => e.tagName === 'BUTTON' && e.type === 'button'), 'native keyboard controls');

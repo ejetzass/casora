@@ -1658,8 +1658,6 @@
       };
       paint();
       wrap.appendChild(chips);
-      // Which room photos „Fotos“ shows: all of them, or the ones picked here (casora_screensaver_photos, the day
-      // photo's name, on every room like the other screensaver settings). A draft like every setting.
       // Camera, calendar and photo pickers sit in the shared row (.adv > .advsum): the word, and while closed one grey
       // line with the choice: nothing picked = all (cameras: Automatic), else the count; "Nothing to choose" when empty.
       const foldPicker = (host, fold, title, body, picked, total) => {
@@ -1668,6 +1666,8 @@
         host.appendChild(this._uxFold("saver-" + fold.name, title, [body], fold.cls, line));
       };
       const photoFold = { name: "photos", all: "All photos", one: "1 photo", many: "{n} photos" };
+      // Which room photos „Fotos“ shows: all of them, or the ones picked here (casora_screensaver_photos, the day
+      // photo's name, on every room like the other screensaver settings). A draft like every setting.
       const pick = el("div", "cs-saver-photos");
       pick.style.cssText = "margin:14px 0 0;";
       wrap.appendChild(pick);
@@ -1686,7 +1686,8 @@
           foldPicker(pick, photoFold, "Choose photos", body, 0, 0);
           return;
         }
-        const cur = (rooms.map((r) => (r.variables || {}).casora_screensaver_photos).find((v) => Array.isArray(v) && v.length) || []).map(String);
+        // Only photos that still exist count, as for cameras and calendars.
+        const cur = (rooms.map((r) => (r.variables || {}).casora_screensaver_photos).find((v) => Array.isArray(v) && v.length) || []).map(String).filter((ref) => seen.has(ref));
         const on = (ref) => !cur.length || cur.includes(ref);
         body.appendChild(el("p", "cs-lede", t(cur.length ? "Only the photos picked here." : "All room photos. Tap a photo to show only the ones you pick.")));
         const grid = el("div", "cs-saver-grid");
@@ -1722,7 +1723,7 @@
           grid.appendChild(b);
         });
         body.appendChild(grid);
-        foldPicker(pick, photoFold, "Choose photos", body, list.filter((p) => cur.includes(p.ref)).length, list.length);
+        foldPicker(pick, photoFold, "Choose photos", body, cur.length, list.length);
       };
       // What alternates (One after the other), which cameras and which calendars: a list in Casora's way of choosing,
       // no ticks: a picked row is filled and its icon in colour, the others grey. None picked = all (the default); a
