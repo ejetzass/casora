@@ -76,3 +76,12 @@ assert.equal((src.match(/var tr = /g) || []).length, 1, 'one tr helper in 49-fli
 }
 
 console.log('ok flights_texts');
+
+// The count phrase "N in der Luft" (tile, list heading): Dutch says "onderweg" (Schiphol's word); de and en stay.
+{
+  const patterns = (l) => JSON.parse(read('custom_components/casora/translations/dashboard/phrases/' + l + '.json')).patterns || [];
+  const apply = (l, text) => { for (const [re, out] of patterns(l)) { const m = new RegExp(re).exec(text); if (m) return out.replace(/\{(\d)\}/g, (_, i) => m[i]); } return text; };
+  assert.equal(apply('nl', '2 in der Luft'), '2 onderweg', 'nl: the count says onderweg');
+  assert.equal(apply('nl', '0 in der Luft'), '0 onderweg', 'nl: zero too');
+  assert.equal(apply('en', '2 in der Luft'), '2 in the air', 'en: unchanged');
+}

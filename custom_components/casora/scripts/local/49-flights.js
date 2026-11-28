@@ -31,7 +31,7 @@
 //   window._casoraFlights.arrivalLine(hass, entry, now) → {label, when, home} the estimated arrival as the list row and the popup write it (when = date and airport time), or null
 //   window._casoraFlights.liveHtml(hass, pin, now) / .liveHidden(hass)  → the Flights tile (one line, "N in the air") and its hidden state; `now` is optional
 //   window._casoraFlights.phone() → the phone breakpoint (the tile CSS's media query); .tapTile(hass, name) / .openList(hass, src, name)
-//   window._casoraFlights.listStage(hass, c) / .listRows(hass, c) / .listPopup(states, hass, v) → the list popup (phone and desktop; c = {pin, now}, now optional)
+//   window._casoraFlights.listRows(hass, c) / .listPopup(states, hass, v) → the list popup (phone and desktop; c = {pin, now}, now optional)
 //   window._casoraFlights.flight(hass, src, id, now)  → one qualifying flight by FR24 ID (its row), or null
 //   window._casoraFlights.open(hass, src, id)        → a row's popup (casora_popup_flight); null when it does not qualify
 //   window._casoraFlights.flightPopup(states, hass, v) → the popup's content for v = {source, flight}; .title(hass, v) its title
@@ -627,12 +627,12 @@
         + '<p id="flights-add-help" style="margin:8px 0 0;font-size:13px;color:var(--secondary-text-color,currentColor);white-space:normal;overflow-wrap:anywhere">' + esc(tr('Flugnummer, Rufzeichen oder Registrierung')) + '</p>'
         + '<p data-flights-msg role="status" aria-live="polite" style="margin:8px 0 0;font-size:14px;font-weight:600;min-height:1em;white-space:normal;overflow-wrap:anywhere">' + esc(msgOf(a)) + '</p>';
     }
-    if (part === 'stage') return UI.stage('status', { tone: m.tone, icon: 'mdi:airplane', text: m.text });
     if (part === 'list') {
       if (!m.rows) {
         var st0 = F.resolve(h, c && c.pin).state;
         if (st0 !== 'choose' && st0 !== 'missing') return '';
-        return UI.note(tr(SOURCE_HINT));
+        // No stage any more: the state the stage used to say ("Quelle nicht verfügbar") stands above the hint.
+        return UI.note(tr(m.text)) + UI.note(tr(SOURCE_HINT));
       }
       // The complete list (airborne or not): a row's Stop tracking button needs only the source and the row's FR24 ID.
       var rs = F.resolve(h, c && c.pin), live = !!rs.source && (rs.state === 'pinned' || rs.state === 'auto');
@@ -677,18 +677,14 @@
     var card = function (part) { return { card: KIT.secCard(watch, 'return window._casoraFlights ? window._casoraFlights.sec(' + JSON.stringify(part) + ', ' + cj + ', states, hass) : "";', S) }; };
     // The Add field sits above the list, only where a source is chosen (the list then has something to add to).
     var rr = F.resolve(hass, pin), canAdd = !!rr.source && (rr.state === 'pinned' || rr.state === 'auto');
-    var fields = { stage: card('stage'), list: card('list') };
+    // No stage (no status dial): the add field, then the list (richtlinien §4.1: type S8, the list is the main area).
+    var fields = { list: card('list') };
     if (canAdd) fields.add = card('add');
-    return KIT.layout({ fields: fields, top: canAdd ? ['add'] : [], stage: 'stage', left: [], right: ['list'] });
+    return KIT.layout({ fields: fields, top: canAdd ? ['add'] : [], left: [], right: ['list'] });
   };
   // ── The list popup (casora_popup_flights_list): two or more airborne flights, one full row each ───────────────────
   // Opened from the tile's summary line (F.tapTile), on phone and desktop. A row opens its flight's popup with F.open. The list
   // is the shared rule's order (F.airborne); nothing is sorted or filtered here.
-  F.listStage = function (hass, c) {
-    var UI = window._casoraUI, n = hass ? F.airborne(hass, c && c.pin, Date.now()).length : 0;
-    if (!UI || !n) return '';
-    return UI.stage('status', { tone: 'good', icon: 'mdi:airplane', text: summaryText(n) });
-  };
   // The list popup that F.openList opened, until the popup closes. Its rows close it once no flight is left.
   var listOpen = false;
   var closeListPopup = function () {
@@ -705,11 +701,13 @@
     // Long text (a route) wraps inside the card: the row may not be wider than the card, and nothing is nowrap.
     var rowStyle = 'display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;min-height:52px;padding:12px 16px;margin:0;border:0;background:none;'
       + 'font:inherit;color:inherit;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere;';
-    return '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
+    var plate = '<style>[data-flights-row]:focus-visible{outline:2px solid var(--casora-popup-ui-focus,currentColor);outline-offset:2px}</style>'
       + '<div style="background:var(--casora-popup-row-fill, rgba(255,255,255,0.10));border-radius:var(--casora-popup-row-radius, 20px);overflow:hidden">'
       + rows.map(function (r, i) {
         return (i ? '<div style="height:1px;margin:0 16px;background:currentColor;opacity:.15"></div>' : '') + rowHtml(hass, r, rowStyle, now);
       }).join('') + '</div>';
+    // One section; its heading carries the count (richtlinien §6): "Flüge · 2 in der Luft" (nl "Vluchten · 2 onderweg").
+    return UI.section('state', plate, tr('Flüge') + ' · ' + summaryText(rows.length));
   };
   F.listPopup = function (states, hass, vars) {
     var KIT = window._casoraSoftKit, UI = window._casoraUI, S = states || {};
@@ -717,7 +715,7 @@
     var pin = F.setting(), watch = F.watch(hass);
     var cj = JSON.stringify({ pin: pin });
     var card = function (fn) { return { card: KIT.secCard(watch, 'return window._casoraFlights ? window._casoraFlights.' + fn + '(hass, ' + cj + ') : "";', S) }; };
-    return KIT.layout({ fields: { stage: card('listStage'), list: card('listRows') }, top: [], stage: 'stage', left: [], right: ['list'] });
+    return KIT.layout({ fields: { list: card('listRows') }, top: [], left: [], right: ['list'] });
   };
   // The tile's tap (phone and desktop): one airborne flight opens its popup (F.open), two or more the list popup. Returns what opened.
   F.tapTile = function (hass) {

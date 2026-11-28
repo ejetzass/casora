@@ -3,7 +3,7 @@
 // F.airborne's order. Desktop: flights_tile_desktop.mjs. The phone check is the tile CSS's media query, read with matchMedia.
 // Controlled fake page: the phone flag is set by the test. Synthetic data only.
 //   node dev/unit/flights_tile_phone.mjs
-// @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,liveHidden,airborne,phone,tapTile,openList,open,flight,listRows,listStage,listPopup,sec,popup,defineTileList,setTileMode,closeListPopup
+// @deckt: custom_components/casora/scripts/local/49-flights.js#liveHtml,liveHidden,airborne,phone,tapTile,openList,open,flight,listRows,listPopup,sec,popup,defineTileList,setTileMode,closeListPopup
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ const ctx = {
   matchMedia: (q) => ({ matches: phone && q.includes('max-width:767px'),
     addEventListener() {} }),
   // The page's stage and empty pieces, reduced to their text (the test reads the text, not the layout).
-  _casoraUI: { stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
+  _casoraUI: { section: (k, b, l) => '<h>' + l + '</h>' + b,  stage: (kind, o) => `<p>${o.text}</p>`, empty: (o) => `<p>${o.text}</p>` },
   // The popup opener: records the card config it is given, as the page would open that popup.
   _casoraNotifyOpenViaCard: (src, done, cfg) => { calls.push({ src, cfg }); return true; },
 };
@@ -120,7 +120,7 @@ assert.deepEqual([...labels], ['XY1', 'XY2'], 'precondition: the airborne order'
 assert.ok(list.indexOf('XY1') < list.indexOf('XY2'), 'the rows keep the airborne order');
 assert.match(text(list), /AAA → BBB/, 'a row shows its route');
 assert.match(text(list), /31000|31,000/, 'a row shows its altitude');
-assert.equal(text(F.listStage(hass, { pin: '' })), '2 in der Luft', 'the list popup stage shows the count');
+assert.match(text(list), /2 in der Luft/, 'the list popup heading carries the count');
 
 // ── The phone tile's element and tap: a plain button card, tapped as one ────────────────────────────────────────────
 const attrsOf = () => { const a = {}; return { attrs: a, hasAttribute: (n) => n in a, getAttribute: (n) => (n in a ? a[n] : null),

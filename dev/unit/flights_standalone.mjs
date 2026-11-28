@@ -41,7 +41,7 @@ const runtime = () => {
   box.document = { nodeType: 1, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
     createElement: () => ({ style: {}, setAttribute() {}, appendChild() {} }), head: { appendChild() {} } };
   box.casoraLocale = () => 'en-US';
-  box._casoraUI = { empty: (o) => o.text, stage: (k, o) => o.text };
+  box._casoraUI = { section: (k, b) => b,  empty: (o) => o.text, stage: (k, o) => o.text };
   vm.createContext(box);
   vm.runInContext(FLIGHTS_SRC, box);
   vm.runInContext(SAVER_SRC, box);

@@ -25,7 +25,7 @@ const ctx = {
   setTimeout: () => ({ live: false }), clearTimeout() {},
   addEventListener() {},
   casoraLocale: () => 'en-US',
-  _casoraUI: { empty: () => 'EMPTY' },
+  _casoraUI: { section: (k, b) => b,  empty: () => 'EMPTY' },
 };
 ctx.window = ctx;
 vm.createContext(ctx);

@@ -218,7 +218,7 @@ hass.source('sensor.a', [fl('h1', { flight_number: '<i>XY</i>', altitude: 31100 
 assert.equal(F.liveHidden(hass, T0 + MIN), true, 'frozen position: still hidden');
 hass.source('sensor.a', [at(fl('h1', { flight_number: '<i>XY</i>' }))]);
 assert.equal(F.liveHidden(hass, T0 + 2 * MIN), false, 'moving flight: shown');
-ctx._casoraUI = { empty: (o) => o.text };
+ctx._casoraUI = { section: (k, b) => b,  empty: (o) => o.text };
 const html = F.listRows(hass, { pin: '', now: T0 + 3 * MIN });
 assert.match(html, /&lt;i&gt;XY&lt;\/i&gt;/, 'label is escaped');
 assert.doesNotMatch(html, /<i>/);
@@ -279,7 +279,7 @@ assert.equal(tileMany.replace(/<[^>]*>/g, ''), '9 in der Luft', 'nine flights: o
 assert.doesNotMatch(tileMany, /data-flights-row/, 'nine flights: no rows on the tile');
 // The list popup (F.listRows) with the nine flights: every row is listed, none cut off, and the list has no height limit of
 // its own, so the popup itself scrolls the rows.
-ctx._casoraUI = { empty: (o) => o.text };
+ctx._casoraUI = { section: (k, b) => b,  empty: (o) => o.text };
 const listMany = F.listRows(hass, { pin: '', now: T0 + MIN });
 assert.equal((listMany.match(/data-flights-row data-flights-src/g) || []).length, 9, 'list popup: all nine rows listed, none cut off');
 assert.doesNotMatch(listMany, /max-height|height:100%|overflow-y:auto/, 'list popup: no height limit of its own (the popup scrolls)');

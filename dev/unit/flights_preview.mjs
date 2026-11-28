@@ -26,7 +26,7 @@ const runtime = () => {
     setTimeout: () => ({ live: false }), clearTimeout() {},
     addEventListener() {},
     _casoraNotifyOpenViaCard: () => undefined,
-    _casoraUI: { stage: (type, o) => 'STAGE[' + o.text + ']', empty: () => 'EMPTY' },
+    _casoraUI: { section: (k, b) => b,  stage: (type, o) => 'STAGE[' + o.text + ']', empty: () => 'EMPTY' },
     _casoraLovelaceCfg: () => cfg,
     casoraLocale: () => 'de-DE',
     casoraInStudio: () => !!panel,
