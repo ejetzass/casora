@@ -1069,7 +1069,8 @@
     const labelOf = (row) => { const l = row && row.querySelector(":scope > label, :scope > .lab"); return l ? l.textContent.trim() : ""; };
     const isLabel = (row, en) => { const t = labelOf(row); return t === en || t === tr(en); };
     // Eine aufklappbare Gruppe wie „Popup“ (gleiche Optik), Inhalt = nodes. key merkt sich offen/zu.
-    P._uxFold = function (key, title, nodes, cls) {
+    // summary: der Text der grauen Zeile (zu), schon übersetzt.
+    P._uxFold = function (key, title, nodes, cls, summary) {
       const det = document.createElement("div");
       det.className = "adv " + (cls || "");
       const sum = document.createElement("button");
@@ -1082,6 +1083,7 @@
       const val = document.createElement("span");
       val.className = "uxsum";
       val.setAttribute("data-no-i18n", "");
+      if (summary) val.textContent = summary;
       sum.append(lab, val);
       const body = document.createElement("div");
       body.className = "advbody";

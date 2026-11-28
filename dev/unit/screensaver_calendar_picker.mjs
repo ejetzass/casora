@@ -18,6 +18,7 @@ class Element {
     this.classList = {
       add: (...names) => { this.className = [...new Set([...this.classes(), ...names])].join(' '); },
       contains: (name) => this.classes().includes(name),
+      toggle: (name, on) => { this.className = [...this.classes().filter((x) => x !== name), ...(on ? [name] : [])].join(' '); },
     };
   }
   classes() { return String(this.className).split(/\s+/).filter(Boolean); }
@@ -49,11 +50,12 @@ class Element {
 }
 
 const Panel = class {};
-const window = { matchMedia: () => ({ matches: false }) };
+const document = { createElement: (tag) => new Element(tag) };
+const window = { matchMedia: () => ({ matches: false }), document };
 loadCalendars(window);
 const context = {
   window,
-  document: { createElement: (tag) => new Element(tag) },
+  document,
   customElements: { whenDefined: () => Promise.resolve(), get: () => Panel },
   console,
   Intl,
@@ -77,7 +79,9 @@ const context = {
 vm.createContext(context);
 vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js'), context, { filename: '46-screensaver.js' });
 vm.runInContext(read('custom_components/casora/panel/casora-panel-settings.js'), context, { filename: 'casora-panel-settings.js' });
-await Promise.resolve();
+// The shared expander row (.adv > .advsum) comes from the Studio's fold code.
+vm.runInContext(read('custom_components/casora/panel/casora-panel-b-ux.js'), context, { filename: 'casora-panel-b-ux.js' });
+await new Promise((resolve) => setImmediate(resolve));
 
 const SV = window._casoraSaver;
 SV.mount = () => ({ update() {}, destroy() {} });
@@ -91,14 +95,31 @@ const makePreview = (variables = {}, states = {
     _state: { compact: { rooms: [{ name: 'Test', variables: { ...variables } }] } },
     _hass: { states },
     _imgs: [],
+    _uxFold: Panel.prototype._uxFold,
   };
   Panel.prototype._csSaverPreview.call(panel, box, card);
   return { box, variables: panel._state.compact.rooms[0].variables };
 };
+// The shared row around the calendars: its bold word, its closed grey line, and where it sits.
+const foldOf = (box) => box.querySelectorAll('.adv').find((row) => row.querySelectorAll('.advsum')[0]?.children[0].textContent === 'Calendars');
+const greyOf = (box) => foldOf(box).querySelectorAll('.uxsum')[0].textContent;
 const lists = (box) => box.querySelectorAll('.cs-saver-list');
 const listFor = (box, key) => lists(box).find((list) => list.dataset.key === key);
 const calendarRow = (box, id) => listFor(box, 'casora_screensaver_calendars').children.find((row) => row.dataset.id === id);
 const rotationRow = (box, id) => listFor(box, 'casora_screensaver_mix').children.find((row) => row.dataset.id === id);
+
+// The calendar list sits in the shared row: closed at first, the grey line names the choice.
+const rowed = makePreview({ casora_screensaver_calendars: ['calendar.example_b', 'calendar.gone'] });
+assert.ok(foldOf(rowed.box), 'the calendars sit in the shared row');
+assert.ok(foldOf(rowed.box).querySelectorAll('.cs-saver-list').length === 1, 'the list is inside the row');
+assert.equal(foldOf(rowed.box).classList.contains('open'), false, 'the row starts closed');
+assert.equal(greyOf(rowed.box), '1 calendar', 'one calendar picked; one that is gone is not counted');
+assert.equal(greyOf(makePreview().box), 'All', 'nothing picked means All');
+assert.equal(greyOf(makePreview({ casora_screensaver_calendars: ['calendar.example_a', 'calendar.example_b'] }).box), '2 calendars');
+assert.equal(greyOf(makePreview({}, {}).box), '0 calendars', 'nothing available shows the count with 0');
+const aloneRow = makePreview({ casora_screensaver_kind: 'woche' });
+const aloneParent = foldOf(aloneRow.box).parentNode;
+assert.equal(aloneParent.className, 'cs-saver-lists', 'picked alone: the row is below the mode choices');
 
 // Unset rotation uses SV.selected's real default: every kind is included.
 const defaults = makePreview({ casora_screensaver_calendars: ['calendar.example_b'] });

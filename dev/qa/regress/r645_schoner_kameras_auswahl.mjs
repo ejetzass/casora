@@ -58,8 +58,14 @@ if (mobileUrl) mobileBefore = await c.cmd({ type: 'lovelace/config', url_path: m
 await P(`for (const r of p._state.compact.rooms) { r.variables.casora_screensaver = '5'; r.variables.casora_screensaver_kind = 'kameras'; delete r.variables.casora_screensaver_cameras; }`);
 await P(`p._csShow('n-saver')`);
 await wait(2000);
-await check('Camera picker starts collapsed', await P(`return p.shadowRoot.querySelector('.cs-saver-camera-choose')?.getAttribute('aria-expanded') === 'false'`));
-await P(`p.shadowRoot.querySelector('.cs-saver-camera-choose').click()`);
+// The cameras sit in the shared row (.adv > .advsum): closed at first, one grey line with the choice.
+const HEAD = '.adv.cs-saver-camera-picker > .advsum';
+await check('Camera row starts closed, no separate button', await P(`const r = p.shadowRoot, row = r.querySelector('.adv.cs-saver-camera-picker');
+  return !!row && !row.classList.contains('open') && !r.querySelector('.cs-saver-camera-choose') && row.querySelector(':scope > .advsum').getAttribute('aria-expanded') === 'false'`));
+await check('Closed row shows Automatic in its grey line', await P(`const t = (s) => window.casoraI18n ? window.casoraI18n.t(s) : s;
+  return p.shadowRoot.querySelector('.adv.cs-saver-camera-picker .advsum .uxsum').textContent === t('Automatic')`));
+await P(`p.shadowRoot.querySelector('${HEAD}').click()`);
+await check('A tap on the row opens it', await P(`return p.shadowRoot.querySelector('.adv.cs-saver-camera-picker').classList.contains('open')`));
 const list = () => P(`const r = p.shadowRoot; return { rows: [...r.querySelectorAll('.cs-saver-list[data-key="casora_screensaver_cameras"] .cs-saver-row')].map((x) => [x.dataset.id, x.getAttribute('aria-pressed'), (x.querySelector('.cs-saver-tx span') || {}).textContent || '']),
   vars: [...new Set(p._state.compact.rooms.map((x) => JSON.stringify(x.variables.casora_screensaver_cameras ?? null)))] };`);
 const row = (l, id) => l.rows.find((x) => x[0] === id) || [];
@@ -88,19 +94,21 @@ const chooseKind = async (kind) => {
   await page.waitForFunction((kind) => window.__panel().shadowRoot.querySelector('.cs-saver-chip[data-kind="' + kind + '"]')?.getAttribute('aria-pressed') === 'true', kind);
 };
 await chooseKind('mix');
-await check('Rotation exposes an independent camera action', await P(`const b = p.shadowRoot.querySelector('.cs-saver-camera-choose'); return !!b && !!b.parentElement.querySelector('.cs-saver-row[data-id="kameras"]')`));
-await P(`p.shadowRoot.querySelector('.cs-saver-camera-choose').click(); p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"] [data-id="${PRINTER}"]').click()`);
+await check('Rotation exposes the camera row beside Cameras', await P(`const b = p.shadowRoot.querySelector('.adv.cs-saver-camera-picker'); return !!b && !!b.parentElement.querySelector('.cs-saver-row[data-id="kameras"]')`));
+await P(`p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"] [data-id="${PRINTER}"]').click()`);
 const rotationPick = (await list()).vars;
 await check('Choosing cameras keeps rotation', await P(`return !p._state.compact.rooms[0].variables.casora_screensaver_kind`));
 const toggleCameras = () => P(`p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_mix"] .cs-saver-row[data-id="kameras"]').click()`);
 await toggleCameras();
-await check('Excluding Cameras hides its picker', await P(`return !p.shadowRoot.querySelector('.cs-saver-camera-choose') && !p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"]')`));
+await check('Excluding Cameras hides its picker', await P(`return !p.shadowRoot.querySelector('.adv.cs-saver-camera-picker') && !p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"]')`));
 await toggleCameras();
 await check('Re-including Cameras retains camera choices', JSON.stringify((await list()).vars) === JSON.stringify(rotationPick));
 await chooseKind('kameras');
 await chooseKind('mix');
-await check('Switching modes retains choices and starts collapsed', JSON.stringify((await list()).vars) === JSON.stringify(rotationPick)
-  && await P(`return p.shadowRoot.querySelector('.cs-saver-camera-choose').getAttribute('aria-expanded') === 'false'`));
+await check('Switching modes retains choices', JSON.stringify((await list()).vars) === JSON.stringify(rotationPick));
+await check('The grey line counts the picked cameras', await P(`const t = (s) => window.casoraI18n ? window.casoraI18n.t(s) : s;
+  const line = p.shadowRoot.querySelector('.adv.cs-saver-camera-picker .advsum .uxsum').textContent;
+  return line !== t('Automatic') && /\\d/.test(line)`));
 
 // Save through Settings, edit again, then discard through the real leave guard.
 await P(`p.shadowRoot.querySelector('.cs-save').click()`);
@@ -119,7 +127,7 @@ if (mobileBefore) {
   const phoneSaved = await c.cmd({ type: 'lovelace/config', url_path: mobileUrl });
   await check('Tablet camera selection preserves the phone dashboard scope', JSON.stringify(cameraPicks(phoneSaved)) === JSON.stringify(cameraPicks(mobileBefore)));
 }
-await P(`p.shadowRoot.querySelector('.cs-saver-camera-choose').click(); p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"] [data-id="auto"]').click()`);
+await P(`p.shadowRoot.querySelector('.cs-saver-list[data-key="casora_screensaver_cameras"] [data-id="auto"]').click()`);
 await check('The next camera edit marks the draft dirty', await P(`return p._isDirty() && p._csDirty()`));
 await check('The next camera edit remains a draft', JSON.stringify(await c.cmd({ type: 'lovelace/config', url_path: dash })) === JSON.stringify(saved));
 await page.emulateMedia({ reducedMotion: 'reduce' });

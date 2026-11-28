@@ -33,6 +33,10 @@ const list = () => P(`const r = p.shadowRoot; return { rows: [...r.querySelector
   vars: [...new Set(p._state.compact.rooms.map((x) => JSON.stringify(x.variables.casora_screensaver_mix ?? null)))] };`);
 let l = await list();
 await check('zwölf Arten in der Liste, alle gewählt, keine Haken', l.rows.length === 12 && l.rows.every((x) => x[1] === 'true') && l.ticks === 0, JSON.stringify(l).slice(0, 300));
+// The camera, calendar and photo pickers each sit in the shared row (.adv > .advsum): closed, with one grey line.
+const rows = await P(`return [...p.shadowRoot.querySelectorAll('.cs-saver .adv')].map((x) => [x.classList.contains('open'), (x.querySelector(':scope > .advsum .uxsum') || {}).textContent || '']);`);
+await check('Kameras, Agenda und Fotos: je eine Zeile, zu, mit grauer Zeile; kein Extra-Knopf', rows.length >= 1 && rows.every((x) => !x[0] && x[1])
+  && await P(`return !p.shadowRoot.querySelector('.cs-saver-camera-choose')`), JSON.stringify(rows));
 await P(`p.shadowRoot.querySelector('.cs-saver-list .cs-saver-row[data-id="musik"]').click();`);
 await wait(500);
 l = await list();

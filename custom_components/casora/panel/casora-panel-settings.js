@@ -304,6 +304,10 @@
     + ".cn-block .adv>.advsum>span:not(.uxsum){font-size:var(--t-body);font-weight:650;color:var(--ink)}"
     + ".cn-block .adv>.advsum>span:not(.uxsum)::after{content:' ›';color:var(--ink-2)}"
     + ".cn-block .adv.open>.advsum>span:not(.uxsum)::after{content:' ⌄'}"
+    // The one grey line under the word while the row is closed (screensaver pickers: the current choice).
+    + ".cn-block .adv>.advsum{flex-wrap:wrap}"
+    + ".cn-block .adv>.advsum>.uxsum{flex:1 0 100%;max-width:none;margin:0;padding:0;text-align:left;white-space:normal;font-size:var(--t-foot);font-weight:400;color:var(--ink-3)}"
+    + ".cn-block .adv.open>.advsum>.uxsum{display:none}"
     // One row form on the settings pages (d04-03, owner 26.11.2026): title 13 px, its sentence right under it (12 px),
     // the field below or the control on the right – a flow row, a field of a dashboard section, a switch row alike.
     // Rows with a symbol are choices in a list, not settings; they keep their size.
@@ -1656,6 +1660,14 @@
       wrap.appendChild(chips);
       // Which room photos „Fotos“ shows: all of them, or the ones picked here (casora_screensaver_photos, the day
       // photo's name, on every room like the other screensaver settings). A draft like every setting.
+      // Camera, calendar and photo pickers sit in the shared row (.adv > .advsum): the word, and while closed one grey
+      // line with the choice: nothing picked = all (cameras: Automatic), else the count; 0 when nothing is there.
+      const foldPicker = (host, fold, title, body, picked, total) => {
+        const count = (n) => t(n === 1 ? fold.one : fold.many).replace("{n}", n);
+        const line = picked ? count(picked) : total ? t(fold.all) : count(0);
+        host.appendChild(this._uxFold("saver-" + fold.name, title, [body], fold.cls, line));
+      };
+      const photoFold = { name: "photos", all: "All", one: "1 photo", many: "{n} photos" };
       const pick = el("div", "cs-saver-photos");
       pick.style.cssText = "margin:14px 0 0;";
       wrap.appendChild(pick);
@@ -1668,14 +1680,15 @@
         if (pick.hidden) return;
         if (show === "mix") lists.appendChild(pick);
         else wrap.insertBefore(pick, lists);
-        pick.appendChild(el("div", "fhead", t("Photos")));
+        const body = el("div");
         if (!list.length) {
-          pick.appendChild(el("p", "cs-lede", t("No room photos available. Add a photo to a room.")));
+          body.appendChild(el("p", "cs-lede", t("No room photos available. Add a photo to a room.")));
+          foldPicker(pick, photoFold, "Photos", body, 0, 0);
           return;
         }
         const cur = (rooms.map((r) => (r.variables || {}).casora_screensaver_photos).find((v) => Array.isArray(v) && v.length) || []).map(String);
         const on = (ref) => !cur.length || cur.includes(ref);
-        pick.appendChild(el("p", "cs-lede", t(cur.length ? "Only the photos picked here." : "All room photos. Tap a photo to show only the ones you pick.")));
+        body.appendChild(el("p", "cs-lede", t(cur.length ? "Only the photos picked here." : "All room photos. Tap a photo to show only the ones you pick.")));
         const grid = el("div", "cs-saver-grid");
         grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin:8px 0 0;";
         list.forEach((p) => {
@@ -1708,7 +1721,8 @@
           };
           grid.appendChild(b);
         });
-        pick.appendChild(grid);
+        body.appendChild(grid);
+        foldPicker(pick, photoFold, "Photos", body, list.filter((p) => cur.includes(p.ref)).length, list.length);
       };
       // What alternates (One after the other), which cameras and which calendars: a list in Casora's way of choosing,
       // no ticks: a picked row is filled and its icon in colour, the others grey. None picked = all (the default); a
@@ -1737,8 +1751,7 @@
           + ".cs-saver-camera-kind{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}"
           + ".cs-saver-camera-kind>.cs-saver-row{flex:1 1 140px;width:auto;}"
           + ".cs-saver-camera-kind>.cs-saver-camera-picker{flex:1 0 100%;min-width:0;}"
-          + ".cs-saver-camera-kind .cs-saver-list{background:none;padding:0;}"
-          + ".cs-saver-camera-choose{min-height:44px;white-space:normal;}";
+          + ".cs-saver-camera-kind .cs-saver-list{background:none;padding:0;}";
         root.appendChild(st);
       }
       const rooms0 = () => (this._state && this._state.compact && this._state.compact.rooms) || [];
@@ -1750,33 +1763,26 @@
       };
       // items: { id, label, icon, tone, sub, raw, auto }. With auto on the items (cameras) none picked means
       // „Automatic“: the items with auto true, the others grey; a row „Automatic“ on top goes back to it.
-      let camerasOpen = false;
-      const cameraPicker = (host, inRotation = false) => {
-        const picker = el("div", "cs-saver-camera-picker");
-        picker.hidden = !camerasOpen;
-        const choose = btn(t("Choose cameras"), () => {
-          camerasOpen = !camerasOpen;
-          picker.hidden = !camerasOpen;
-          choose.setAttribute("aria-expanded", camerasOpen ? "true" : "false");
-        }, true);
-        choose.classList.add("cs-saver-camera-choose");
-        choose.setAttribute("aria-expanded", camerasOpen ? "true" : "false");
-        host.append(choose, picker);
+      const cameraFold = { name: "cameras", all: "Automatic", one: "1 camera", many: "{n} cameras", cls: "cs-saver-camera-picker" };
+      const cameraPicker = (host) => {
         const why = { map: "Map or robot vacuum, not taken automatically", printer: "3D printer, not taken automatically" };
         pickList("casora_screensaver_cameras", SV.cameraChoices(this._hass).map((c) => ({ id: c.id, label: c.name, raw: true, icon: "mdi:cctv", tone: "#5B8FC9",
-          auto: c.auto, sub: why[c.why] || "" })), inRotation ? "" : "Cameras",
+          auto: c.auto, sub: why[c.why] || "" })), "Choose cameras",
           "Automatic: every camera with a real picture; robot vacuum maps and 3D printer cameras stay out. Tap a camera to choose them yourself. On the tablet a tap on a camera shows its live picture.",
           "Only the cameras picked here. “Automatic” takes every camera with a real picture again.",
           "No camera found. The preview shows an example.",
-          { id: "auto", label: "Automatic", sub: "Every camera with a real picture", icon: "mdi:auto-fix", tone: "#5B8FC9" }, picker);
+          { id: "auto", label: "Automatic", sub: "Every camera with a real picture", icon: "mdi:auto-fix", tone: "#5B8FC9" }, host, cameraFold);
       };
-      const pickList = (key, items, title, ledeAll, ledeSome, none, autoRow, host = lists) => {
-        if (title) host.appendChild(el("div", "fhead", t(title)));
-        if (!items.length) { host.appendChild(el("p", "cs-lede", t(none))); return; }
+      // With fold (a { name, all, one, many } set of texts) the list sits in the shared row named title; else under a heading.
+      const pickList = (key, items, title, ledeAll, ledeSome, none, autoRow, host = lists, fold = null) => {
+        const out = fold ? el("div") : host;
         const ids = items.map((x) => x.id);
         const auto = items.some((x) => x.auto !== undefined) ? items.filter((x) => x.auto).map((x) => x.id) : null;
         const cur = ((rooms0().map((r) => (r.variables || {})[key]).find((v) => Array.isArray(v) && v.length)) || []).map(String).filter((x) => ids.includes(x));
-        host.appendChild(el("p", "cs-lede", t(cur.length ? ledeSome : ledeAll)));
+        const done = () => { if (fold) foldPicker(host, fold, title, out, cur.length, items.length); };
+        if (title && !fold) out.appendChild(el("div", "fhead", t(title)));
+        if (!items.length) { out.appendChild(el("p", "cs-lede", t(none))); done(); return; }
+        out.appendChild(el("p", "cs-lede", t(cur.length ? ledeSome : ledeAll)));
         const list = el("div", "cs-saver-list");
         list.dataset.key = key;
         const row = (it, on, tap) => {
@@ -1795,11 +1801,19 @@
           tx.appendChild(b);
           if (it.sub) tx.appendChild(el("span", "", t(it.sub)));
           r.append(ic, tx);
-          r.onclick = () => { tap(); live.update(); extra(); };
+          r.onclick = () => {
+            const focused = (r.getRootNode() || document).activeElement === r;
+            tap(); live.update(); extra();
+            // The list is drawn again: the keyboard stays on the tapped row, like in the photo grid.
+            if (focused) {
+              const next = Array.from(lists.querySelectorAll(".cs-saver-row")).find((x) => x.dataset.id === it.id);
+              if (next) next.focus({ preventScroll: true });
+            }
+          };
           if (key === "casora_screensaver_mix" && it.id === "kameras" && on && typeof SV.cameraChoices === "function") {
             const group = el("div", "cs-saver-camera-kind");
             group.appendChild(r);
-            cameraPicker(group, true);
+            cameraPicker(group);
             list.appendChild(group);
           } else {
             list.appendChild(r);
@@ -1810,8 +1824,10 @@
           const on = cur.length ? cur.includes(it.id) : (!auto || auto.includes(it.id));
           row(it, on, () => setVar(key, SV.pickNext(cur, ids, auto, it.id)));
         });
-        host.appendChild(list);
+        out.appendChild(list);
+        done();
       };
+      const calendarFold = { name: "calendars", all: "All", one: "1 calendar", many: "{n} calendars" };
       const calendarPickerVisible = () => {
         if (calendarKinds.has(show)) return true;
         if (show !== "mix" || typeof SV.vars !== "function" || typeof SV.selected !== "function") return false;
@@ -1832,7 +1848,7 @@
           pickList("casora_screensaver_calendars", SV.calendars(hass).map((id) => ({ id, label: String(((S0[id] || {}).attributes || {}).friendly_name || id), raw: true,
             icon: "mdi:calendar-blank-outline", tone: "#DE8A4E" })), "Calendars",
             "Appointments of all calendars. Tap one to leave it out.", "Only the appointments of the calendars picked here.",
-            "No calendar found. The preview shows an example.");
+            "No calendar found. The preview shows an example.", undefined, lists, calendarFold);
         }
       };
       const extra = () => { drawLists(); photos(); };

@@ -11,7 +11,9 @@ class Element {
   constructor(tag) {
     this.tagName = tag.toUpperCase(); this.children = []; this.dataset = {}; this.attrs = {};
     this.style = { setProperty() {} }; this.className = ''; this.isConnected = true;
-    this.classList = { add: (name) => { this.className += ' ' + name; } };
+    this.classList = { add: (name) => { this.className += ' ' + name; },
+      contains: (name) => this.className.split(/\s+/).includes(name),
+      toggle: (name, on) => { this.className = [...this.className.split(/\s+/).filter((x) => x && x !== name), ...(on ? [name] : [])].join(' '); } };
   }
   set textContent(value) { this.text = String(value); this.children.forEach((c) => { c.parentNode = null; }); this.children = []; }
   get textContent() { return (this.text || '') + this.children.map((c) => c.textContent).join(''); }
@@ -38,7 +40,7 @@ const document = { createElement: (tag) => new Element(tag), activeElement: null
 class Panel {
   _markDirty() {}
 }
-const win = { matchMedia: () => ({ matches: false }) };
+const win = { matchMedia: () => ({ matches: false }), document };
 const context = vm.createContext({
   window: win, console, Intl, Date, Math, JSON,
   document,
@@ -51,6 +53,8 @@ vm.runInContext(read('custom_components/casora/scripts/local/46-screensaver.js')
 // Rendering the animated preview is a separate seam; keep the real selection/vars APIs.
 win._casoraSaver.mount = () => ({ update() {}, destroy() {} });
 vm.runInContext(read('custom_components/casora/panel/casora-panel-settings.js'), context);
+// The shared expander row (.adv > .advsum) comes from the Studio's fold code.
+vm.runInContext(read('custom_components/casora/panel/casora-panel-b-ux.js'), context);
 await new Promise((resolve) => setImmediate(resolve));
 
 function studio(variables = {}, images = ['room-a', 'room-b']) {
@@ -97,6 +101,16 @@ const order = all(wrap, () => true);
 assert.ok(order.indexOf(byClass(wrap, 'cs-saver-list')[0]) < order.indexOf(byClass(wrap, 'cs-saver-grid')[0]),
   'photo grid follows rotation participation choices');
 assert.equal(byClass(s.root(), 'cs-saver-grid').length, 1, 'only one grid');
+// The photo grid sits in the shared row: closed at first, the grey line names the choice.
+const photoFold = (root) => byClass(root, 'adv').find((e) => byClass(e, 'advsum')[0].children[0].textContent === 'Photos');
+const photoGrey = (root) => byClass(photoFold(root), 'uxsum')[0].textContent;
+assert.ok(byClass(photoFold(s.root()), 'cs-saver-grid').length === 1, 'the grid is inside the row');
+assert.equal(photoFold(s.root()).classList.contains('open'), false, 'the row starts closed');
+assert.equal(photoGrey(s.root()), 'All', 'nothing picked means All');
+assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-b'] }).root()), '1 photo');
+assert.equal(photoGrey(studio({ casora_screensaver_photos: ['room-a', 'room-b'] }).root()), '2 photos');
+assert.equal(photoGrey(studio({}, []).root()), '0 photos', 'nothing available shows the count with 0');
+assert.equal(photoFold(studio({ casora_screensaver_kind: 'fotos' }).root()).parentNode.className.includes('cs-saver'), true, 'picked alone: the row stays in the picker');
 assert.ok(s.photos().every((e) => e.tagName === 'BUTTON' && e.type === 'button'), 'native keyboard controls');
 assert.deepEqual(s.photos().map((e) => e.getAttribute('aria-pressed')), ['true', 'true'], 'all photos initially selected');
 s.photos()[0].focus();
